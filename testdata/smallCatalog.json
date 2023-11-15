@@ -1,0 +1,20 @@
+{
+  "content": {
+    "catalog:": [
+      {
+        "name:": "First item",
+        "options:": [
+          "Round",
+          "Square"
+        ]
+      },
+      {
+        "name:": "Second item",
+        "options:": [
+          "Big",
+          "Small"
+        ]
+      }
+    ]
+  }
+}

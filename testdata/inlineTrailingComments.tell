@@ -1,0 +1,3 @@
+- "inline and trailing"   # a single inline comment
+    # can be extended with normal
+    # trailing comments.
