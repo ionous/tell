@@ -54,16 +54,15 @@ Usage
 // from tellExample_test.go
 func ExampleString() {
 	str := `true` // some tell document
-	// tell/maps/imap contains a slice based ordered map implementation.
-	// tell/maps/stdmap generates standard (unordered) go maps.
-	// tell/maps/orderedmap uses Ian Coleman's ordered map implementation.
+	// maps/imap contains a slice based ordered map.
+	// maps/stdmap generates standard (unordered) go maps.
+	// maps/orderedmap uses Ian Coleman's ordered map.
 	doc := tell.NewDocument(imap.Builder, tell.KeepComments)
-	// ReadDoc takes a string reader
 	if res, e := doc.ReadDoc(strings.NewReader(str)); e != nil {
 		panic(e)
 	} else {
-		// the results contains document level comments
-		// and the content that was read.
+		// results has document level comments
+		// and the parsed content.
 		fmt.Println(res.Content)
 	}
 
@@ -71,6 +70,7 @@ func ExampleString() {
 }
 
 ```
+
 
 Description
 -----
