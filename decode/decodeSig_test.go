@@ -1,17 +1,17 @@
-package tell_test
+package decode_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/ionous/tell"
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/decode"
 )
 
 func TestSig(t *testing.T) {
 	// returns point of failure
 	test := func(str string) (ret string, err error) {
-		var sig tell.Signature
+		var sig decode.Signature
 		if e := charm.Parse(str, &sig); e != nil {
 			err = e
 		} else if str, e := sig.GetKey(); e != nil {

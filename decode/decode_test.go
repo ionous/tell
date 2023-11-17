@@ -1,4 +1,4 @@
-package tell_test
+package decode_test
 
 import (
 	"fmt"

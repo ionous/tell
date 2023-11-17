@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ionous/tell"
+	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/stdmap"
 )
 
@@ -73,11 +73,11 @@ func readTell(filePath string) (ret any, err error) {
 		err = e
 	} else {
 		keepComments := strings.Contains(strings.ToLower(filePath), "comment")
-		comments := tell.DiscardComments
+		comments := decode.DiscardComments
 		if keepComments {
-			comments = tell.KeepComments
+			comments = decode.KeepComments
 		}
-		doc := tell.NewDocument(stdmap.Builder, comments)
+		doc := decode.NewDocument(stdmap.Builder, comments)
 		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
 			err = e
 		} else if len(res.Comment) > 0 {

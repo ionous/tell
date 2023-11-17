@@ -1,11 +1,11 @@
-package tell_test
+package decode_test
 
 import (
 	"strings"
 	"testing"
 	"unicode"
 
-	"github.com/ionous/tell"
+	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/imap"
 )
 
@@ -89,10 +89,10 @@ func testMap(t *testing.T, nameInputExpect ...any) {
 			t.Log("skipping", name)
 		} else {
 			var res any
-			doc := tell.Document{MakeMap: imap.Builder, CommentBlock: tell.DiscardComments()}
+			doc := decode.Document{MakeMap: imap.Builder, CommentBlock: decode.DiscardComments()}
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-			mapping := tell.NewMapping(&doc, "", 0)
-			if e := doc.ReadLines(strings.NewReader(str), tell.StartMapping(mapping)); e != nil {
+			mapping := decode.NewMapping(&doc, "", 0)
+			if e := doc.ReadLines(strings.NewReader(str), decode.StartMapping(mapping)); e != nil {
 				res = e
 			} else if val, e := mapping.FinalizeValue(); e != nil {
 				res = e // calls finalize directly because the sequence was handled directly to parse,

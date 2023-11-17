@@ -1,4 +1,4 @@
-package tell
+package decode
 
 import (
 	"unicode"

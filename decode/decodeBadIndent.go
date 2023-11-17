@@ -1,4 +1,4 @@
-package tell
+package decode
 
 import "github.com/ionous/tell/charm"
 

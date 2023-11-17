@@ -1,4 +1,4 @@
-package tell_test
+package decode_test
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/ionous/tell"
+	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/imap"
 )
 
@@ -43,7 +43,7 @@ func testValue(t *testing.T, nameInputExpect ...any) {
 			t.Log("skipping", name)
 		} else {
 			var res any
-			doc := tell.Document{MakeMap: imap.Builder}
+			doc := decode.Document{MakeMap: imap.Builder}
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
 			if got, e := doc.ReadDoc(strings.NewReader(str)); e != nil {
 				res = e
