@@ -8,7 +8,7 @@ import (
 	"github.com/ionous/tell/maps/imap"
 )
 
-func ExampleString() {
+func ExampleDocument() {
 	str := `true` // some tell document
 	// maps/imap contains a slice based ordered map implementation.
 	// maps/stdmap generates standard (unordered) go maps.
@@ -22,6 +22,5 @@ func ExampleString() {
 		// and the content that was read.
 		fmt.Println(res.Content)
 	}
-
 	// Output: true
 }

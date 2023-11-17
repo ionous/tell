@@ -30,20 +30,19 @@ Some major differences:
 
 It isn't intended to be a subset of yaml, but it tries to be close enough to leverage syntax highlighting in editors, etc.
 
-
 Status 
 ----
 
 Version 0.
 
-The go implementation successfully reads (some?) well-formed documents; it doesn't attempt to write documents.
+The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
 * heredocs are defined but not yet supported.
 * arrays would be nice, but aren't implemented.
 * error reporting needs improvement.
-* no serialization of go maps and slices to tell.
+* no serialization of structs ( only maps, slices, and primitives. )
 
 see also the [issues page](https://github.com/ionous/tell/issues).
 
@@ -51,9 +50,30 @@ Usage
 -----
 
 ```go
-// from tellExample_test.go
-func ExampleString() {
+func ExampleUnmarshal() {
+	var b bool
+	if e := tell.Unmarshal([]byte(`true`), &b); e != nil {
+		panic(e)
+	} else {
+		fmt.Println(b)
+	}
+	// Output: true
+}
+
+func ExampleMarshal() {
+	b := true
+	if out, e := tell.Marshal(b); e != nil {
+		panic(e)
+	} else {
+		fmt.Println(string(out))
+	}
+	// Output: true
+}
+
+// a slightly expanded version showing some decoder options:
+func ExampleDocument() {
 	str := `true` // some tell document
+	var b 
 	// maps/imap contains a slice based ordered map.
 	// maps/stdmap generates standard (unordered) go maps.
 	// maps/orderedmap uses Ian Coleman's ordered map.
@@ -65,12 +85,9 @@ func ExampleString() {
 		// and the parsed content.
 		fmt.Println(res.Content)
 	}
-
 	// Output: true
 }
-
 ```
-
 
 Description
 -----
@@ -97,13 +114,13 @@ Any **scalar**, **array**, **sequence**, **mapping**, or **heredoc**.
 * **bool**: `true`, or `false`.
 * **raw string** ( backtick ): `` `backslashes are backslashes.` ``
 * **interpreted string** ( double quotes ): `"backslashes indicate escaped characters."`<sup>\[1]</sup>
-* **number**: 64-bit int or float numbers optionally starting with `+`/`-`; floats can have exponents `[e|E][|+/-]...`; hex values can be specified with `0x`notation. _( may expand to support https://go.dev/ref/spec#Integer_literals, etc. as needed. )_  _( **TBD**: the implementation currently produces floats, and only floats. that's to match json, but what's best? )_ 
+* **number**: 64-bit int or float numbers optionally starting with `+`/`-`; floats can have exponents `[e|E][|+/-]...`; hex values can be specified with `0x`notation. Like json, but unlike yaml: Inf and NaN are not supported. _( may expand to support https://go.dev/ref/spec#Integer_literals, etc. as needed. )_  _( **TBD**: the implementation currently produces floats, and only floats. that's to match json, but what's best? )_ 
 
 A scalar value always appears on a single line. There is no null keyword, null is implicit where no explicit value was provided.
 
 _( It is sad that hex colors can't live as `#ffffff`. Maybe it would have been cool to use lua style comments ( -- ) instead of yaml hashes. For now, comments are defined as a hash followed by a space while i keep thinking about it. )_
 
-\[1]: _the set of escaped character is: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"` ._
+\[1]: _the set of escaped character is: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`. backticks are not escaped, you can use a single line raw heredoc when that's needed._
 
 ### Arrays
 An array is a list of comma separated scalars, ending with an optional fullstop: `1, 2, 3.` 
