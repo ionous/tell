@@ -12,19 +12,31 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// creates a tab writer, writes to a local buffer, and returns the result.
+// see WriteDocument.
 func Encode(v any) (ret []byte, err error) {
 	var out bytes.Buffer
-	tab := TabWriter{Writer: &out}
-	if e := WriteValue(&tab, r.ValueOf(v), false); e != nil {
+	tabs := &TabWriter{Writer: &out}
+	if e := WriteDocument(tabs, v); e != nil {
 		err = e
 	} else {
-		// end with an artificial newline?
-		tab.WriteRune(runes.Newline)
 		ret = out.Bytes()
 	}
 	return
 }
 
+// ends every document with a newline
+func WriteDocument(tabs *TabWriter, v any) (err error) {
+	if e := WriteValue(tabs, r.ValueOf(v), false); e != nil {
+		err = e
+	} else {
+		// end with an artificial newline?
+		tabs.WriteRune(runes.Newline)
+	}
+	return
+}
+
+// writes a single value to the stream wrapped by tab writer
 func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 	switch v.Kind() {
 	// write structs as maps?

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	r "reflect"
 
 	"github.com/ionous/tell/decode"
@@ -39,6 +40,8 @@ import (
 //
 // Any other types will error ( ie. functions, channels, and structs )
 //
+// All documents end with a newline.
+//
 func Marshal(v any) (ret []byte, err error) {
 	return encode.Encode(v)
 }
@@ -67,9 +70,27 @@ func Unmarshal(in []byte, pv any) (err error) {
 			} else if res.CanConvert(ot) {
 				out.Set(res.Convert(ot))
 			} else {
-				fmt.Errorf("result of %q cant be written to a pointer of %q", rt, ot)
+				err = fmt.Errorf("result of %q cant be written to a pointer of %q", rt, ot)
 			}
 		}
 	}
 	return
+}
+
+// Encoder - follows the pattern of encoding/json
+type Encoder encode.TabWriter
+
+// NewEncoder -
+func NewEncoder(w io.Writer) *Encoder {
+	tabs := encode.TabWriter{Writer: w}
+	return (*Encoder)(&tabs)
+}
+
+// Encode - serializes the passed document to the encoder's stream
+// followed by a newline character.
+// tell doesnt support multiple documents in the same file,
+// but this interface doesn't stop callers from trying
+func (enc *Encoder) Encode(v any) (err error) {
+	tabs := (*encode.TabWriter)(enc)
+	return encode.WriteDocument(tabs, v)
 }
