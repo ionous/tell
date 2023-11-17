@@ -37,6 +37,10 @@ Version 0.
 
 The go implementation successfully reads and writes some well-formed documents.
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/ionous/tell)](https://pkg.go.dev/github.com/ionous/tell)
+![Go](https://github.com/ionous/tell/workflows/Go/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ionous/tell)](https://goreportcard.com/report/github.com/ionous/tell)
+
 ### Missing features
 
 * heredocs are defined but not yet supported.
