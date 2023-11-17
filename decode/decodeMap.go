@@ -37,7 +37,9 @@ func (c *Mapping) NewEntry() charm.State {
 		depth:        c.depth + 2,
 		pendingValue: computedValue{},
 		addsValue: func(val any, comment string) (err error) {
-			if key, e := c.key.GetKey(); e != nil {
+			if c.key.IsKeyPending() {
+				err = errors.New("signature must end with a colon, did you forget to quote a value?")
+			} else if key, e := c.key.GetKey(); e != nil {
 				err = e
 			} else {
 				c.values = c.values.Add(key, val)
@@ -66,7 +68,7 @@ func (c *Mapping) NewEntry() charm.State {
 // used by parent collections to read the completed collection
 func (c *Mapping) FinalizeValue() (ret any, err error) {
 	if c.key.IsKeyPending() {
-		err = errors.New("signature must end with a colon")
+		err = errors.New("signature must end with a colon, did you forget to quote a value?")
 	} else {
 		// write the comment block
 		if c.keepComments {
