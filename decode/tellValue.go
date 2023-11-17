@@ -5,6 +5,7 @@ import (
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/charmed"
+	"github.com/ionous/tell/runes"
 )
 
 // parses the "right hand side" of a collection or map
@@ -12,12 +13,12 @@ import (
 func NewValue(ent *tellEntry) charm.State {
 	val := tellValue{ent}
 	return charm.Self("value", func(self charm.State, r rune) (ret charm.State) {
-		const dashOrMinus = Dash
+		const dashOrMinus = runes.Dash
 		switch {
-		case r == InterpretedString:
+		case r == runes.InterpretedString:
 			ret = val.newString(r, true)
 
-		case r == RawString:
+		case r == runes.RawString:
 			ret = val.newString(r, false)
 
 		case charmed.IsNumber(r) || r == '+':
@@ -37,7 +38,7 @@ func NewValue(ent *tellEntry) charm.State {
 			// negative numbers or sequences
 			ret = charm.Statement("dashing", func(r rune) (ret charm.State) {
 				// no space indicates a number `-5`
-				if r != Space && r != Newline {
+				if r != runes.Space && r != runes.Newline {
 					ret = val.newNum()
 				} else {
 					// a space indicates a sequence `- 5`
@@ -126,7 +127,7 @@ func (val *tellValue) tryBool(r rune, makeNext func(str string) charm.State) (re
 			ret = charm.Statement("post bool", func(r rune) (ret charm.State) {
 				// the word "true" or "false" needs to check the rune after it
 				// if it doesn't then jump to the next state
-				if r != Space && r != Newline {
+				if r != runes.Space && r != runes.Newline {
 					ret = makeNext(partial).NewRune(r)
 				}
 				return

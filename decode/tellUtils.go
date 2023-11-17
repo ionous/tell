@@ -5,6 +5,7 @@ import (
 	"unicode"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 // turns any unhandled states returned by the watched state into errors
@@ -23,7 +24,7 @@ func UnhandledError(watch charm.State) charm.State {
 // returns an state which errors on all control codes other than newlines
 func FilterControlCodes() charm.State {
 	return charm.Self("filter control codes", func(next charm.State, r rune) charm.State {
-		if r != Newline && unicode.IsControl(r) {
+		if r != runes.Newline && unicode.IsControl(r) {
 			e := fmt.Errorf("invalid character %d", r)
 			next = charm.Error(e)
 		}

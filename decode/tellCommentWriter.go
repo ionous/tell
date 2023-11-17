@@ -2,6 +2,8 @@ package tell
 
 import (
 	"strings"
+
+	"github.com/ionous/tell/runes"
 )
 
 // the bits needed from go's missing string builder / generic writer interface
@@ -33,17 +35,17 @@ func (w *CommentBuffer) Len() int {
 
 // the law of leaky abstractions strikes again.
 func (w *CommentBuffer) WriteLine(nest bool) {
-	w.WriteRune(Newline)
+	w.WriteRune(runes.Newline)
 	if nest {
-		w.WriteRune(HTab)
+		w.WriteRune(runes.HTab)
 	}
 }
 
 func (w *CommentBuffer) WriteRune(r rune) (_ int, _ error) {
-	if r == Space {
+	if r == runes.Space {
 		w.spaces++
 	} else {
-		if r < Space && w.spaces > 0 {
+		if r < runes.Space && w.spaces > 0 {
 			s := w.String() // trim
 			w.b.Reset()
 			w.b.WriteString(s)

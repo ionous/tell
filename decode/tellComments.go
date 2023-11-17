@@ -1,13 +1,16 @@
 package tell
 
-import "github.com/ionous/tell/charm"
+import (
+	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
+)
 
 // read everything until the end of the line as a comment.
 // send the newline to the passed state.
 func ReadComment(out CommentWriter, eol charm.State) charm.State {
-	out.WriteRune(Hash)
+	out.WriteRune(runes.Hash)
 	return charm.Self("read comment", func(self charm.State, r rune) (ret charm.State) {
-		if r == Newline {
+		if r == runes.Newline {
 			ret = eol.NewRune(r)
 		} else {
 			out.WriteRune(r)
@@ -23,10 +26,10 @@ func NestedComment(doc *Document, out *CommentBuffer) charm.State {
 	depth := doc.Col
 	return charm.Self("nested comment", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Hash:
+		case runes.Hash:
 			out.WriteLine(true)
 			ret = ReadComment(out, self)
-		case Newline:
+		case runes.Newline:
 			ret = MaintainIndent(doc, self, depth)
 		}
 		return

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/maps"
+	"github.com/ionous/tell/runes"
 )
 
 type Mapping struct {
@@ -36,19 +37,19 @@ func (c *Mapping) NewEntry() charm.State {
 		depth:        c.depth + 2,
 		pendingValue: computedValue{},
 		addsValue: func(val any, comment string) (err error) {
-			if key, e := c.key.GetSignature(); e != nil {
+			if key, e := c.key.GetKey(); e != nil {
 				err = e
 			} else {
 				c.values = c.values.Add(key, val)
 				c.comments.WriteString(comment)
-				c.comments.WriteRune(Record)
+				c.comments.WriteRune(runes.Record)
 			}
 			return
 		},
 	}
 	next := charm.Self("map entry", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Hash:
+		case runes.Hash:
 			ret = charm.RunState(r, HeaderRegion(&ent, c.depth, self))
 		default:
 			// key and after key:

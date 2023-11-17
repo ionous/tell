@@ -1,12 +1,15 @@
 package tell
 
-import "github.com/ionous/tell/charm"
+import (
+	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
+)
 
 // find the next indent, and use the callback to determine the next state.
 // if the callback is null or returns a null state, this pops to find an appropriate state.
 func NextIndent(doc *Document, onIndent func(at int) charm.State) charm.State {
 	return charm.Self("next indent", func(nextIndent charm.State, r rune) (ret charm.State) {
-		if r == Space || r == Newline {
+		if r == runes.Space || r == runes.Newline {
 			ret = nextIndent
 		} else {
 			var next charm.State

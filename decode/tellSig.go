@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 // parses a dictionary key of ascii words separated by, and terminating with, a colon.
@@ -24,10 +25,10 @@ var isValidSignaturePrefix = unicode.IsLetter
 // colons separate word parts
 func (sig *Signature) NewRune(r rune) (ret charm.State) {
 	switch {
-	case r == Space && !sig.IsKeyPending():
+	case r == runes.Space && !sig.IsKeyPending():
 		break // done
 
-	case r == Newline:
+	case r == runes.Newline:
 		if sig.IsKeyPending() {
 			e := errors.New("keys can't span lines")
 			ret = charm.Error(e)
@@ -37,7 +38,7 @@ func (sig *Signature) NewRune(r rune) (ret charm.State) {
 		sig.append(r)
 		ret = sig
 
-	case r == SignatureSeparator: // aka, a colon
+	case r == runes.WordSep: // aka, a colon
 		if !sig.IsKeyPending() {
 			e := errors.New("words in signatures should be separated by a single colon")
 			ret = charm.Error(e)
@@ -47,7 +48,7 @@ func (sig *Signature) NewRune(r rune) (ret charm.State) {
 			ret = sig
 		}
 
-	case r == Space || r == SignatureConnector || unicode.IsDigit(r):
+	case r == runes.Space || r == runes.WordConnector || unicode.IsDigit(r):
 		if len(sig.pending) == 0 && sig.out.Len() == 0 {
 			e := errors.New("signatures must start with a letter")
 			ret = charm.Error(e)
@@ -60,7 +61,7 @@ func (sig *Signature) NewRune(r rune) (ret charm.State) {
 }
 
 // resets the signature
-func (sig *Signature) GetSignature() (ret string, err error) {
+func (sig *Signature) GetKey() (ret string, err error) {
 	if len(sig.pending) > 0 {
 		err = errors.New("signature must end with a colon")
 	} else {

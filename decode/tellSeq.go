@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 // a sequence of array values are specified with:
@@ -47,20 +48,20 @@ func (c *Sequence) NewEntry() charm.State {
 				c.values = append(c.values, val)
 			}
 			c.comments.WriteString(comment)
-			c.comments.WriteRune(Record)
+			c.comments.WriteRune(runes.Record)
 			return
 		},
 	}
 	next := charm.Self("sequence", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Hash:
+		case runes.Hash:
 			// this is in between sequence entries
 			// potentially, its a header comment for the next element
 			// if there is no element, it could be considered a tail
 			// of the parent container; it can have nesting.
-
 			ret = charm.RunState(r, HeaderRegion(&ent, c.depth, self))
-		case Dash:
+
+		case runes.Dash:
 			// unlike map, we dont need to hand off the dash itself;
 			// only the runes after; also: map's nil value is guarded by a completed key
 			// for sequence we have to at least have a dash before we could have a value.

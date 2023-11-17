@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 // represents a member of a collection
@@ -30,11 +31,11 @@ func (ent *tellEntry) finalizeEntry() (err error) {
 		tail := ent.tail.String()
 		w.WriteString(pad)
 		if len(pad) > 0 && len(head) > 0 {
-			w.WriteRune(Newline)
+			w.WriteRune(runes.Newline)
 		}
 		if len(head) > 0 || len(tail) > 0 {
 			w.WriteString(head) // padding
-			w.WriteRune(CollectionMark)
+			w.WriteRune(runes.CollectionMark)
 			w.WriteString(tail)
 		}
 		err = ent.addsValue(val, w.String())
@@ -54,7 +55,7 @@ func ContentsLoop(ent *tellEntry) charm.State {
 	return charm.Step(Contents(ent),
 		charm.Self("after entry", func(afterEntry charm.State, r rune) (ret charm.State) {
 			switch r {
-			case Newline:
+			case runes.Newline:
 				ret = NextIndent(ent.doc, nil)
 			}
 			return
@@ -71,16 +72,16 @@ func ContentsLoop(ent *tellEntry) charm.State {
 func Contents(ent *tellEntry) charm.State {
 	return charm.Self("contents", func(contents charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Space:
+		case runes.Space:
 			ret = contents
-		case Newline: // a blank line with no contents is the header.
+		case runes.Newline: // a blank line with no contents is the header.
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				if at >= ent.depth {
 					ret = HeaderRegion(ent, at, NextValue(ent))
 				}
 				return
 			})
-		case Hash: // a hash is the entry comment ( aka padding )
+		case runes.Hash: // a hash is the entry comment ( aka padding )
 			if at := ent.doc.Col; at >= ent.depth {
 				ret = ReadPadding(ent, at)
 			}
@@ -117,9 +118,9 @@ func HeaderRegion(ent *tellEntry, depth int, next charm.State) charm.State {
 		switch r {
 		default:
 			ret = next.NewRune(r)
-		case Hash:
+		case runes.Hash:
 			ret = ReadComment(&ent.head, header)
-		case Newline:
+		case runes.Newline:
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				switch {
 				case at == depth:
@@ -142,10 +143,10 @@ func ContinueHeader(ent *tellEntry, depth int) charm.State {
 		switch r {
 		default:
 			ret = ReadValue(ent, r)
-		case Hash:
+		case runes.Hash:
 			ent.head.WriteLine(false)
 			ret = ReadComment(&ent.head, header)
-		case Newline:
+		case runes.Newline:
 			ret = MaintainIndent(ent.doc, header, depth)
 		}
 		return
@@ -156,7 +157,7 @@ func ContinueHeader(ent *tellEntry, depth int) charm.State {
 // reads that value and any trailing comment describing it.
 func ReadValue(ent *tellEntry, r rune) (ret charm.State) {
 	// dont bother trying to read a value if it wasn't meant to be.
-	if r != Newline && r != Space {
+	if r != runes.Newline && r != runes.Space {
 		ret = charm.RunState(r, NextValue(ent))
 	}
 	return
@@ -171,12 +172,12 @@ func InlineComment(ent *tellEntry) (ret charm.State) {
 	inlineIndent := -1
 	return charm.Self("inline comment", func(loop charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Space: // eat spaces on the line after the value
+		case runes.Space: // eat spaces on the line after the value
 			ret = loop
-		case Hash: // an inline comment? read it; loop to us to handle the newline.
+		case runes.Hash: // an inline comment? read it; loop to us to handle the newline.
 			inlineIndent = ent.doc.Col
 			ret = ReadComment(&ent.tail, loop)
-		case Newline: // a newline ( regardless of whether there was a comment )
+		case runes.Newline: // a newline ( regardless of whether there was a comment )
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				// the trailing comment indent cant be deeper than its inline comment.
 				if (at >= ent.depth) && (inlineIndent < 0 || at <= inlineIndent) {
@@ -197,10 +198,10 @@ func InlineComment(ent *tellEntry) (ret charm.State) {
 func TrailingComment(ent *tellEntry, wantIndent, inlineIndent int, nest bool) charm.State {
 	return charm.Self("trailing comments", func(loop charm.State, r rune) (ret charm.State) {
 		switch r {
-		case Hash:
+		case runes.Hash:
 			ent.tail.WriteLine(nest)
 			ret = ReadComment(&ent.tail, loop)
-		case Newline:
+		case runes.Newline:
 			ret = MaintainIndent(ent.doc, loop, wantIndent)
 		}
 		return

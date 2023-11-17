@@ -2,6 +2,7 @@ package tell
 
 import (
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 type Cursor struct {
@@ -11,7 +12,7 @@ type Cursor struct {
 // update the cursor; errors on all control characters except Newline.
 func (c *Cursor) NewRune(r rune) charm.State {
 	switch {
-	case r == Newline:
+	case r == runes.Newline:
 		c.Row++
 		c.Col = 0
 	default:

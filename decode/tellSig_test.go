@@ -14,7 +14,7 @@ func TestSig(t *testing.T) {
 		var sig tell.Signature
 		if e := charm.Parse(str, &sig); e != nil {
 			err = e
-		} else if str, e := sig.GetSignature(); e != nil {
+		} else if str, e := sig.GetKey(); e != nil {
 			err = e
 		} else {
 			ret = str
