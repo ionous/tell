@@ -10,11 +10,10 @@ func IsNothing(c Commentator) (okay bool) {
 }
 
 func (n Nothing) OnBeginCollection() Commentator { return n }
-func (n Nothing) OnTermDecoded() Commentator     { return n }
-func (n Nothing) OnBeginHeader() Commentator     { return n }
+func (n Nothing) OnParagraph() Commentator       { return n }
 func (n Nothing) OnKeyDecoded() Commentator      { return n }
 func (n Nothing) OnScalarValue() Commentator     { return n }
-func (n Nothing) OnBeginFooter() Commentator     { return n }
+func (n Nothing) OnFootnote() Commentator        { return n }
 func (n Nothing) GetComments() string            { return "" }
 func (n Nothing) WriteRune(rune) (_ int, _ error) {
 	return

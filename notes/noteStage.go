@@ -8,52 +8,38 @@ type blockStage int
 
 //go:generate stringer -type=blockStage
 const (
-	emptyStage blockStage = iota
-	startingStage
-	headerStage
-	subheaderStage
-	paddingStage
-	bufferStage
-	inlineStage
-	footerStage
+	startStage  blockStage = iota
+	keyStage               // key decoded
+	valueStage             // collection or scalar received
+	footerStage            // received a footer
 )
 
 type stageFlags int
 
-func (f *stageFlags) update(c blockStage) (ret bool) {
+func (f *stageFlags) set(c blockStage) (okay bool) {
 	if (*f & (1 << c)) == 0 {
 		*f |= 1 << c
-		ret = true
-	}
-	return
-}
-
-func (c blockStage) allowNesting() (okay bool) {
-	switch c {
-	case headerStage, paddingStage, inlineStage:
 		okay = true
 	}
 	return
 }
 
-func (c blockStage) allowMultiple() (okay bool) {
-	switch c {
-	case subheaderStage, bufferStage, footerStage:
-		okay = true
+// validates the passed next; panics on error; returns previous stage.
+func (c *blockStage) set(next blockStage) (ret blockStage) {
+	// cant skip over the value stage
+	if at := *c; at < valueStage && ((next <= at) || (next > valueStage)) {
+		msg := fmt.Sprintf("skipped from %s to %s with no value given", at, next)
+		panic(msg)
+	} else {
+		ret, *c = at, next
 	}
 	return
 }
 
-func (c *blockStage) set(next blockStage) {
-	switch at := *c; {
-	case next < at:
-		msg := fmt.Sprintf("can't revert from %s to %s", at, next)
-		panic(msg)
-	case next == at && !next.allowMultiple():
-		msg := fmt.Sprintf("%s doesnt support multiple lines", at)
-		panic(msg)
-	case at != next:
-		*c = next
-	}
-	return
+func (c blockStage) buffers() bool {
+	return c < valueStage
+}
+
+func (c blockStage) allowNesting() bool {
+	return c != footerStage
 }

@@ -13,31 +13,29 @@ type Commentator interface {
 // events indicate different sections of a tell document
 // during decoding. the method return "self" for chaining.
 type Events interface {
-	// a new collection has been *discovered*.
-	OnBeginCollection() Commentator
-	// an element of a collection has finished decoding
-	OnTermDecoded() Commentator
-	// called before a header gets read.
-	// header comments sit above a value
-	// at the same indentation of its term
-	// each header starts a left-justified comment
-	// reused to indicate *potential* headers in the padding area.
-	OnBeginHeader() Commentator
-	// a signature or dash has finished decoding.
-	// padding is the space between
-	// the key ( or dash ) and the value
-	// it can contain a single comment, continued with optional nesting.
-	OnKeyDecoded() Commentator
-	// a value has started decoding
-	// inline comments will live to the right of the value on the same line
+	// called before a new comment is read.
+	// indicates a comment that sits above a value
+	// with the same indentation of that value.
+	// used for document headers, key comments, element headers.
+	OnParagraph() Commentator
+	// a value has started decoding; even a nil value should trigger this.
+	// any inline comments will live to the right of the value on the same line
 	// there can only be one inline comment, continued with optional nesting.
 	OnScalarValue() Commentator
-	// called before a header gets read.
-	// footer comments sit below a value
-	// at the same indentation of the value.
-	// can be called multiple times, once for each new footnote;
-	// the footer doesnt nest.( an aesthetic choice. )
-	OnBeginFooter() Commentator
+	// a new collection has started decoding
+	// not expected for the document itself.
+	// although it is not explicitly prevented,
+	// no runes or paragraphs are expected directly after starting a collection.
+	OnBeginCollection() Commentator
+	// a signature or dash in a collection has finished decoding.
+	// paragraphs can get treated as key comments,
+	// or headers for sub collection elements
+	// depending on the number of paragraphs and the following value.
+	OnKeyDecoded() Commentator
+	// footer comments sit below a value, slightly indented.
+	// like "paragraph" this can be called multiple times, once for each new footnote;
+	// the footer never nests.( an aesthetic choice. )
+	OnFootnote() Commentator
 }
 
 // receive text from the decoded comments of a tell document.

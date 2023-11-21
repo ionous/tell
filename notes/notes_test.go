@@ -12,8 +12,8 @@ import (
 func TestEmptyish(t *testing.T) {
 	const expected = "" +
 		"# emptyish"
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "emptyish")
+	b := notes.KeepComments()
+	WriteLine(b.OnParagraph(), "emptyish")
 	if got := b.GetComments(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
@@ -26,16 +26,15 @@ func TestEmptyish(t *testing.T) {
 func TestDocumentComment(t *testing.T) {
 	const expected = "" +
 		"# header\n# subheader\r\r# inline\n# footer"
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
-	WriteLine(b.OnBeginHeader(), "subheader")
-	// i think the key and value for document are nestled together.
-	// WriteLine(b.OnKeyDecoded(), "invisible padding")
+	b := notes.KeepComments()
+	WriteLine(b.OnParagraph(), "header")
+	WriteLine(b.OnParagraph(), "subheader")
 	WriteLine(b.OnScalarValue(), "inline")
-	WriteLine(b.OnBeginFooter(), "footer")
+	WriteLine(b.OnFootnote(), "footer")
 	//
 	if got := b.GetComments(); got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
 	}
 }
 
@@ -43,33 +42,38 @@ func TestDocumentComment(t *testing.T) {
 func TestCommentEmptyTerms(t *testing.T) {
 	const expected = "" +
 		"\f\f\r\r# comment"
-	b := NewBuilder()
+	b := notes.KeepComments()
 	// the builder started the collection
 	// and the collection has an implicit first term
 	// these are the two subsequent terms -- so two newlines
 	for i := 0; i < 2; i++ {
 		b.OnScalarValue()
-		b.OnTermDecoded()
 	}
 	WriteLine(b.OnScalarValue(), "comment")
 	if got := b.GetComments(); got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
 	}
 }
 
 // headers should appear right after their form feeds
+// approximately:
+// # 0
+// 0
+// ...
 func TestTermHeaders(t *testing.T) {
 	const expected = "" +
 		"# 0" +
 		"\f# 1" +
 		"\f# 2"
-	b := NewBuilder()
+	b := notes.KeepComments()
 	for i := 0; i < 3; i++ {
-		WriteLine(b.OnBeginHeader(), strconv.Itoa(i))
-		b.OnTermDecoded()
+		WriteLine(b.OnParagraph(), strconv.Itoa(i))
+		b.OnScalarValue()
 	}
 	if got := b.GetComments(); got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
 	}
 }
 
@@ -79,13 +83,16 @@ func TestTermHeaders(t *testing.T) {
 // # footer
 func TestDocumentFooter(t *testing.T) {
 	var expected = []string{
-		"# header\r\r#footer",
+		"# header\r\r\n# footer",
 		"",
 	}
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
-	b.OnBeginCollection().OnKeyDecoded().OnScalarValue().OnTermDecoded()
-	WriteLine(b.OnBeginFooter(), "footer")
+	b := notes.KeepComments()
+	WriteLine(b.OnParagraph(), "header")
+	b.OnBeginCollection().OnKeyDecoded().OnScalarValue()
+	// re: "header"
+	// footer of the sequence would be indented
+	// the parser can only assume the
+	WriteLine(b.OnParagraph(), "footer")
 	//
 	if got := b.GetAllComments(); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
@@ -95,62 +102,27 @@ func TestDocumentFooter(t *testing.T) {
 	}
 }
 
+// test an example similar to the one in the read me
 func TestReadmeExample(t *testing.T) {
-	const expected = "# header\r\r# inline\n# footer"
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
+	const expected = "# header\r\r# inline\n# footer\n# second footer"
+	b := notes.KeepComments()
+	WriteLine(b.OnParagraph(), "header")
 	WriteLine(b.OnScalarValue(), "inline")
-	WriteLine(b.OnBeginFooter(), "footer")
+	WriteLine(b.OnFootnote(), "footer")
+	WriteLine(b.OnFootnote(), "second footer")
 	if got := b.GetComments(); got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
 	}
 }
 
-func TestPanics(t *testing.T) {
-	b := NewBuilder()
-	WriteLine(b.OnKeyDecoded(), "padding")
-	func() {
-		defer func() { _ = recover() }()
-		WriteLine(b.OnKeyDecoded(), "multiple not allowed")
-		t.Fail() // expects not to get to this line because of panicking
-	}()
-	WriteLine(b.OnScalarValue(), "inline")
-	func() {
-		defer func() { _ = recover() }()
-		WriteLine(b.OnScalarValue(), "multiple not allowed")
-		t.Fail()
-	}()
-	WriteLine(b.OnBeginFooter(), "footer")
+func TestPanicNestedFooter(t *testing.T) {
+	b := notes.KeepComments()
+	WriteLine(b.OnScalarValue().OnFootnote(), "footer")
 	func() {
 		defer func() { _ = recover() }()
 		WriteLine(b, "nesting not allowed")
 		t.Fail()
-	}()
-	func() {
-		defer func() { _ = recover() }()
-		WriteLine(b.OnBeginHeader(), "rewind not allowed")
-		t.Fail()
-	}()
-}
-
-func TestHeaderPanic(t *testing.T) {
-	// check that we cant use the header after nesting.
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
-	WriteLine(b, "nested")
-	func() {
-		defer func() { _ = recover() }()
-		WriteLine(b.OnBeginHeader(), "header")
-		t.Fatalf("should panic when extending the header after nesting")
-	}()
-	// check that we cant use nesting after extending the header
-	b = NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
-	WriteLine(b.OnBeginHeader(), "subheader")
-	func() {
-		defer func() { _ = recover() }()
-		WriteLine(b, "nested")
-		t.Fatalf("should panic when extending the header after nesting")
 	}()
 }
 
@@ -159,41 +131,42 @@ func TestHeaderPanic(t *testing.T) {
 func TestCommentBlock(t *testing.T) {
 	const expected = "" +
 		"# header\n\t# nested header" +
-		"\r# padding\n\t# nested padding" +
+		"\r# key\n\t# nested key" +
 		"\r# inline\n\t# nested inline" +
 		"\n# footer\n# extra footer"
-	b := NewBuilder()
-	WriteLine(b.OnBeginHeader(), "header")
+	b := notes.KeepComments()
+	WriteLine(b.OnParagraph(), "header")
 	WriteLine(b, "nested header")
-	WriteLine(b.OnKeyDecoded(), "padding")
-	WriteLine(b, "nested padding")
+	WriteLine(b.OnKeyDecoded(), "key")
+	WriteLine(b, "nested key")
 	WriteLine(b.OnScalarValue(), "inline")
 	WriteLine(b, "nested inline")
-	WriteLine(b.OnBeginFooter(), "footer")
-	WriteLine(b.OnBeginFooter(), "extra footer")
+	WriteLine(b.OnFootnote(), "footer")
+	WriteLine(b.OnFootnote(), "extra footer")
 	got := b.GetComments()
 	if got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
 	}
 }
 
-// when there's a subcollection, the padding should split
+// when there's a subcollection, the key should split
 // between the parent container and the header of the first element.
-// - # padding
+// - # key
 // ..# buffered header
 // ....- "subcollection"
-func TestPaddingHeaderSplit(t *testing.T) {
+func TestKeyHeaderSplit(t *testing.T) {
 	var expected = []string{
 		"",                  // the document has no comments
-		"\r# padding",       // the sequence has padding
+		"\r# key",           // the sequence has key
 		"# buffered header", // the sub sequence has a header
 	}
-	b := NewBuilder()
+	b := notes.KeepComments()
 	// documents only have one value, in this case a sequence
-	// - # padding
-	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "padding")
+	// - # key
+	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "key")
 	// ..# buffered header
-	WriteLine(b.OnBeginHeader(), "buffered header")
+	WriteLine(b.OnParagraph(), "buffered header")
 	// ....- "subcollection"
 	b.OnBeginCollection().OnKeyDecoded().OnScalarValue()
 	if got := b.GetAllComments(); slices.Compare(got, expected) != 0 {
@@ -204,30 +177,30 @@ func TestPaddingHeaderSplit(t *testing.T) {
 	}
 }
 
-// when there's a scalar value, the padding should stick
+// when there's a scalar value, the key should stick
 // with the parent container because there is no first element
-// - # padding
-// ..# buffered padding
-// ..# more padding
+// - # key
+// ..# buffered key
+// ..# more key
 // .."scalar" # inline
-func TestPaddingHeaderJoin(t *testing.T) {
+func TestKeyHeaderJoin(t *testing.T) {
 	var expected = []string{
 		// 0. the document has no comments
 		"",
-		// 1. the sequence has padding
-		"\r# padding" +
-			"\n# buffered padding" +
-			"\n# more padding" +
+		// 1. the sequence has key
+		"\r# key" +
+			"\n# buffered key" +
+			"\n# more key" +
 			"\r# inline",
 	}
-	b := NewBuilder()
+	b := notes.KeepComments()
 	// documents only have one value, in this case a sequence
-	// - # padding
-	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "padding")
-	// ..# buffered padding
-	WriteLine(b.OnBeginHeader(), "buffered padding")
-	// ..# more padding
-	WriteLine(b.OnBeginHeader(), "more padding")
+	// - # key
+	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "key")
+	// ..# buffered key
+	WriteLine(b.OnParagraph(), "buffered key")
+	// ..# more key
+	WriteLine(b.OnParagraph(), "more key")
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	got := b.GetAllComments()
@@ -241,91 +214,91 @@ func TestPaddingHeaderJoin(t *testing.T) {
 
 // the document parser doesnt handle this
 // but the comment builder can....
-// - # padding
-// ....# nested padding
-// ..# buffered padding
-// ....# nested buffer
-// ..# buffered padding
-// ....# nested buffer
-func TestPaddingNest(t *testing.T) {
+// - # key
+// ....# nested key
+// ..# second key
+// ....# second nesting
+// ..# third key
+// ....# third nesting
+// .."scalar"
+func TestKeyNest(t *testing.T) {
 	var expected = []string{
 		// 0. the document has no comments
 		"",
-		// 1. the sequence has padding
-		"\r# padding" +
-			"\n\t# nested padding" +
-			"\n# buffered padding" + // plus buffered padding
-			"\n\t# nested buffer" +
-			"\n# buffered padding" + // plus buffered padding
-			"\n\t# nested buffer",
+		// 1. the sequence has key
+		"\r# key" +
+			"\n\t# nested key" +
+			"\n# second key" +
+			"\n\t# second nesting" +
+			"\n# third key" +
+			"\n\t# third nesting",
 	}
-	b := NewBuilder()
+	b := notes.KeepComments()
 	// documents only have one value, in this case a sequence
-	// - # padding & nesting
-	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "padding")
-	WriteLine(b, "nested padding")
-	// ..# buffered padding & nesting
-	WriteLine(b.OnBeginHeader(), "buffered padding")
-	WriteLine(b, "nested buffer")
-	// ..# buffered padding & nesting
-	WriteLine(b.OnBeginHeader(), "buffered padding")
-	WriteLine(b, "nested buffer")
+	// - # key & nesting
+	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "key")
+	WriteLine(b, "nested key")
+	// ..# buffered key & nesting
+	WriteLine(b.OnParagraph(), "second key")
+	WriteLine(b, "second nesting")
+	// ..# buffered key & nesting
+	WriteLine(b.OnParagraph(), "third key")
+	WriteLine(b, "third nesting")
+	b.OnScalarValue()
 	//
 	got := b.GetAllComments()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
+			t.Logf("x %q", expected[i])
 		}
 		t.Fatal("mismatch")
 	}
 }
 
 // the nested sequence version.
-// - # padding
-// ....# nested padding
-// ..# buffered padding
-// ....# nested buffer
-// ..# buffered padding
-// ....# nested buffer
-// ....- "subcollection scalar"
-func TestPaddingNestCollection(t *testing.T) {
+// - # key
+// ....# nested key
+// ..# second key
+// ....# second nesting
+// ..# buffered header
+// ....# nested header
+// ..- "subcollection scalar"
+func TestKeyNestCollection(t *testing.T) {
 	var expected = []string{
 		// 0. the document has no comments
 		"",
-		// 1. the first term has padding:
-		"\r# padding\n\t# nested padding",
-		// 2. the sub sequence gets a header
-		"# buffered heading\n\t# nested buffer" +
-			//... a second header
-			"\n# buffered padding\n\t# nested buffer",
+		// 1. the sequence has key
+		"\r# key" +
+			"\n\t# nested key" +
+			"\n# second key" +
+			"\n\t# second nesting",
+		// 2.
+		"# buffered header" +
+			"\n\t# nested header",
 	}
-	b := NewBuilder()
+	b := notes.KeepComments()
 	// documents only have one value, in this case a sequence
-	// - # padding & nesting
-	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "padding")
-	WriteLine(b, "nested padding")
-	// ..# buffered padding & nesting
-	WriteLine(b.OnBeginHeader(), "buffered heading")
-	WriteLine(b, "nested buffer")
-	// ..# buffered padding & nesting
-	WriteLine(b.OnBeginHeader(), "buffered padding")
-	WriteLine(b, "nested buffer")
+	// - # key & nesting
+	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "key")
+	WriteLine(b, "nested key")
+	// ..# buffered key & nesting
+	WriteLine(b.OnParagraph(), "second key")
+	WriteLine(b, "second nesting")
+	// ..# buffered key & nesting
+	WriteLine(b.OnParagraph(), "buffered header")
+	WriteLine(b, "nested header")
 	//
-	// ....- "subcollection scalar"
+	// ..- "subcollection scalar"
 	b.OnBeginCollection().OnKeyDecoded().OnScalarValue()
 	got := b.GetAllComments()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
+			t.Logf("x %q", expected[i])
 		}
 		t.Fatal("mismatch")
 	}
-}
-
-func NewBuilder() *notes.Builder {
-	var b notes.Builder
-	b.OnBeginCollection()
-	return &b
 }
 
 // for testing: write the whole string and a newline

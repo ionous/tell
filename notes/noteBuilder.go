@@ -1,7 +1,6 @@
 package notes
 
 import (
-	"io"
 	"slices"
 )
 
@@ -9,20 +8,40 @@ type Builder struct {
 	blocks stack
 	// headers need to be buffered
 	// ( see also headerBuffering.md )
-	// for headers:
-	// 1. on collection:
-	//    the new collection gets the buffered text as a heading;
-	// 2. on scalar:
-	//    the buffer goes to the current collection (as more padding)
-	// 3. on end: ( get comments )
+	// for headers, approximately:
+	// 1. on collection event:
+	//    the new collection gets the buffer as a heading;
+	// 2. on scalar event:
+	//    the buffer goes to the current collection (as a key comment)
+	// 3. on key event:
+	//    this is the header of the new element in the current collection
+	//    ( happens between elements )
+	// 4. on end event: ( get comments )
 	//    the buffer goes to the parent collection as header.
+	// 5. on footer event
+	//    panic, shouldnt be able to move from header to footer.
+	// -  on header event:
+	//    this is a new line, assuming there's something written
+	// -  on rune
+	//    add, and if necessary nest.
 	buf Lines
 }
 
+func (n *Builder) init() *Builder {
+	n.blocks.create()
+	return n
+}
+
 func (n *Builder) GetComments() string {
-	top := n.blocks.pop() // returns the old top.
-	n.flushBuffer(top)
-	return top.GetComments()
+	prev := n.blocks.pop() // returns the old top.
+	if tgt := prev; n.buf.buf.Len() > 0 {
+		if len(n.blocks) > 0 {
+			tgt = n.blocks.top() // buffer goes to the parent collection as footer.
+		}
+		tgt.flushPending()
+		tgt.merge(&n.buf, true)
+	}
+	return prev.GetComments()
 }
 
 func (n *Builder) GetAllComments() (ret []string) {
@@ -34,61 +53,64 @@ func (n *Builder) GetAllComments() (ret []string) {
 }
 
 // start of a new collection
-// create a new comment block ( each collection gets its own )
-// and use current buffer as the header of the new block
 func (n *Builder) OnBeginCollection() Commentator {
-	top := n.blocks.create()
-	if n.buf.NumLines() > 0 {
-		top.startStage(headerStage)
+	top := n.blocks.top()
+
+	// if the container block has no comments
+	// use the most recent as a header for the container
+	// if it already has some comments, use it as a header
+	// for incoming subcollection
+	if top.stageLines() == 0 {
 		n.flushBuffer(top)
 	}
+
+	top.startStage(valueStage)
+	next := n.blocks.create() // create a new comment block ( each collection gets its own )
+	n.flushBuffer(next)
 	return n
 }
 
-// jump to the next term
-func (n *Builder) OnTermDecoded() Commentator {
+func (n *Builder) OnParagraph() Commentator {
 	top := n.blocks.top()
-	top.terms++
-	top.flags = 0
-	top.stage = startingStage
-	return n
-}
-
-func (n *Builder) OnBeginHeader() Commentator {
-	top := n.blocks.top()
-	top.advanceHeader()
-	// hack to indicate a future newline
-	// ( blocks manage this on their own;
-	// buffered text is not a block )
-	if top.stage == bufferStage {
-		n.buf.newline = n.buf.NumLines() > 0
+	if !top.stage.buffers() {
+		top.startStage(startStage)
+	} else {
+		// stop auto-nesting
+		n.buf.skipNest = true
+		// only the last comment of the buffered region
+		// should be kept as a header for a new collection
+		n.flushBuffer(top)
 	}
 	return n
 }
 
 func (n *Builder) OnKeyDecoded() Commentator {
 	top := n.blocks.top()
-	top.startStage(paddingStage)
+	n.flushBuffer(top) // inter-element buffering; header of the new element in the current collection
+	top.startStage(keyStage)
 	return n
 }
 
 func (n *Builder) OnScalarValue() Commentator {
 	top := n.blocks.top()
-	n.flushBuffer(top)
-	top.startStage(inlineStage)
+	n.flushBuffer(top) // the buffer goes to the key comment
+	top.startStage(valueStage)
 	return n
 }
 
-func (n *Builder) OnBeginFooter() Commentator {
+func (n *Builder) OnFootnote() Commentator {
 	top := n.blocks.top()
-	n.flushBuffer(top)
 	top.startStage(footerStage)
+	if n.buf.NumLines() > 0 {
+		panic("footer shouldnt be buffered, or have any buffer")
+	}
 	return n
 }
 
 func (n *Builder) WriteRune(r rune) (int, error) {
+	top := n.blocks.top()
 	var out RuneWriter
-	if top := n.blocks.top(); top.stage != bufferStage {
+	if !top.stage.buffers() {
 		out = top
 	} else {
 		out = &n.buf
@@ -96,13 +118,12 @@ func (n *Builder) WriteRune(r rune) (int, error) {
 	return out.WriteRune(r)
 }
 
+// fix? technically i think it should many queue a flush --
+// just in case nothing actually gets written from Paragraph
 func (n *Builder) flushBuffer(top *pendingBlock) {
 	if n.buf.NumLines() > 0 {
-		// simulate writing a line ( or lines )
-		top.startWriting()
-		if str := n.buf.GetComments(); len(str) > 0 {
-			io.WriteString(&top.lines.buf, str)
-		}
-		top.lines.writing = false
+		// write any empty records, etc.
+		top.flushPending()
+		top.merge(&n.buf, false)
 	}
 }

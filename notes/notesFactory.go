@@ -1,7 +1,7 @@
 package notes
 
-func KeepComments() Commentator {
-	return new(Builder)
+func KeepComments() *Builder {
+	return new(Builder).init()
 }
 
 func DiscardComments() Commentator {

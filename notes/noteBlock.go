@@ -1,91 +1,91 @@
 package notes
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/ionous/tell/runes"
 )
 
+// comment block for a collection
 // contains a string builder so has to be on the stack or new'd
 type pendingBlock struct {
-	lines      Lines
-	stage      blockStage
-	stageStart int        // used to detect undesirable nesting
-	terms      int        // ever term indicates a line feed.
-	flags      stageFlags // tracks which stages have lines.
+	lines      Lines      // string buffer style output
+	stage      blockStage //
+	stageStart int        // number of lines at stage start
+	terms      int        // counts empty collection entries
+	flags      stageFlags // helper for record writing
 }
 
+// return and reset the buffer
 func (n *pendingBlock) GetComments() string {
 	return n.lines.GetComments()
 }
 
-func (n *pendingBlock) startStage(stage blockStage) {
-	n.stage.set(stage)
+func (n *pendingBlock) startStage(next blockStage) {
+	prev := n.stage.set(next)
+	// loop
+	if prev >= valueStage && next <= valueStage {
+		n.terms++
+		n.flags = 0
+	}
 	n.stageStart = n.lines.NumLines()
 }
 
-func (n *pendingBlock) advanceHeader() {
-	var next blockStage
-	switch n.stage {
-	case paddingStage, bufferStage:
-		next = bufferStage
-	case emptyStage, startingStage:
-		next = headerStage
-	case headerStage:
-		if n.stageLines() > 1 {
-			panic("can't extend the header after having written multiple lines")
-		}
-		fallthrough
-	case subheaderStage:
-		next = subheaderStage
-	default:
-		panic("invalid state")
-	}
-	n.startStage(next)
-}
-
+// number of lines written for the current stag
 func (n *pendingBlock) stageLines() int {
 	currLines := n.lines.NumLines()
 	return currLines - n.stageStart
 }
 
 func (n *pendingBlock) WriteRune(r rune) (_ int, _ error) {
-	n.startWriting()
+	if !n.lines.writing {
+		n.flushPending()
+		if n.stage == footerStage {
+			n.lines.Break()
+		}
+	}
 	return n.lines.WriteRune(r)
 }
 
-func (n *pendingBlock) startWriting() {
-	// starting a new line? check whether to write previous info.
-	if !n.lines.writing {
-		// sanity checks
-		if n.stage <= startingStage {
-			panic("comment doesnt allow writing " + n.stage.String())
+func (n *pendingBlock) merge(src *Lines, useNewLine bool) {
+	special := src.special // record before
+	cnt := src.lineCnt
+	if str := src.GetComments(); len(str) > 0 {
+		// yuck. determine whether to write a newline based on what's already there.
+		// maybe more robust states could handle this? not sure.
+		if (n.lines.buf.Len() > 0) && (useNewLine || !n.lines.special) {
+			n.lines.Break()
 		}
-		stageLines := n.stageLines()
-		if stageLines > 0 && !n.stage.allowNesting() {
-			panic("comment doesnt allow nesting " + n.stage.String())
-		}
-		// first rune of one or more empty terms?
-		if n.terms > 0 {
-			dupe(&n.lines.buf, n.terms, runes.Record)
-			n.terms = 0
-		}
-		// first rune of this term?
-		if n.stage >= paddingStage && n.flags.update(paddingStage) {
-			n.lines.buf.WriteRune(runes.CollectionMark)
-		}
-		if n.stage >= inlineStage && n.flags.update(inlineStage) {
-			n.lines.buf.WriteRune(runes.CollectionMark)
-		}
-		if n.stage.allowMultiple() {
-			// hackish: the subheading and footers always are preceded by newline
-			n.lines.buf.WriteRune(runes.Newline)
-		} else if stageLines > 0 {
-			// everything else can nest... and newlines need indentation.
-			n.lines.buf.WriteRune(runes.Newline)
-			n.lines.buf.WriteRune(runes.HTab)
-		}
-		// enter the new line
-		n.lines.writing = true
+		io.WriteString(&n.lines.buf, str)
+		n.lines.special = special
+		n.lines.lineCnt += cnt
 	}
+}
+
+// writes any and all pending form and record separators
+func (n *pendingBlock) flushPending() {
+	stageLines := n.stageLines()
+	// sanity check for footer
+	if stageLines > 0 && !n.stage.allowNesting() {
+		msg := fmt.Sprintf("%s doesnt allow nesting", n.stage)
+		panic(msg)
+	}
+	out := &n.lines.buf
+	cnt := out.Len()
+	// first rune after one or more empty terms?
+	// write all those separators.
+	if n.terms > 0 {
+		dupe(out, n.terms, runes.Record)
+		n.terms = 0
+	}
+	if n.stage >= keyStage && n.flags.set(keyStage) {
+		out.WriteRune(runes.CollectionMark)
+	}
+	if n.stage >= valueStage && n.flags.set(valueStage) {
+		out.WriteRune(runes.CollectionMark)
+	}
+	n.lines.special = out.Len() > cnt
 }
 
 func dupe(out RuneWriter, cnt int, r rune) {

@@ -8,19 +8,15 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[emptyStage-0]
-	_ = x[startingStage-1]
-	_ = x[headerStage-2]
-	_ = x[subheaderStage-3]
-	_ = x[paddingStage-4]
-	_ = x[bufferStage-5]
-	_ = x[inlineStage-6]
-	_ = x[footerStage-7]
+	_ = x[startStage-0]
+	_ = x[keyStage-1]
+	_ = x[valueStage-2]
+	_ = x[footerStage-3]
 }
 
-const _blockStage_name = "emptyStagestartingStageheaderStagesubheaderStagepaddingStagebufferStageinlineStagefooterStage"
+const _blockStage_name = "startStagekeyStagevalueStagefooterStage"
 
-var _blockStage_index = [...]uint8{0, 10, 23, 34, 48, 60, 71, 82, 93}
+var _blockStage_index = [...]uint8{0, 10, 18, 28, 39}
 
 func (i blockStage) String() string {
 	if i < 0 || i >= blockStage(len(_blockStage_index)-1) {
