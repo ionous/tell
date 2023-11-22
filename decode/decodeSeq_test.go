@@ -8,6 +8,7 @@ import (
 
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/imap"
+	"github.com/ionous/tell/notes"
 )
 
 func TestSeq(t *testing.T) {
@@ -89,10 +90,10 @@ func testSeq(t *testing.T, nameInputExpect ...any) {
 			t.Log("skipping", name)
 		} else {
 			var res any
-			doc := decode.Document{MakeMap: imap.Builder}
+			doc := decode.NewDocument(imap.Builder, notes.DiscardComments())
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-			seq := decode.NewSequence(&doc, "", doc.Col)
-			if e := doc.ReadLines(strings.NewReader(str), decode.StartSequence(seq)); e != nil {
+			seq := decode.NewSequence(doc, doc.Col)
+			if e := doc.ReadLines(strings.NewReader(str), decode.SequenceDecoder(seq)); e != nil {
 				res = e
 			} else if val, e := seq.FinalizeValue(); e != nil {
 				res = e // calls finalize directly because the sequence was handled directly to parse,

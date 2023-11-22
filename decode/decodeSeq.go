@@ -2,10 +2,9 @@ package decode
 
 import (
 	"errors"
-	"strings"
-	"unicode"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/notes"
 	"github.com/ionous/tell/runes"
 )
 
@@ -13,42 +12,35 @@ import (
 // a dash, whitespace, the value, trailing whitespace.
 // then loops back to itself to handle the next dash.
 type Sequence struct {
-	doc   *Document
-	depth int
-	CommentBlock
+	doc    *Document
+	depth  int
 	values []any
 }
 
-// depth is tracked because during value parsing sequences are created after
-// determining whether the dash is a minus sign, so the doc position isnt the real position
-// alt: create the sequence ahead of time, but would have to handle the push state timing
-// ( ex. maybe on first rune? ) and would still have to remember the initial position.
-func NewSequence(doc *Document, header string, depth int) *Sequence {
+// re: depth value decoding must first discover whether the dash is part of a number
+// so the doc position isnt necessarily the real position.
+func NewSequence(doc *Document, depth int) *Sequence {
 	c := &Sequence{doc: doc, depth: depth}
-	if doc.keepComments {
-		c.keepComments = true
+	if keepComments := !notes.IsNothing(doc.notes); keepComments {
 		c.values = make([]any, 1)
-		c.comments.WriteString(header)
 	}
 	return c
 }
 
-// map's empty value is guarded by a completed ke
+// unparsed values are guarded by the empty value.
 var emptyValue = errors.New("empty value")
 
-// a state that can parse one dash - content pair
-// maybe push the returned thingy
-func (c *Sequence) NewEntry() charm.State {
+// a state that can parse one key:value pair
+// intended to be used with doc.Push() to loop at a given indent.
+func (c *Sequence) EntryDecoder() charm.State {
 	ent := tellEntry{
 		doc:          c.doc,
 		depth:        c.depth + 2,
-		pendingValue: computedValue{emptyValue},
-		addsValue: func(val any, comment string) (_ error) {
+		pendingValue: scalarValue{emptyValue},
+		addsValue: func(val any) (_ error) {
 			if val != emptyValue {
 				c.values = append(c.values, val)
 			}
-			c.comments.WriteString(comment)
-			c.comments.WriteRune(runes.Record)
 			return
 		},
 	}
@@ -59,14 +51,15 @@ func (c *Sequence) NewEntry() charm.State {
 			// potentially, its a header comment for the next element
 			// if there is no element, it could be considered a tail
 			// of the parent container; it can have nesting.
-			ret = charm.RunState(r, HeaderRegion(&ent, c.depth, self))
+			ret = charm.RunState(r, HeaderDecoder(&ent, c.depth, self))
 
 		case runes.Dash:
-			// unlike map, we dont need to hand off the dash itself;
-			// only the runes after; also: map's nil value is guarded by a completed key
-			// for sequence we have to at least have a dash before we could have a value.
-			ent.pendingValue = computedValue{}
-			ret = ContentsLoop(&ent)
+			// unlike map, we dont need to hand off the dash rune;
+			// only the runes after; also: map's default value
+			// is set to nil, because the results are guarded by a successful key;
+			// for sequence it starts invalid, and the nil default is set here.
+			ent.pendingValue = scalarValue{}
+			ret = StartContentDecoding(&ent)
 		}
 		return
 	})
@@ -75,9 +68,9 @@ func (c *Sequence) NewEntry() charm.State {
 
 // used by parent collections to read the completed collection
 func (c *Sequence) FinalizeValue() (ret any, err error) {
-	if c.keepComments {
-		comment := strings.TrimRightFunc(c.comments.String(), unicode.IsSpace)
-		c.values[0] = comment
+	if !notes.IsNothing(c.doc.notes) {
+		str := c.doc.notes.GetComments()
+		c.values[0] = str
 	}
 	ret, c.values = c.values, nil
 	return

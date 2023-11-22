@@ -2,33 +2,34 @@ package decode
 
 import (
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/notes"
 	"github.com/ionous/tell/runes"
 )
 
-// read everything until the end of the line as a comment.
-// send the newline to the passed state.
-func ReadComment(out CommentWriter, eol charm.State) charm.State {
-	out.WriteRune(runes.Hash)
-	return charm.Self("read comment", func(self charm.State, r rune) (ret charm.State) {
+// interpret every up to, and including, the end of the line as a comment.
+// sends the last rune -- the newline -- to the passed eol state.
+func CommentDecoder(out notes.RuneWriter, eol charm.State) charm.State {
+	out.WriteRune(runes.Hash) // ick.
+	return charm.Self("decode comment", func(self charm.State, r rune) (ret charm.State) {
+		out.WriteRune(r)
 		if r == runes.Newline {
 			ret = eol.NewRune(r)
 		} else {
-			out.WriteRune(r)
 			ret = self
 		}
 		return
 	})
 }
 
-// nested comments are fixed at the passed depth
-// starts on something other than whitespace
-func NestedComment(doc *Document, out *CommentBuffer) charm.State {
+// expects a series of comments all at the same ( current ) depth.
+// returns unhandled the first time it can't find a comment hash.
+// ( and, maybe there is no comment nesting at all. )
+func NestedCommentDecoder(doc *Document) charm.State {
 	depth := doc.Col
 	return charm.Self("nested comment", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Hash:
-			out.WriteLine(true)
-			ret = ReadComment(out, self)
+			ret = CommentDecoder(doc.notes, self)
 		case runes.Newline:
 			ret = MaintainIndent(doc, self, depth)
 		}

@@ -2,14 +2,16 @@ package decode
 
 import "github.com/ionous/tell/charm"
 
-func StartSequence(c *Sequence) charm.State {
+func SequenceDecoder(c *Sequence) charm.State {
+	c.doc.notes.OnBeginCollection()
 	return c.doc.Push(c.depth, charm.Statement("start sequence", func(r rune) charm.State {
-		return c.NewEntry().NewRune(r)
+		return c.EntryDecoder().NewRune(r)
 	}))
 }
 
-func StartMapping(c *Mapping) charm.State {
+func MappingDecoder(c *Mapping) charm.State {
+	c.doc.notes.OnBeginCollection()
 	return c.doc.Push(c.depth, charm.Statement("start mapping", func(r rune) charm.State {
-		return c.NewEntry().NewRune(r)
+		return c.EntryDecoder().NewRune(r)
 	}))
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/imap"
+	"github.com/ionous/tell/notes"
 )
 
 // keys that start with t or f need special handleing
@@ -89,10 +90,10 @@ func testMap(t *testing.T, nameInputExpect ...any) {
 			t.Log("skipping", name)
 		} else {
 			var res any
-			doc := decode.Document{MakeMap: imap.Builder, CommentBlock: decode.DiscardComments()}
+			doc := decode.NewDocument(imap.Builder, notes.DiscardComments())
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-			mapping := decode.NewMapping(&doc, "", 0)
-			if e := doc.ReadLines(strings.NewReader(str), decode.StartMapping(mapping)); e != nil {
+			mapping := decode.NewMapping(doc, 0)
+			if e := doc.ReadLines(strings.NewReader(str), decode.MappingDecoder(mapping)); e != nil {
 				res = e
 			} else if val, e := mapping.FinalizeValue(); e != nil {
 				res = e // calls finalize directly because the sequence was handled directly to parse,

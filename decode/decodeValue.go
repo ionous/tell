@@ -10,7 +10,7 @@ import (
 
 // parses the "right hand side" of a collection or map
 // assumes the next rune is at the start of the value: no leading whitespace.
-func NewValue(ent *tellEntry) charm.State {
+func ValueDecoder(ent *tellEntry) charm.State {
 	val := tellValue{ent}
 	return charm.Self("value", func(self charm.State, r rune) (ret charm.State) {
 		const dashOrMinus = runes.Dash
@@ -65,7 +65,7 @@ func (val *tellValue) setPendingValue(p pendingValue) {
 }
 
 func (val *tellValue) setComputedValue(newValue any) {
-	val.entry.pendingValue = computedValue{newValue}
+	val.entry.pendingValue = scalarValue{newValue}
 }
 
 func (val *tellValue) newString(r rune, interpreted bool) charm.State {
@@ -81,26 +81,16 @@ func (val *tellValue) newNum() charm.State {
 }
 
 func (val *tellValue) newSequence(depth int) (ret charm.State) {
-	if header, e := val.entry.writeHeader(); e != nil {
-		ret = charm.Error(e)
-	} else {
-		sub := NewSequence(val.entry.doc, header, depth)
-		val.setPendingValue(sub)
-		ret = StartSequence(sub)
-	}
-	return
+	sub := NewSequence(val.entry.doc, depth)
+	val.setPendingValue(sub)
+	return SequenceDecoder(sub)
 }
 
 func (val *tellValue) newMapping() (ret charm.State) {
-	if header, e := val.entry.writeHeader(); e != nil {
-		ret = charm.Error(e)
-	} else {
-		doc := val.entry.doc
-		sub := NewMapping(doc, header, doc.Col)
-		val.setPendingValue(sub)
-		ret = StartMapping(sub)
-	}
-	return
+	doc := val.entry.doc
+	sub := NewMapping(doc, doc.Col)
+	val.setPendingValue(sub)
+	return MappingDecoder(sub)
 }
 
 // if the passed rune might be start a bool value

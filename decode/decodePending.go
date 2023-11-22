@@ -3,20 +3,21 @@ package decode
 import "github.com/ionous/tell/charmed"
 
 // used by tellEntry to read values when the entry is finished.
+// implemented by the collection types directly.
 type pendingValue interface {
 	FinalizeValue() (any, error)
 }
 
 // a final value, ex. from a boolean.
-type computedValue struct{ v any }
+type scalarValue struct{ v any }
 
-func (v computedValue) FinalizeValue() (any, error) {
+func (v scalarValue) FinalizeValue() (any, error) {
 	return v.v, nil
 }
 
-// a number --
-// note this is a little different than the other types
-// because there's no terminal value for it.
+// number values implement pendingValue
+// because there's no explicit value for it
+// ( ideally would be space or newline )
 type numValue struct{ charmed.NumParser }
 
 // fix? returns float64 because json does

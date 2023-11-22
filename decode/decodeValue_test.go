@@ -8,6 +8,7 @@ import (
 
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/imap"
+	"github.com/ionous/tell/notes"
 )
 
 func TestScalars(t *testing.T) {
@@ -43,12 +44,12 @@ func testValue(t *testing.T, nameInputExpect ...any) {
 			t.Log("skipping", name)
 		} else {
 			var res any
-			doc := decode.Document{MakeMap: imap.Builder}
+			doc := decode.NewDocument(imap.Builder, notes.DiscardComments())
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
 			if got, e := doc.ReadDoc(strings.NewReader(str)); e != nil {
 				res = e
 			} else {
-				res = got.Content
+				res = got
 			}
 			if e := compare(res, expect); e != nil {
 				t.Fatal("ng:", name, e)
