@@ -34,7 +34,7 @@ func (n *Builder) init() *Builder {
 
 func (n *Builder) GetComments() string {
 	prev := n.blocks.pop() // returns the old top.
-	if tgt := prev; n.buf.buf.Len() > 0 {
+	if tgt := prev; n.buf.Len() > 0 {
 		if len(n.blocks) > 0 {
 			tgt = n.blocks.top() // buffer goes to the parent collection as footer.
 		}
@@ -56,10 +56,10 @@ func (n *Builder) GetAllComments() (ret []string) {
 func (n *Builder) OnBeginCollection() Commentator {
 	top := n.blocks.top()
 
-	// if the container block has no comments
-	// use the most recent as a header for the container
-	// if it already has some comments, use it as a header
-	// for incoming subcollection
+	// if the current stage is empty ( ex. the area after the current key )
+	//   give the most recent comment to it ( ex. as a key comment )
+	// if it already has some comments,
+	//   give the most recent comment for the subcollection ( ex. as a header )
 	if top.stageLines() == 0 {
 		n.flushBuffer(top)
 	}
@@ -101,7 +101,7 @@ func (n *Builder) OnScalarValue() Commentator {
 func (n *Builder) OnFootnote() Commentator {
 	top := n.blocks.top()
 	top.startStage(footerStage)
-	if n.buf.NumLines() > 0 {
+	if n.buf.Len() > 0 {
 		panic("footer shouldnt be buffered, or have any buffer")
 	}
 	return n
@@ -121,7 +121,7 @@ func (n *Builder) WriteRune(r rune) (int, error) {
 // fix? technically i think it should many queue a flush --
 // just in case nothing actually gets written from Paragraph
 func (n *Builder) flushBuffer(top *pendingBlock) {
-	if n.buf.NumLines() > 0 {
+	if n.buf.Len() > 0 {
 		// write any empty records, etc.
 		top.flushPending()
 		top.merge(&n.buf, false)

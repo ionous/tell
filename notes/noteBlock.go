@@ -29,12 +29,12 @@ func (n *pendingBlock) startStage(next blockStage) {
 		n.terms++
 		n.flags = 0
 	}
-	n.stageStart = n.lines.NumLines()
+	n.stageStart = n.lines.Len()
 }
 
 // number of lines written for the current stag
 func (n *pendingBlock) stageLines() int {
-	currLines := n.lines.NumLines()
+	currLines := n.lines.Len()
 	return currLines - n.stageStart
 }
 
@@ -50,16 +50,14 @@ func (n *pendingBlock) WriteRune(r rune) (_ int, _ error) {
 
 func (n *pendingBlock) merge(src *Lines, useNewLine bool) {
 	special := src.special // record before
-	cnt := src.lineCnt
 	if str := src.GetComments(); len(str) > 0 {
 		// yuck. determine whether to write a newline based on what's already there.
 		// maybe more robust states could handle this? not sure.
-		if (n.lines.buf.Len() > 0) && (useNewLine || !n.lines.special) {
+		if n.lines.Len() > 0 && (useNewLine || !n.lines.special) {
 			n.lines.Break()
 		}
 		io.WriteString(&n.lines.buf, str)
 		n.lines.special = special
-		n.lines.lineCnt += cnt
 	}
 }
 

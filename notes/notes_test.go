@@ -150,6 +150,34 @@ func TestCommentBlock(t *testing.T) {
 	}
 }
 
+// edge case: when there's no trailing newline
+// and a nil.
+// - # key
+// ..# more key<eof>
+func TestKeyNil(t *testing.T) {
+	var expected = []string{
+		// 0. the document has no comments
+		"",
+		// 1. the sequence has key
+		"\r# key\n# more key",
+	}
+	b := notes.KeepComments()
+	// documents only have one value, in this case a sequence
+	// - # key
+	WriteLine(b.OnBeginCollection().OnKeyDecoded(), "key")
+	// ..# more key
+	WriteInline(b.OnParagraph(), "more key")
+	b.OnScalarValue()
+	got := b.GetAllComments()
+	if slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
+	}
+}
+
+
 // when there's a subcollection, the key should split
 // between the parent container and the header of the first element.
 // - # key
@@ -176,9 +204,8 @@ func TestKeyHeaderSplit(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
 // when there's a scalar value, the key should stick
-// with the parent container because there is no first element
+// with the parent container no sub collection
 // - # key
 // ..# buffered key
 // ..# more key
@@ -212,7 +239,7 @@ func TestKeyHeaderJoin(t *testing.T) {
 	}
 }
 
-// the document parser doesnt handle this
+// the document parser doesnt really hhandle this
 // but the comment builder can....
 // - # key
 // ....# nested key
@@ -255,6 +282,7 @@ func TestKeyNest(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
+
 
 // the nested sequence version.
 // - # key
@@ -303,10 +331,15 @@ func TestKeyNestCollection(t *testing.T) {
 
 // for testing: write the whole string and a newline
 func WriteLine(w notes.RuneWriter, str string) {
+	WriteInline(w, str)
+	w.WriteRune(runes.Newline)
+}
+
+// for testing: write the whole string and a newline
+func WriteInline(w notes.RuneWriter, str string) {
 	w.WriteRune(runes.Hash)
 	w.WriteRune(runes.Space)
 	for _, r := range str {
 		w.WriteRune(r)
 	}
-	w.WriteRune(runes.Newline)
 }
