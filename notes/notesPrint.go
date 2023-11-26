@@ -28,20 +28,8 @@ func (p printer) OnScalarValue() Commentator {
 	return p
 }
 
-func (p printer) OnBeginCollection() Commentator {
-	println("OnBeginCollection")
-	p.c.OnBeginCollection()
-	return p
-}
-
 func (p printer) OnKeyDecoded() Commentator {
 	println("OnKeyDecoded")
 	p.c.OnKeyDecoded()
-	return p
-}
-
-func (p printer) OnFootnote() Commentator {
-	println("OnFootnote")
-	p.c.OnFootnote()
 	return p
 }

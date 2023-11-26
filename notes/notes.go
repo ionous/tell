@@ -13,36 +13,29 @@ type Commentator interface {
 // events indicate different sections of a tell document
 // during decoding. the method return "self" for chaining.
 type Events interface {
-	// called before a new comment is read.
-	// indicates a comment that sits above a value
+	// precedes a comment that sits above a value
 	// with the same indentation of that value.
-	// used for document headers, key comments, element headers.
+	// trailing comments never use ¶.
 	OnParagraph() Commentator
 	// a value has started decoding; even a nil value should trigger this.
 	// any inline comments will live to the right of the value on the same line
 	// there can only be one inline comment, continued with optional nesting.
 	OnScalarValue() Commentator
-	// a new collection has started decoding
-	// not expected for the document itself.
-	// although it is not explicitly prevented,
-	// no runes or paragraphs are expected directly after starting a collection.
-	OnBeginCollection() Commentator
 	// a signature or dash in a collection has finished decoding.
 	// paragraphs can get treated as key comments,
 	// or headers for sub collection elements
 	// depending on the number of paragraphs and the following value.
+	//
+	// fix? GetComments() is the implicit "EndCollection" --
+	// maybe better would be an explicit EndCollection that hands back the resolver or comments
 	OnKeyDecoded() Commentator
-	// footer comments sit below a value, slightly indented.
-	// like "paragraph" this can be called multiple times, once for each new footnote;
-	// the footer never nests.( an aesthetic choice. )
-	OnFootnote() Commentator
 }
 
 // receive text from the decoded comments of a tell document.
+// its signature mirrors strings.StringBuilder.
 type RuneWriter interface {
-	// lines must be ended with a newline before other comments can be added.
-	// writing after a newline "nests" the subsequent comment
-	// the signature the StringBuilder interface
+	// each comment should start with a hash and space, and should end with a newline.
+	// without an intervening OnParagraph, comments after a newline automatically "nest".
 	WriteRune(rune) (int, error)
 }
 

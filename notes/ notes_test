@@ -1,42 +1,4 @@
-package notes_test
 
-import (
-	"slices"
-	"strconv"
-	"testing"
-
-	"github.com/ionous/tell/notes"
-	"github.com/ionous/tell/runes"
-)
-
-func TestEmptyish(t *testing.T) {
-	const expected = "" +
-		"# emptyish"
-	b := notes.KeepComments()
-	WriteLine(b.OnParagraph(), "emptyish")
-	if got := b.GetComments(); got != expected {
-		t.Fatalf("got %q expected %q", got, expected)
-	}
-}
-
-// # header
-// # subheader
-// "value" # inline
-// # footer
-func TestDocumentComment(t *testing.T) {
-	const expected = "" +
-		"# header\n# subheader\r\r# inline\n# footer"
-	b := notes.KeepComments()
-	WriteLine(b.OnParagraph(), "header")
-	WriteLine(b.OnParagraph(), "subheader")
-	WriteLine(b.OnScalarValue(), "inline")
-	WriteLine(b.OnFootnote(), "footer")
-	//
-	if got := b.GetComments(); got != expected {
-		t.Logf("\nwant %q \nhave %q", expected, got)
-		t.Fail()
-	}
-}
 
 // terms should have form feeds between each other
 func TestCommentEmptyTerms(t *testing.T) {
@@ -55,7 +17,6 @@ func TestCommentEmptyTerms(t *testing.T) {
 		t.Fail()
 	}
 }
-
 // headers should appear right after their form feeds
 // approximately:
 // # 0
@@ -76,7 +37,6 @@ func TestTermHeaders(t *testing.T) {
 		t.Fail()
 	}
 }
-
 // the trailing header should be queued and sent to the parent.
 // # header
 // - "sequence"
@@ -101,7 +61,6 @@ func TestDocumentFooter(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
 // test an example similar to the one in the read me
 func TestReadmeExample(t *testing.T) {
 	const expected = "# header\r\r# inline\n# footer\n# second footer"
@@ -115,7 +74,6 @@ func TestReadmeExample(t *testing.T) {
 		t.Fail()
 	}
 }
-
 func TestPanicNestedFooter(t *testing.T) {
 	b := notes.KeepComments()
 	WriteLine(b.OnScalarValue().OnFootnote(), "footer")
@@ -125,7 +83,6 @@ func TestPanicNestedFooter(t *testing.T) {
 		t.Fail()
 	}()
 }
-
 // the comments mention a certain pattern
 // make sure to build that pattern correctly
 func TestCommentBlock(t *testing.T) {
@@ -149,7 +106,6 @@ func TestCommentBlock(t *testing.T) {
 		t.Fail()
 	}
 }
-
 // edge case: when there's no trailing newline
 // and a nil.
 // - # key
@@ -176,8 +132,6 @@ func TestKeyNil(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
-
 // when there's a subcollection, the key should split
 // between the parent container and the header of the first element.
 // - # key
@@ -238,7 +192,6 @@ func TestKeyHeaderJoin(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
 // the document parser doesnt really hhandle this
 // but the comment builder can....
 // - # key
@@ -282,8 +235,6 @@ func TestKeyNest(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
-
 // the nested sequence version.
 // - # key
 // ....# nested key
@@ -328,13 +279,11 @@ func TestKeyNestCollection(t *testing.T) {
 		t.Fatal("mismatch")
 	}
 }
-
 // for testing: write the whole string and a newline
 func WriteLine(w notes.RuneWriter, str string) {
 	WriteInline(w, str)
 	w.WriteRune(runes.Newline)
 }
-
 // for testing: write the whole string and a newline
 func WriteInline(w notes.RuneWriter, str string) {
 	w.WriteRune(runes.Hash)
