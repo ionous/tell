@@ -23,33 +23,24 @@ func docScalar(ctx *context, docEnd makeState) charm.State {
 }
 
 func (d *docScalarDecoder) awaitInline() charm.State {
-	return charm.Statement("docScalar", func(q rune) (ret charm.State) {
+	return charm.Statement("awaitInline", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			writeRunes(d.out, runes.CollectionMark, runes.Hash)
-			ret = d.readAligned()
-		default:
-			// unhandled
+			// decode a comment line, preceding it with a value marker.
+			readInline := readLine("readInline", d.out, d.waitForNest)
+			d.out.WriteRune(runes.CollectionMark)
+			ret = charm.RunState(runes.Hash, readInline)
 		}
 		return
 	})
 }
 
-// output runes until the end of line,
-// then wait for nesting or the end of document.
-func (d *docScalarDecoder) readAligned() charm.State {
-	return readLine("readAligned", d.out, d.waitForNest)
-}
-
-//
+// keep reading nested comments
 func (d *docScalarDecoder) waitForNest() charm.State {
 	return charm.Statement("waitForNest", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			writeRunes(d.out, runes.Newline, runes.HTab, q)
-			ret = d.readAligned()
-		default:
-			// unhandled
+			ret = nestLine("readAligned", d.out, d.waitForNest)
 		}
 		return
 	})
