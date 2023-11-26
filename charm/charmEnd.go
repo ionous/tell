@@ -15,6 +15,10 @@ func (e Terminal) NewRune(r rune) (ret State) {
 	return e
 }
 
+func (e Terminal) Error() string {
+	return e.err.Error()
+}
+
 func (e Terminal) String() (ret string) {
 	if e.err != nil {
 		ret = "error state"
