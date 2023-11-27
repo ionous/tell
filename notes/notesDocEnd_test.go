@@ -3,8 +3,11 @@ package notes
 import "testing"
 
 // a simple footer test:
+// two comment lines, split by a blank line
 //
-// # emptyish
+// # one
+//
+// # two
 //
 func TestFooter(t *testing.T) {
 	const expected = "" +
@@ -13,9 +16,9 @@ func TestFooter(t *testing.T) {
 	ctx := newContext()
 	b := build(docEnd(ctx))
 	//
-	WriteLine(b.OnParagraph(), "one")
-	WriteBreak(&b)
-	WriteLine(b.OnParagraph(), "two")
+	WriteLine(b.Inplace(), "one")
+	WriteLine(b.Inplace(), "")
+	WriteLine(b.Inplace(), "two")
 	if got := ctx.GetComments(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}

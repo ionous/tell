@@ -16,9 +16,9 @@ func (p printer) WriteRune(r rune) (int, error) {
 	return p.c.WriteRune(r)
 }
 
-func (p printer) OnParagraph() Commentator {
-	println("OnParagraph")
-	p.c.OnParagraph()
+func (p printer) OnNestedComment() Commentator {
+	println("OnNestedComment")
+	p.c.OnNestedComment()
 	return p
 }
 

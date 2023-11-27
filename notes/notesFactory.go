@@ -8,7 +8,7 @@ func KeepComments() *Builder {
 	// 	},
 	// }
 	// b.state = docStart{
-	// 	ctx:           &b.ctx,
+	// 	ctx:           b.OnNestedComment().ctx,
 	// 	newCollection: nil,
 	// 	inlineScalar:  nil,
 	// }

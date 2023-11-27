@@ -22,7 +22,7 @@ func TestEmptyish(t *testing.T) {
 	ctx := newContext()
 	b := build(docStart(ctx, doNothing, doNothing))
 	//
-	WriteLine(b.OnParagraph(), "emptyish")
+	WriteLine(b.Inplace(), "emptyish")
 	if got := ctx.GetComments(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
@@ -39,8 +39,8 @@ func TestHeaderLines(t *testing.T) {
 
 	ctx := newContext()
 	b := build(docStart(ctx, doNothing, doNothing))
-	WriteLine(b.OnParagraph(), "header")
-	WriteLine(b.OnParagraph(), "subheader")
+	WriteLine(b.Inplace(), "header")
+	WriteLine(b.Inplace(), "subheader")
 	//
 	if got := ctx.GetComments(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
@@ -61,10 +61,10 @@ func TestHeaderNest(t *testing.T) {
 
 	ctx := newContext()
 	b := build(docStart(ctx, doNothing, doNothing))
-	WriteLine(b.OnParagraph(), "header")
-	WriteLine(&b, "nest")
-	WriteLine(b.OnParagraph(), "subheader")
-	WriteLine(&b, "nest")
+	WriteLine(b.Inplace(), "header")
+	WriteLine(b.OnNestedComment(), "nest")
+	WriteLine(b.Inplace(), "subheader")
+	WriteLine(b.OnNestedComment(), "nest")
 	//
 	if got := ctx.GetComments(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
@@ -72,21 +72,15 @@ func TestHeaderNest(t *testing.T) {
 	}
 }
 
-func WriteBreak(w RuneWriter) {
-	w.WriteRune(runes.Newline)
-}
-
-// for testing: write the whole string and a newline
+// for testing: write a comment and a newline
+// to write a fully blank line, pass the empty string
 func WriteLine(w RuneWriter, str string) {
-	WriteInline(w, str)
-	w.WriteRune(runes.Newline)
-}
-
-// for testing: write the whole string and a newline
-func WriteInline(w RuneWriter, str string) {
-	w.WriteRune(runes.Hash)
-	w.WriteRune(runes.Space)
-	for _, r := range str {
-		w.WriteRune(r)
+	if len(str) > 0 {
+		w.WriteRune(runes.Hash)
+		w.WriteRune(runes.Space)
+		for _, r := range str {
+			w.WriteRune(r)
+		}
 	}
+	w.WriteRune(runes.Newline)
 }

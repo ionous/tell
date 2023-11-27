@@ -12,7 +12,8 @@ func RunStep(r rune, child, parent State) State {
 // the rune is handed to the second state.
 // this acts similar to a parent-child statechart.
 func Step(child, parent State) State {
-	return &chainParser{child, parent}
+	container := StateName(parent)
+	return &chainParser{container, child, parent}
 }
 
 // use the first of whichever of the passed states respond to the next rune.
@@ -30,6 +31,15 @@ func FirstOf(name string, several ...State) State {
 	})
 }
 
+func Jump(container string, target State) State {
+	return jumpState{container, target}
+}
+
+type jumpState struct {
+	container string
+	State
+}
+
 // For use in Step() to run an action after the first step completes.
 func OnExit(name string, onExit func()) State {
 	return Statement("on exit", func(rune) (none State) {
@@ -39,6 +49,7 @@ func OnExit(name string, onExit func()) State {
 }
 
 type chainParser struct {
+	container  string
 	next, last State
 }
 
@@ -54,6 +65,15 @@ func (p *chainParser) NewRune(r rune) (ret State) {
 	} else if err, ok := next.(Terminal); ok {
 		// if the next state is an error state, return it now.
 		ret = err
+	} else if jump, ok := next.(jumpState); ok {
+		// if we see a jump state, our chain is dead:
+		// keep ripping off chains until we've found the targeted container
+		// any chains above us will see a normal state after that
+		if jump.container == p.container {
+			ret = jump.State
+		} else {
+			ret = next
+		}
 	} else {
 		// remember the new next state, and
 		// return *this* to keep stepping towards last.

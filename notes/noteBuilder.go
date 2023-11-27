@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
 func build(state charm.State) Builder {
@@ -18,33 +19,41 @@ type Builder struct {
 // internal runes for the Commentator interface:
 // one per Commentator method.
 const (
-	runePopped    = '\f'
-	runeParagraph = '\a'
-	runeValue     = '\v'
-	runeKey       = '\r'
+	runePopped = '\f'
+	runeValue  = '\v'
+	runeKey    = '\r'
 )
 
-func (b *Builder) OnParagraph() Commentator {
-	b.send(runeParagraph)
+// helper for testing: returns b without doing anything.
+func (b *Builder) Inplace() Commentator {
 	return b
 }
+
+func (b *Builder) OnNestedComment() Commentator {
+	b.send(runes.HTab)
+	return b
+}
+
 func (b *Builder) OnKeyDecoded() Commentator {
 	b.send(runeKey)
 	return b
 }
+
 func (b *Builder) OnScalarValue() Commentator {
 	b.send(runeValue)
 	return b
 }
+
+func (b *Builder) WriteRune(q rune) (_ int, _ error) {
+	b.send(q)
+	return
+}
+
 func (b *Builder) GetComments() string {
 	// b.state =b.send(runePopped)
 	// // pop
 	// return ""
 	panic("fix")
-}
-func (b *Builder) WriteRune(q rune) (_ int, _ error) {
-	b.send(q)
-	return
 }
 
 func (b *Builder) send(q rune) {

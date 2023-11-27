@@ -13,10 +13,9 @@ type Commentator interface {
 // events indicate different sections of a tell document
 // during decoding. the method return "self" for chaining.
 type Events interface {
-	// precedes a comment that sits above a value
-	// with the same indentation of that value.
-	// trailing comments never use ¶.
-	OnParagraph() Commentator
+	// an explicit request to nest the next comment
+	// the only valid next input is WriteRune.
+	OnNestedComment() Commentator
 	// a value has started decoding; even a nil value should trigger this.
 	// any inline comments will live to the right of the value on the same line
 	// there can only be one inline comment, continued with optional nesting.
@@ -35,7 +34,8 @@ type Events interface {
 // its signature mirrors strings.StringBuilder.
 type RuneWriter interface {
 	// each comment should start with a hash and space, and should end with a newline.
-	// without an intervening OnParagraph, comments after a newline automatically "nest".
+	// newlines outside of a comment can sometimes alter the meaning of subsequent comments
+	// but are otherwise eaten. other runes should generate an error.
 	WriteRune(rune) (int, error)
 }
 

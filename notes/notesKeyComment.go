@@ -24,21 +24,17 @@ func keyComments(ctx *context) charm.State {
 // everything after any blank line gets buffered together.
 func (d *keyCommentDecoder) bufferAll() charm.State {
 	return awaitParagraph("bufferAll", func() charm.State {
-		return readAll(&d.buf)
+		return handleAll(&d.buf)
 	})
 }
 
-// awaits the initial paragraph, comment hash, or new line.
+// awaits the comment or new line.
 func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
 	return charm.Statement("awaitFirst", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
 			d.out.WriteRune(runes.CollectionMark)
-			keyLine := readLine("keyLine", d.out, d.awaitNest)
-			ret = charm.RunState(q, keyLine)
-		case runeParagraph:
-			d.out.WriteRune(runes.CollectionMark)
-			ret = readLine("keyParagraph", d.out, d.awaitNest)
+			ret = handleComment("keyLine", d.out, d.awaitNest)
 		case runes.Newline:
 			// tbd: hopefully, this interoperates with nil values okay
 			d.out.WriteRune(runes.CollectionMark)
@@ -52,10 +48,10 @@ func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
 func (d *keyCommentDecoder) awaitNest() (ret charm.State) {
 	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Hash:
+		case runes.HTab:
 			ret = nestLine("nestOutput", d.out, d.awaitNest)
-		case runeParagraph:
-			ret = readLine("firstBuffer", &d.buf, d.awaitBuffering)
+		case runes.Hash:
+			ret = handleComment("firstBuffer", &d.buf, d.awaitBuffering)
 		case runes.Newline:
 			ret = d.bufferAll()
 		}
@@ -68,12 +64,12 @@ func (d *keyCommentDecoder) awaitNest() (ret charm.State) {
 func (d *keyCommentDecoder) awaitBuffering() (ret charm.State) {
 	return charm.Statement("awaitBuffering", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Hash:
+		case runes.HTab:
 			ret = nestLine("nestBuffer", &d.buf, d.awaitBuffering)
-		case runeParagraph:
+		case runes.Hash:
 			// to get here, we must have had a single key or blank line already
 			d.flush(runes.Newline)
-			ret = readLine("newBuffer", &d.buf, d.awaitBuffering)
+			ret = handleComment("newBuffer", &d.buf, d.awaitBuffering)
 		case runes.Newline:
 			ret = d.bufferAll()
 		}

@@ -55,8 +55,8 @@ func (d *collectionDecoder) interElement() charm.State {
 		// buffer everything
 		// the comments will either become footer comments for the parent container
 		// or, a header for a new element
-		case runeParagraph:
-			ret = charm.Step(readAll(&d.buf), self)
+		case runes.Hash:
+			ret = charm.Step(handleAll(&d.buf), self)
 
 		case runeKey:
 			// new key for current container

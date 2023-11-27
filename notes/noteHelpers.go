@@ -37,8 +37,8 @@ func writeRunes(w RuneWriter, qs ...rune) {
 
 // writes a nest header to the passed writer, and the then reads the rest of the line
 func nestLine(name string, w RuneWriter, onEol func() charm.State) (ret charm.State) {
-	writeRunes(w, runes.Newline, runes.HTab, runes.Hash)
-	return innerLine(name, w, onEol)
+	writeRunes(w, runes.Newline, runes.HTab)
+	return readLine(name, w, onEol)
 }
 
 // errors if the next rune is not a hash,
@@ -53,6 +53,12 @@ func readLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
 		}
 		return
 	})
+}
+
+// assumes a comment hash has already been detected, write it and read till the end of the line.
+func handleComment(name string, w RuneWriter, onEol func() charm.State) charm.State {
+	writeRunes(w, runes.Hash)
+	return innerLine(name, w, onEol)
 }
 
 // assumes a comment hash has already been read, read till the end of the line.
@@ -72,12 +78,12 @@ func innerLine(name string, w RuneWriter, onEol func() charm.State) charm.State 
 }
 
 // assumes there was just a blank line.
-// keep looping until there's a paragraph
-// tbd: should a comment hash ( as non nesting ) also be allowed?
+// keep looping until there's a new comment hash
+// nesting is not expected ( because you can't nest after a blank line )
 func awaitParagraph(name string, onPara func() charm.State) (ret charm.State) {
 	return charm.Self(name, func(self charm.State, q rune) (ret charm.State) {
 		switch q {
-		case runeParagraph:
+		case runes.Hash:
 			ret = onPara()
 		case runes.Newline: // keep looping on fully blank lines.
 			ret = self
@@ -85,13 +91,3 @@ func awaitParagraph(name string, onPara func() charm.State) (ret charm.State) {
 		return
 	})
 }
-
-// type runeCounter struct {
-// 	w   RuneWriter
-// 	cnt int
-// }
-
-// func (n *runeCounter) WriteRune(q rune) (int, error) {
-// 	n.cnt++
-// 	return n.w.WriteRune(q)
-// }

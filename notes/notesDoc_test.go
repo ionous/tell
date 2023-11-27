@@ -24,10 +24,10 @@ func TestDocumentComment(t *testing.T) {
 	}, doNothing))
 	//
 
-	WriteLine(b.OnParagraph(), "header")
-	WriteLine(b.OnParagraph(), "subheader")
+	WriteLine(b.Inplace(), "header")
+	WriteLine(b.Inplace(), "subheader")
 	WriteLine(b.OnScalarValue(), "inline")
-	WriteLine(b.OnParagraph(), "footer")
+	WriteLine(b.Inplace(), "footer")
 	//
 	if got := ctx.GetComments(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)

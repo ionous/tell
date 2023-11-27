@@ -12,9 +12,9 @@ func TestDocScalar(t *testing.T) {
 	ctx := newContext()
 	b := build(docScalar(ctx, doNothing))
 	//
-	WriteLine(&b, "one")
-	WriteLine(&b, "two")
-	WriteLine(&b, "three")
+	WriteLine(b.Inplace(), "one")
+	WriteLine(b.OnNestedComment(), "two")
+	WriteLine(b.OnNestedComment(), "three")
 	if got := ctx.GetComments(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}

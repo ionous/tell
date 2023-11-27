@@ -20,8 +20,8 @@ import (
 //
 func TestTrailingInline(t *testing.T) {
 	tests := []string{
-		"# inline\n# aligned",
-		"\n# block\n# also aligned",
+		"# inline\n\t# aligned",
+		"\n\t# block\n\t# also aligned",
 	}
 	expected := []string{
 		"\r# inline\n\t# aligned",

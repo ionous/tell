@@ -21,9 +21,9 @@ func TestCollection(t *testing.T) {
 	b := build(n)
 	// we just created the collection above, so write the key comment:
 	// - # key
-	WriteLine(&b, "key")
+	WriteLine(b.Inplace(), "key")
 	// ..# more key
-	WriteLine(b.OnParagraph(), "more key")
+	WriteLine(b.Inplace(), "more key")
 	// .."value"
 	b.OnScalarValue()
 	//
@@ -53,9 +53,9 @@ func TestKeyHeaderSplit(t *testing.T) {
 
 	// we just created the collection above, so write the key comment:
 	// - # key
-	WriteLine(&b, "key")
+	WriteLine(b.Inplace(), "key")
 	// ..# buffered header
-	WriteLine(b.OnParagraph(), "buffered header")
+	WriteLine(b.Inplace(), "buffered header")
 	// ....- "subcollection"
 	b.OnKeyDecoded().OnScalarValue()
 	//
@@ -89,11 +89,11 @@ func TestKeyHeaderJoin(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key
-	WriteLine(&b, "key")
+	WriteLine(b.Inplace(), "key")
 	// ..# buffered key
-	WriteLine(b.OnParagraph(), "buffered key")
+	WriteLine(b.Inplace(), "buffered key")
 	// ..# more key
-	WriteLine(b.OnParagraph(), "more key")
+	WriteLine(b.Inplace(), "more key")
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
@@ -136,14 +136,14 @@ func TestKeyNest(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
-	WriteLine(&b, "key")
-	WriteLine(&b, "nested key")
+	WriteLine(b.Inplace(), "key")
+	WriteLine(b.OnNestedComment(), "nested key")
 	// ..# buffered key & nesting
-	WriteLine(b.OnParagraph(), "second key")
-	WriteLine(&b, "second nesting")
+	WriteLine(b.Inplace(), "second key")
+	WriteLine(b.OnNestedComment(), "second nesting")
 	// ..# buffered key & nesting
-	WriteLine(b.OnParagraph(), "third key")
-	WriteLine(&b, "third nesting")
+	WriteLine(b.Inplace(), "third key")
+	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
 	//
 	got := ctx.GetAllComments()
@@ -183,14 +183,14 @@ func TestKeyNestCollection(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
-	WriteLine(&b, "key")
-	WriteLine(&b, "nested key")
+	WriteLine(b.Inplace(), "key")
+	WriteLine(b.OnNestedComment(), "nested key")
 	// ..# buffered key & nesting
-	WriteLine(b.OnParagraph(), "second key")
-	WriteLine(&b, "second nesting")
+	WriteLine(b.Inplace(), "second key")
+	WriteLine(b.OnNestedComment(), "second nesting")
 	// ..# buffered key & nesting
-	WriteLine(b.OnParagraph(), "buffered header")
-	WriteLine(&b, "nested header")
+	WriteLine(b.Inplace(), "buffered header")
+	WriteLine(b.OnNestedComment(), "nested header")
 	//
 	// ..- "subcollection scalar"
 	b.OnKeyDecoded().OnScalarValue()
@@ -246,7 +246,10 @@ func xTestTermHeaders(t *testing.T) {
 		if i > 0 {
 			b.OnKeyDecoded()
 		}
-		WriteLine(b.OnScalarValue().OnParagraph(), strconv.Itoa(i+1))
+		// a scalar value followed by a newline:
+		WriteLine(b.OnScalarValue(), "")
+		// on the next line: a comment
+		WriteLine(b.Inplace(), strconv.Itoa(i+1))
 	}
 	// fix: have to determine how to end correctly.
 	// b.send(runePopped)

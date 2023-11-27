@@ -13,13 +13,13 @@ func TestReadAll(t *testing.T) {
 	// index 0..1, ... 0..number of total lines
 	lines := []string{
 		"# one",
-		"# nest",
-		"\a# two",
-		"# a",
-		"# b",
-		"# c",
-		"\a# three",
-		"# nest",
+		"\t# nest", // the alert rune, alerts us to nesting.
+		"# two",
+		"\t# a",
+		"\t# b",
+		"\t# c",
+		"# three",
+		"\t# nest",
 	}
 
 	// pairs expected container

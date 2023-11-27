@@ -42,10 +42,8 @@ func (d *docStartDecoder) awaitValue() charm.State {
 func (d *docStartDecoder) awaitHeader() (ret charm.State) {
 	return charm.Self("awaitHeader", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
-		case runeParagraph:
-			ret = d.firstLines()
 		case runes.Hash:
-			ret = charm.RunState(q, d.firstLines())
+			ret = handleComment("firstLine", d.out, d.extendHeader)
 		case runes.Newline:
 			ret = self // keep looping on fully blank lines
 		default:
@@ -55,25 +53,19 @@ func (d *docStartDecoder) awaitHeader() (ret charm.State) {
 	})
 }
 
-// output runes until the end of line,
-// then shift to extending the header.
-func (d *docStartDecoder) firstLines() charm.State {
-	return readLine("firstLines", d.out, d.extendHeader)
-}
-
 // immediately after the first comment:
 // keep reading paragraphs of header, nest the header, or switch to buffering lines.
 // allow parent state to decode values
 func (d *docStartDecoder) extendHeader() charm.State {
 	return charm.Statement("extendHeader", func(q rune) (ret charm.State) {
 		switch q {
-		case runeParagraph:
+		case runes.HTab: // nested header, switch to buffering after done
+			ret = nestLine("nestHeader", d.out, d.awaitNest)
+		case runes.Hash:
 			d.out.WriteRune(runes.Newline)
-			ret = d.firstLines()
+			ret = handleComment("nextLine", d.out, d.extendHeader)
 		case runes.Newline: // fully blank line
 			ret = d.awaitParagraph() // buf is empty, so dont need to flush
-		case runes.Hash: // nested header, switch to buffering after done
-			ret = nestLine("nestHeader", d.out, d.awaitNest)
 		default:
 			// unhandled
 		}
@@ -82,12 +74,15 @@ func (d *docStartDecoder) extendHeader() charm.State {
 }
 
 // after a blank line, start looking for new paragraphs.
-// allow parent state to decode values,
+// other events are handled by the parent
 func (d *docStartDecoder) awaitParagraph() charm.State {
 	if d.buf.Len() > 0 {
 		panic("expects the buffer has been flushed to the doc header")
 	}
-	return awaitParagraph("awaitParagraph", d.bufferLine)
+	//
+	return awaitParagraph("docLines", func() charm.State {
+		return handleComment("newParagraph", &d.buf, d.awaitBuf)
+	})
 }
 
 // keep nesting the output, or start buffering.
@@ -95,7 +90,7 @@ func (d *docStartDecoder) awaitParagraph() charm.State {
 func (d *docStartDecoder) awaitNest() charm.State {
 	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Hash: // nest
+		case runes.HTab:
 			ret = nestLine("nestHeader", d.out, d.awaitNest)
 		default:
 			ret = d.awaitBuf().NewRune(q)
@@ -104,21 +99,16 @@ func (d *docStartDecoder) awaitNest() charm.State {
 	})
 }
 
-// buffer runes until the end of line, then wait for the next buffered line.
-func (d *docStartDecoder) bufferLine() charm.State {
-	return readLine("bufferLine", &d.buf, d.awaitBuf)
-}
-
 // keep the buffer filled with a maximum of one paragraph.
 // allow parent state to decode values
 func (d *docStartDecoder) awaitBuf() charm.State {
 	return charm.Statement("awaitBuf", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Hash: // nest into the current buffer
+		case runes.HTab: // nest into the current buffered paragraph
 			ret = nestLine("nestBuffer", &d.buf, d.awaitBuf)
-		case runeParagraph:
-			d.flush(runes.Newline) // flush
-			ret = d.bufferLine()   // and begin buffering a new paragraph
+		case runes.Hash:
+			d.flush(runes.Newline) // flush, and begin buffering a new paragraph
+			ret = handleComment("bufferLine", &d.buf, d.awaitBuf)
 		case runes.Newline:
 			d.flush(runes.Newline)   // flush
 			ret = d.awaitParagraph() // and begin waiting for a new paragraph

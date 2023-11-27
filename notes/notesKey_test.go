@@ -15,11 +15,11 @@ func TestKeyBuffering(t *testing.T) {
 	// index 0..1, ... 0..number of total lines
 	lines := []string{
 		"# one",
-		"# nest",
-		"\a# two",
-		"# nest",
-		"\a# three",
-		"# nest",
+		"\t# nest",
+		"# two",
+		"\t# nest",
+		"# three",
+		"\t# nest",
 	}
 
 	// pairs expected container, buffer output
@@ -57,7 +57,7 @@ func TestKeyBuffering(t *testing.T) {
 func TestKeyBlank(t *testing.T) {
 	// test a leading blank line
 	lines := []string{
-		"\n\a# one\n\a# two",
+		"\n# one\n# two",
 	}
 
 	// pairs expected container, buffer output

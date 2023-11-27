@@ -14,28 +14,36 @@ type mulitBlockDecoder struct {
 // assumes the next rune is a comment hash
 func readAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
-	return d.readAll()
+	return readLine("readFirst", w, d.awaitAll)
+}
+
+// assumes there's already been a comment hash, and we need to read content.
+func handleAll(w RuneWriter) charm.State {
+	d := mulitBlockDecoder{w}
+	return d.handleNext()
 }
 
 // read a line without nesting, then await the end of all things.
 // any subsequent lines will nest
-func (d *mulitBlockDecoder) readAll() charm.State {
-	return readLine("readAll", d.w, d.awaitAll)
+func (d *mulitBlockDecoder) handleNext() charm.State {
+	return handleComment("handleNext", d.w, d.awaitAll)
 }
 
 // add new paragraphs, or add lines to existing ones.
 func (d *mulitBlockDecoder) awaitAll() charm.State {
 	return charm.Statement("awaitAll", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Hash:
+		case runes.HTab:
 			ret = nestLine("nestAll", d.w, d.awaitAll)
-		case runeParagraph:
+
+		case runes.Hash:
 			writeRunes(d.w, runes.Newline)
-			ret = d.readAll()
+			ret = d.handleNext()
+
 		case runes.Newline:
 			ret = awaitParagraph("eatLines", func() charm.State {
 				writeRunes(d.w, runes.Newline)
-				return d.readAll()
+				return d.handleNext()
 			})
 		}
 		return

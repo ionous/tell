@@ -22,6 +22,6 @@ func docEnd(ctx *context) charm.State {
 func (d *docEndDecoder) awaitFooter() charm.State {
 	return awaitParagraph("awaitFooter", func() charm.State {
 		writeRunes(d.out, runes.Record)
-		return readAll(d.out)
+		return handleAll(d.out)
 	})
 }
