@@ -30,7 +30,7 @@ func (d *trailingDecoder) awaitComment() charm.State {
 		switch q {
 		case runes.Hash: // its an inline comment...
 			d.writeMark()
-			ret = handleComment("firstInline", d.w, d.waitForNest)
+			ret = handleComment("firstInline", d.w, d.awaitNested)
 		case runes.Newline: // now, we see it might be a block.
 			ret = d.awaitBlock()
 		}
@@ -40,12 +40,14 @@ func (d *trailingDecoder) awaitComment() charm.State {
 
 // alternate entry for doc scalar, which only has inline comments
 // inline trailing comments start on the same line as their value
+// ( alt: would be child(await block) and parent(await inline) with block jumping out
+//   to "readBlock" after first newline... charm makes that a bit icky. )
 func (d *trailingDecoder) awaitInline() charm.State {
 	return charm.Statement("awaitInline", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
 			d.writeMark()
-			ret = handleComment("firstInline", d.w, d.waitForNest)
+			ret = handleComment("firstInline", d.w, d.awaitNested)
 		}
 		return
 	})
@@ -53,24 +55,24 @@ func (d *trailingDecoder) awaitInline() charm.State {
 
 // trailing block comments start after a newline
 func (d *trailingDecoder) awaitBlock() charm.State {
-	return charm.Self("awaitComment", func(self charm.State, q rune) (ret charm.State) {
+	return charm.Self("awaitBlock", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
 		case runes.Newline: // keep looking
 			ret = self
 		case runes.HTab: // after the newline, the comment should be indented:
 			d.writeMark()
-			ret = nestLine("firstBlock", d.w, d.waitForNest)
+			ret = nestLine("firstBlock", d.w, d.awaitNested)
 		}
 		return
 	})
 }
 
 // keep reading nested comments
-func (d *trailingDecoder) waitForNest() charm.State {
-	return charm.Statement("waitForNest", func(q rune) (ret charm.State) {
+func (d *trailingDecoder) awaitNested() charm.State {
+	return charm.Statement("awaitNested", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
-			ret = nestLine("readAligned", d.w, d.waitForNest)
+			ret = nestLine("readAligned", d.w, d.awaitNested)
 		}
 		return
 	})
