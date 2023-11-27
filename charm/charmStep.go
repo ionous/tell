@@ -3,16 +3,31 @@ package charm
 // RunStep - run a sequence of of two states
 // sending the current rune to the first state immediately
 // see also: Step()
-func RunStep(r rune, first, last State) State {
-	return Step(first, last).NewRune(r)
+func RunStep(r rune, child, parent State) State {
+	return Step(child, parent).NewRune(r)
 }
 
 // Step - construct a sequence of two states.
 // If the next rune is not handled by the first state or any of its returned states,
 // the rune is handed to the second state.
 // this acts similar to a parent-child statechart.
-func Step(first, last State) State {
-	return &chainParser{first, last}
+func Step(child, parent State) State {
+	return &chainParser{child, parent}
+}
+
+// use the first of whichever of the passed states respond to the next rune.
+// step puts states into a child/parent aggregation
+// first is more like sibling states.
+func FirstOf(name string, several ...State) State {
+	return Statement(name, func(q rune) (ret State) {
+		for _, n := range several {
+			if next := n.NewRune(q); next != nil {
+				ret = next
+				break
+			}
+		}
+		return
+	})
 }
 
 // For use in Step() to run an action after the first step completes.
