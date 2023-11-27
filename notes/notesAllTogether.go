@@ -11,7 +11,7 @@ type mulitBlockDecoder struct {
 	w RuneWriter
 }
 
-// assumes the next run is a comment hash
+// assumes the next rune is a comment hash
 func readAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
 	return d.readAll()

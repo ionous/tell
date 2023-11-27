@@ -32,7 +32,7 @@ func innerParse(first State, in io.RuneReader) (ret State, err error) {
 		} else {
 			if next := try.NewRune(r); next == nil {
 				// no states left to parse remaining input
-				err = EndpointError{errContext(r, in), i, try, "unknown state"}
+				err = EndpointError{errContext(r, in), i, try, "unhandled rune"}
 				break
 			} else if es, ok := next.(Terminal); ok {
 				err = EndpointError{errContext(r, in), i, try, es.err.Error()}

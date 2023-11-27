@@ -11,50 +11,53 @@ import (
 // the last block goes to the new collection
 // ( otherwise it also goes to the container. )
 // everything after an blank line gets buffered together.
-type docKeyDecoder struct {
+type keyCommentDecoder struct {
 	*context
 }
 
 // awaits an initial paragraph, comment hash, or newline.
-func docKey(ctx *context) charm.State {
-	d := docKeyDecoder{ctx}
-	return charm.Step(d.awaitComment(), d.alwaysBuffer())
+func keyComments(ctx *context) charm.State {
+	d := keyCommentDecoder{ctx}
+	return d.awaitFirst()
 }
 
-// everything after an blank line gets buffered together.
-func (d *docKeyDecoder) alwaysBuffer() charm.State {
-	return charm.Statement("alwaysBuffer", func(q rune) (ret charm.State) {
-		if q == runes.Newline {
-			ret = awaitParagraph("emptyPadding", func() charm.State {
-				return readAll(&d.buf)
-			})
-		}
-		return
+// everything after any blank line gets buffered together.
+func (d *keyCommentDecoder) bufferAll() charm.State {
+	return awaitParagraph("bufferAll", func() charm.State {
+		return readAll(&d.buf)
 	})
 }
 
-// awaits the initial paragraph, comment hash
-func (d *docKeyDecoder) awaitComment() (ret charm.State) {
-	return charm.Statement("awaitComment", func(q rune) (ret charm.State) {
+// awaits the initial paragraph, comment hash, or new line.
+func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
+	return charm.Statement("awaitFirst", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			keyLine := readLine("keyLine", d.out, d.awaitOutput)
+			d.out.WriteRune(runes.CollectionMark)
+			keyLine := readLine("keyLine", d.out, d.awaitNest)
 			ret = charm.RunState(q, keyLine)
 		case runeParagraph:
-			ret = readLine("keyParagraph", d.out, d.awaitOutput)
+			d.out.WriteRune(runes.CollectionMark)
+			ret = readLine("keyParagraph", d.out, d.awaitNest)
+		case runes.Newline:
+			// tbd: hopefully, this interoperates with nil values okay
+			d.out.WriteRune(runes.CollectionMark)
+			ret = d.bufferAll()
 		}
 		return
 	})
 }
 
 // nest output, or shift to buffering
-func (d *docKeyDecoder) awaitOutput() (ret charm.State) {
-	return charm.Statement("awaitOutput", func(q rune) (ret charm.State) {
+func (d *keyCommentDecoder) awaitNest() (ret charm.State) {
+	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			ret = nestLine("nestOutput", d.out, d.awaitOutput)
+			ret = nestLine("nestOutput", d.out, d.awaitNest)
 		case runeParagraph:
 			ret = readLine("firstBuffer", &d.buf, d.awaitBuffering)
+		case runes.Newline:
+			ret = d.bufferAll()
 		}
 		return
 	})
@@ -62,14 +65,17 @@ func (d *docKeyDecoder) awaitOutput() (ret charm.State) {
 
 // additional lines are added to the existing block in the buffer
 // new paragraphs flush the existing buffer, and start buffering a new paragraph
-func (d *docKeyDecoder) awaitBuffering() (ret charm.State) {
+func (d *keyCommentDecoder) awaitBuffering() (ret charm.State) {
 	return charm.Statement("awaitBuffering", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
 			ret = nestLine("nestBuffer", &d.buf, d.awaitBuffering)
 		case runeParagraph:
+			// to get here, we must have had a single key or blank line already
 			d.flush(runes.Newline)
 			ret = readLine("newBuffer", &d.buf, d.awaitBuffering)
+		case runes.Newline:
+			ret = d.bufferAll()
 		}
 		return
 	})

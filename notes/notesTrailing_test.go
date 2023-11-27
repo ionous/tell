@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
@@ -29,10 +30,10 @@ func TestTrailingInline(t *testing.T) {
 
 	for i, test := range tests {
 		expect := expected[i]
-		ctx := newContext()
-		if e := charm.Parse(test, readTrailing(ctx)); e != nil {
+		var buf strings.Builder
+		if e := charm.Parse(test, readTrailing(&buf, true)); e != nil {
 			t.Fatal(e)
-		} else if got := ctx.buf.String(); got != expect {
+		} else if got := buf.String(); got != expect {
 			t.Logf("test %d: \nwant %q \nhave %q", i, expect, got)
 			t.Fail()
 		}

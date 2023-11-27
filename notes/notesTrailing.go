@@ -6,13 +6,21 @@ import (
 )
 
 // read an inline or trailing comment ( after a collection scalar )
-func readTrailing(ctx *context) charm.State {
-	in := trailingDecoder{&ctx.buf}
+func readTrailing(w RuneWriter, wroteDash bool) charm.State {
+	in := trailingDecoder{w, !wroteDash}
 	return charm.FirstOf("readTrailing", in.awaitInline(), in.awaitBlock())
 }
 
 type trailingDecoder struct {
-	w RuneWriter
+	w     RuneWriter
+	extra bool
+}
+
+func (d *trailingDecoder) writeMark() {
+	d.w.WriteRune(runes.CollectionMark)
+	if d.extra {
+		d.w.WriteRune(runes.CollectionMark)
+	}
 }
 
 // inline trailing comments start on the same line as their value;
@@ -22,8 +30,8 @@ func (d *trailingDecoder) awaitInline() charm.State {
 		switch q {
 		case runes.Hash:
 			// decode a comment line, preceding it with a value marker.
+			d.writeMark()
 			readInline := readLine("readInline", d.w, d.waitForNest)
-			writeRunes(d.w, runes.CollectionMark)
 			ret = charm.RunState(runes.Hash, readInline)
 		}
 		return
@@ -38,7 +46,7 @@ func (d *trailingDecoder) awaitBlock() charm.State {
 		case runes.Newline:
 			ret = self
 		case runes.Hash:
-			writeRunes(d.w, runes.CollectionMark)
+			d.writeMark()
 			ret = nestLine("readBlock", d.w, d.waitForNest)
 		}
 		return
