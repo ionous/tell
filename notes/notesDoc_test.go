@@ -190,3 +190,25 @@ func TestDocCollection(t *testing.T) {
 		t.Fail()
 	}
 }
+
+// edge case: when there's no trailing newline
+// and a nil.
+// - # key
+// ..# more key<eof>
+func TestKeyNil(t *testing.T) {
+	var expected = "\r# key\n# more key"
+	ctx := newContext()
+	b := build(newDocument(ctx))
+	// documents only have one value, in this case a sequence
+	// - # key
+	WriteLine(b.OnKeyDecoded(), "key")
+	// ..# more key ( but no eol )
+	for _, q := range "# more key" {
+		b.WriteRune(q)
+	}
+	//
+	if got := b.GetComments(ctx)[1]; got != expected {
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
+	}
+}
