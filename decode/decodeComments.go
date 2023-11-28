@@ -29,6 +29,7 @@ func NestedCommentDecoder(doc *Document) charm.State {
 	return charm.Self("nested comment", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Hash:
+			doc.notes.OnNestedComment()
 			ret = CommentDecoder(doc.notes, self)
 		case runes.Newline:
 			ret = MaintainIndent(doc, self, depth)

@@ -50,7 +50,7 @@ func TestInlineOnly(t *testing.T) {
 	WriteLine(b.Inplace(), "one")
 	WriteLine(b.OnNestedComment(), "two")
 	WriteLine(b.OnNestedComment(), "three")
-	if got := b.GetComments(ctx)[0]; got != expected {
+	if got := b.GetAllComments(ctx)[0]; got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
 }

@@ -18,7 +18,7 @@ type Builder struct {
 }
 
 // the builder and context have to work together to get all the comments properly
-func (b *Builder) GetComments(ctx *context) (ret []string) {
+func (b *Builder) GetAllComments(ctx *context) (ret []string) {
 	b.send(runeTerm)
 	//
 	if ctx.buf.Len() > 0 {

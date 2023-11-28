@@ -37,3 +37,8 @@ type RuneWriter interface {
 	// but are otherwise eaten. other runes should generate an error.
 	WriteRune(rune) (int, error)
 }
+
+type CommentResolver interface {
+	Commentator
+	GetComments() string
+}

@@ -59,7 +59,7 @@ func TestKeyHeaderSplit(t *testing.T) {
 	// ....- "subcollection"
 	b.OnKeyDecoded().OnScalarValue()
 	//
-	if got := b.GetComments(ctx); slices.Compare(got, expected) != 0 {
+	if got := b.GetAllComments(ctx); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 		}
@@ -97,7 +97,7 @@ func TestKeyHeaderJoin(t *testing.T) {
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
-	got := b.GetComments(ctx)
+	got := b.GetAllComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -143,7 +143,7 @@ func TestKeyNest(t *testing.T) {
 	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
 	//
-	got := b.GetComments(ctx)
+	got := b.GetAllComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -191,7 +191,7 @@ func TestKeyNestCollection(t *testing.T) {
 	//
 	// ..- "subcollection scalar"
 	b.OnKeyDecoded().OnScalarValue()
-	got := b.GetComments(ctx)
+	got := b.GetAllComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -221,7 +221,7 @@ func TestEmptyTerms(t *testing.T) {
 	}
 	WriteLine(b.OnScalarValue(), "comment")
 	//
-	if got := b.GetComments(ctx)[1]; got != expected {
+	if got := b.GetAllComments(ctx)[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -252,7 +252,7 @@ func TestTermHeaders(t *testing.T) {
 		// a scalar value followed by a newline:
 		WriteLine(b.OnScalarValue(), "")
 	}
-	if got := b.GetComments(ctx)[1]; got != expected {
+	if got := b.GetAllComments(ctx)[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}

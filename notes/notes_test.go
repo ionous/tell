@@ -32,15 +32,13 @@ func TestReadmeExample(t *testing.T) {
 		"\r\r# inline",
 	}
 
-	ctx := newContext()
-	b := build(newDocument(ctx))
-	//
+	b := newNotes()
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.OnKeyDecoded().OnScalarValue(), "inline")
 	WriteLine(b.Inplace(), "footer")
 	//
 	//
-	got := b.GetComments(ctx)
+	got := b.GetAllComments()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -59,9 +57,8 @@ func TestCommentBlock(t *testing.T) {
 		"\r# key\n\t# nested key" +
 			"\r# inline\n\t# nested inline",
 	}
-	ctx := newContext()
-	b := build(newDocument(ctx))
-	//
+
+	b := newNotes()
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.OnNestedComment(), "nested header")
 	WriteLine(b.OnKeyDecoded(), "key")
@@ -71,7 +68,7 @@ func TestCommentBlock(t *testing.T) {
 	WriteLine(b.Inplace(), "footer")
 	WriteLine(b.Inplace(), "extra footer")
 	//
-	got := b.GetComments(ctx)
+	got := b.GetAllComments()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)

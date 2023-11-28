@@ -1,10 +1,10 @@
 package notes
 
-func KeepComments() *Builder {
-	panic("xxx")
+func KeepComments() CommentResolver {
+	return newNotes()
 }
 
-func DiscardComments() Commentator {
+func DiscardComments() CommentResolver {
 	return Nothing{}
 }
 
@@ -15,4 +15,23 @@ func NewCommentator(keepComments bool) (ret Commentator) {
 		ret = DiscardComments()
 	}
 	return
+}
+
+func newNotes() *commentResolver {
+	ctx := newContext()
+	b := build(newDocument(ctx))
+	return &commentResolver{ctx, b}
+}
+
+type commentResolver struct {
+	ctx *context
+	Builder
+}
+
+func (p *commentResolver) GetComments() string {
+	return p.ctx.res
+}
+
+func (p *commentResolver) GetAllComments() []string {
+	return p.Builder.GetAllComments(p.ctx)
 }
