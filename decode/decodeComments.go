@@ -8,7 +8,7 @@ import (
 
 // interpret every up to, and including, the end of the line as a comment.
 // sends the last rune -- the newline -- to the passed eol state.
-func CommentDecoder(out notes.RuneWriter, eol charm.State) charm.State {
+func CommentDecoder(out notes.Commentator, eol charm.State) charm.State {
 	out.WriteRune(runes.Hash) // ick.
 	return charm.Self("decode comment", func(self charm.State, r rune) (ret charm.State) {
 		out.WriteRune(r)

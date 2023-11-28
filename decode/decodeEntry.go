@@ -13,31 +13,23 @@ type tellEntry struct {
 	addsValue    func(any) error
 }
 
-// pop parser states up to the current indentation level
-func (ent *tellEntry) popToIndent() charm.State {
-	return ent.doc.popToIndent()
-}
-
 // called when the indentation level is popped.
 func (ent *tellEntry) finalizeEntry() (err error) {
-	// finalizeEntry is the one moment common to all values being finished
-	// including nil values...
-	if _, isCollection := ent.pendingValue.(entryDecoder); !isCollection {
-		ent.doc.notes.OnScalarValue()
-	}
-	if val, e := ent.pendingValue.FinalizeValue(); e != nil {
-		err = e
-	} else {
-		err = ent.addsValue(val)
+	// protects against double call for the sake of decodeDoc
+	if ent.pendingValue != nil {
+		// finalizeEntry is the one moment common to all values (incl nil)
+		if !isPendingCollection(ent.pendingValue) {
+			ent.doc.notes.OnScalarValue()
+		}
+		if val, e := ent.pendingValue.FinalizeValue(); e != nil {
+			err = e
+		} else {
+			err = ent.addsValue(val)
+		}
+		ent.pendingValue = nil
 	}
 	return
 }
-
-type entryDecoder interface{ EntryDecoder() charm.State }
-
-var _ entryDecoder = (*Document)(nil)
-var _ entryDecoder = (*Sequence)(nil)
-var _ entryDecoder = (*Mapping)(nil)
 
 // immediately after the key has been decoded:
 // parses contents and loops (by popping) after its done
@@ -47,7 +39,6 @@ func StartContentDecoding(ent *tellEntry) charm.State {
 		charm.Self("after entry", func(afterEntry charm.State, r rune) (ret charm.State) {
 			switch r {
 			case runes.Newline: // pop to find an appropriate next state
-				//ent.doc.notes.OnTermDecoded() // MOVED
 				ret = NextIndent(ent.doc, nil)
 			}
 			return
@@ -106,7 +97,7 @@ func HeaderDecoder(ent *tellEntry, depth int, next charm.State) charm.State {
 		default:
 			ret = next.NewRune(r)
 		case runes.Hash:
-			ret = CommentDecoder(ent.doc.notes.OnParagraph(), header)
+			ret = CommentDecoder(ent.doc.notes, header)
 
 		case runes.Newline:
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
@@ -133,7 +124,7 @@ func SubheaderDecoder(ent *tellEntry, depth int) charm.State {
 		default:
 			ret = DecodeLineValue(ent, r)
 		case runes.Hash:
-			ret = CommentDecoder(ent.doc.notes.OnParagraph(), header)
+			ret = CommentDecoder(ent.doc.notes, header)
 		case runes.Newline:
 			ret = MaintainIndent(ent.doc, header, depth)
 		}
@@ -174,7 +165,9 @@ func InlineCommentDecoder(ent *tellEntry) (ret charm.State) {
 				if at == inlineIndent { // inline comments are all left aligned
 					ret = loop
 				} else { // a footer lives between the term and less than any inline comments
-					if (at >= ent.depth) && (inlineIndent < 0 || at < inlineIndent) {
+					// FIX? i changed this to > ...  think that more correct
+					// should it be two spaces?
+					if (at > ent.depth) && (inlineIndent < 0 || at < inlineIndent) {
 						ret = FooterDecoder(ent, at)
 					}
 				}
@@ -192,7 +185,7 @@ func FooterDecoder(ent *tellEntry, wantIndent int) charm.State {
 	return charm.Self("trailing comments", func(loop charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Hash:
-			ret = CommentDecoder(ent.doc.notes.OnFootnote(), loop)
+			ret = CommentDecoder(ent.doc.notes, loop)
 		case runes.Newline:
 			ret = MaintainIndent(ent.doc, loop, wantIndent)
 		}

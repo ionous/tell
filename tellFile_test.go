@@ -12,6 +12,7 @@ import (
 
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/maps/stdmap"
+	"github.com/ionous/tell/notes"
 )
 
 //go:embed testdata/*.tell
@@ -22,9 +23,11 @@ var jsonData embed.FS
 
 const testFolder = "testdata"
 
+// helper for debugging specific tests
+var focus string
+
 func TestFiles(t *testing.T) {
-	var focus string
-	// focus = "headerFooterComment3"
+	// focus = "headerFooterComment1"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -48,11 +51,11 @@ func TestFiles(t *testing.T) {
 
 			} else {
 				if !reflect.DeepEqual(got, want) {
-					t.Log("ng: ", tellName)
-					t.Log(stringify(got))
+					t.Log("ng: ", jsonName)
+					t.Log("got:", stringify(got))
 					t.Fail()
 				} else {
-					t.Log("ok: ", tellName)
+					t.Log("ok: ", jsonName)
 				}
 			}
 		}
@@ -72,27 +75,25 @@ func readTell(filePath string) (ret any, err error) {
 	if fp, e := tellData.Open(filePath); e != nil {
 		err = e
 	} else {
-		keepComments := strings.Contains(strings.ToLower(filePath), "comment")
-		comments := decode.DiscardComments
-		if keepComments {
-			comments = decode.KeepComments
+		comments := notes.NewCommentator(strings.Contains(strings.ToLower(filePath), "comment"))
+		if len(focus) > 0 {
+			comments = notes.NewPrinter(comments)
 		}
 		doc := decode.NewDocument(stdmap.Builder, comments)
 		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
 			err = e
-		} else if len(res.Comment) > 0 {
+		} else if cmt := comments.GetComments(); len(cmt) > 0 {
 			ret = map[string]any{
-				"content": res.Content,
-				"comment": res.Comment,
+				"content": res,
+				"comment": cmt,
 			}
 		} else {
 			ret = map[string]any{
-				"content": res.Content,
+				"content": res,
 			}
 		}
 	}
 	return
-
 }
 
 func readJson(filePath string) (ret any, err error) {

@@ -23,7 +23,7 @@ func NewMapping(doc *Document, depth int) *Mapping {
 }
 
 // a state that can parse one key-value pair
-// intended to be used with doc.Push() to loop at a given indent.
+//  uses doc.Push() to loop at a given indent.
 func (c *Mapping) EntryDecoder() charm.State {
 	ent := tellEntry{
 		doc:          c.doc,

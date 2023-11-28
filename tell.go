@@ -10,6 +10,7 @@ import (
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/encode"
 	"github.com/ionous/tell/maps/stdmap"
+	"github.com/ionous/tell/notes"
 )
 
 // Marshal returns a tell document representing the passed value.
@@ -55,11 +56,11 @@ func Marshal(v any) (ret []byte, err error) {
 // For more flexibility, see package decode
 //
 func Unmarshal(in []byte, pv any) (err error) {
-	doc := decode.NewDocument(stdmap.Builder, decode.DiscardComments)
-	if res, e := doc.ReadDoc(bytes.NewReader(in)); e != nil {
+	doc := decode.NewDocument(stdmap.Builder, notes.DiscardComments())
+	if raw, e := doc.ReadDoc(bytes.NewReader(in)); e != nil {
 		err = e
 	} else {
-		res, out := r.ValueOf(res.Content), r.ValueOf(pv)
+		res, out := r.ValueOf(raw), r.ValueOf(pv)
 		if out.Kind() != r.Pointer {
 			err = errors.New("expected a pointer")
 		} else if out := out.Elem(); !out.CanSet() {
@@ -78,12 +79,12 @@ func Unmarshal(in []byte, pv any) (err error) {
 }
 
 // Encoder - follows the pattern of encoding/json
-type Encoder encode.TabWriter
+type Encoder encode.Encoder
 
 // NewEncoder -
 func NewEncoder(w io.Writer) *Encoder {
-	tabs := encode.TabWriter{Writer: w}
-	return (*Encoder)(&tabs)
+	enc := encode.MakeEncoder(w)
+	return (*Encoder)(&enc)
 }
 
 // Encode - serializes the passed document to the encoder's stream
@@ -91,6 +92,6 @@ func NewEncoder(w io.Writer) *Encoder {
 // tell doesnt support multiple documents in the same file,
 // but this interface doesn't stop callers from trying
 func (enc *Encoder) Encode(v any) (err error) {
-	tabs := (*encode.TabWriter)(enc)
-	return encode.WriteDocument(tabs, v)
+	inner := (*encode.Encoder)(enc)
+	return inner.Encode(v)
 }

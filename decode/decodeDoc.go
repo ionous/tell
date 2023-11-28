@@ -57,18 +57,33 @@ func (doc *Document) EntryDecoder() charm.State {
 	ent := &tellEntry{
 		doc:          doc,
 		depth:        depth,
-		pendingValue: scalarValue{},
+		pendingValue: scalarValue{emptyValue},
 		addsValue: func(val any) (_ error) {
-			doc.value = val // tbd: error if already written?
+			if val == emptyValue {
+				val = nil // empty document
+			} else {
+				doc.value = val // tbd: error if already written?
+			}
 			return
 		},
 	}
-	next := HeaderDecoder(ent, depth, charm.Statement(
-		"after header", func(r rune) (ret charm.State) {
-			// doc.notes.OnKeyDecoded()
-			return LineValueDecoder(ent).NewRune(r)
-		}))
-	return doc.PushCallback(depth, next, ent.finalizeEntry)
+
+	loop := charm.Self("doc", func(self charm.State, r rune) (ret charm.State) {
+		if check, ok := ent.pendingValue.(scalarValue); ok && check.v != emptyValue {
+			if e := ent.finalizeEntry(); e != nil {
+				ret = charm.Error(e)
+			}
+		}
+		if ret == nil {
+			ret = charm.RunState(r, HeaderDecoder(ent, depth, charm.Statement(
+				"after header", func(r rune) (ret charm.State) {
+					return LineValueDecoder(ent).NewRune(r)
+				})))
+		}
+		return
+	})
+	// previously returned header
+	return doc.PushCallback(depth, loop, ent.finalizeEntry)
 }
 
 // pop parser states up to the current indentation level
