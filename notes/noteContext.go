@@ -11,7 +11,7 @@ type context struct {
 	// the code uses some implicit hand offs across states
 	// letting things stick in the buf and on the start of the new state flushing it.
 	// ( ex. buffered doc headers, or inter key comments which get pulled into the next element )
-	buf stringsBuilder
+	buf Lines
 	res string
 }
 

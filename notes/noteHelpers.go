@@ -2,23 +2,10 @@ package notes
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
-
-// wraps string builder to add a helper method
-type stringsBuilder struct {
-	strings.Builder
-}
-
-// return the buffer, then clear it.
-func (p *stringsBuilder) Resolve() string {
-	str := p.String()
-	p.Reset()
-	return str
-}
 
 // generate an error state
 // ( rune term still returns as unhandled )

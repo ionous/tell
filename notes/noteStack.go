@@ -7,7 +7,7 @@ import (
 type stack []*pendingBlock
 
 type pendingBlock struct {
-	stringsBuilder
+	Lines
 	terms int // count empty terms
 }
 
