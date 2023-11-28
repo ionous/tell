@@ -8,10 +8,12 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// wraps string builder to add a helper method
 type stringsBuilder struct {
 	strings.Builder
 }
 
+// return the buffer, then clear it.
 func (p *stringsBuilder) Resolve() string {
 	str := p.String()
 	p.Reset()

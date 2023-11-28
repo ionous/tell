@@ -12,6 +12,7 @@ type context struct {
 	// letting things stick in the buf and on the start of the new state flushing it.
 	// ( ex. buffered doc headers, or inter key comments which get pulled into the next element )
 	buf stringsBuilder
+	res string
 }
 
 func newContext() *context {
@@ -33,9 +34,10 @@ func (p *context) flush(q rune) {
 	}
 }
 
+// called on end collection.
 func (p *context) pop() {
 	// whatever we have is what we have
-	// p.res.push(p.out)
+	p.res = p.out.Resolve()
 	// any buffer right now is for the parent container
 	parent := p.stack.pop()
 	p.out = parent

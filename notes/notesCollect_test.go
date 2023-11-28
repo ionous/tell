@@ -227,8 +227,7 @@ func TestEmptyTerms(t *testing.T) {
 	}
 }
 
-// headers should appear right after their form feeds
-// approximately:
+// headers should appear right after their form feeds:
 // - 0
 // # 1
 // - 1
@@ -253,9 +252,58 @@ func TestTermHeaders(t *testing.T) {
 		// a scalar value followed by a newline:
 		WriteLine(b.OnScalarValue(), "")
 	}
-
 	if got := b.GetComments(ctx)[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
+	}
+}
+
+// handle sequences that begin and end
+//
+// - 1
+// - - 2
+//   - 3
+// - - 4
+//   - - 5
+// - 6
+//
+// ie. [1,[2,3],[4,[5]],6]
+func TestCollectBeginEnd(t *testing.T) {
+	ctx := newContext()
+	n := newCollection(ctx)
+	b := build(n)
+	// in order of closure (end bracket)
+	// everything here appears as inline comments (\r\r)
+	// each comma is a formfeed, with trailing sub-collections are trimmed.
+	var got []string
+	expected := []string{
+		"\r\r# 2\f\r\r# 3",
+		"\r\r# 5", // the array closest to 5 ends before, 4...5
+		"\r\r# 4",
+		"\r\r# 1\f\f\f\r\r# 6", // the outer most array ends last
+		// [1,*,*,6] 3 comma separators, 3 form feeds.
+	}
+
+	WriteLine(b.OnKeyDecoded().OnScalarValue(), "1")
+	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "2")
+	WriteLine(b.OnKeyDecoded().OnScalarValue(), "3")
+	b.OnCollectionEnded()
+	got = append(got, ctx.res)
+	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "4")
+	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "5")
+	b.OnCollectionEnded()
+	got = append(got, ctx.res)
+	b.OnCollectionEnded()
+	got = append(got, ctx.res)
+	WriteLine(b.OnKeyDecoded().OnScalarValue(), "6")
+	b.OnCollectionEnded()
+	got = append(got, ctx.res)
+	//
+	// got := b.GetComments(ctx)
+	if slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
 	}
 }
