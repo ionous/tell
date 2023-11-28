@@ -8,17 +8,17 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-func build(state charm.State) Builder {
-	return Builder{state}
+func build(state charm.State) runecast {
+	return runecast{state}
 }
 
 // adapts the notes api to charm states
-type Builder struct {
+type runecast struct {
 	state charm.State
 }
 
 // the builder and context have to work together to get all the comments properly
-func (b *Builder) GetAllComments(ctx *context) (ret []string) {
+func (b *runecast) GetAllComments(ctx *context) (ret []string) {
 	b.send(runeTerm)
 	//
 	if ctx.buf.Len() > 0 {
@@ -44,36 +44,36 @@ const (
 )
 
 // helper for testing: returns b without doing anything.
-func (b *Builder) Inplace() Commentator {
+func (b *runecast) Inplace() Events {
 	return b
 }
 
-func (b *Builder) OnNestedComment() Commentator {
+func (b *runecast) OnNestedComment() Events {
 	b.send(runes.HTab)
 	return b
 }
 
-func (b *Builder) OnKeyDecoded() Commentator {
+func (b *runecast) OnKeyDecoded() Events {
 	b.send(runeKey)
 	return b
 }
 
-func (b *Builder) OnScalarValue() Commentator {
+func (b *runecast) OnScalarValue() Events {
 	b.send(runeValue)
 	return b
 }
 
-func (b *Builder) OnCollectionEnded() Commentator {
+func (b *runecast) OnCollectionEnded() Events {
 	b.send(runeCollected)
 	return b
 }
 
-func (b *Builder) WriteRune(q rune) (_ int, _ error) {
+func (b *runecast) WriteRune(q rune) (_ int, _ error) {
 	b.send(q)
 	return
 }
 
-func (b *Builder) send(q rune) {
+func (b *runecast) send(q rune) {
 	if next := b.state.NewRune(q); next == nil && q != runeTerm {
 		// no states left to parse remaining input
 		err := fmt.Errorf("unhandled rune %q in %q", q, charm.StateName(b.state))

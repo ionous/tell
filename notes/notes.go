@@ -1,44 +1,38 @@
 package notes
 
-// comment block creation
-// split into three interfaces for documentation
-// no methods return error because, in theory,
-// the decoding machine should never make invalid requests.
+//
 type Commentator interface {
 	Events
-	RuneWriter
+	GetComments() string
 }
 
+// comment block creation
 // events indicate different sections of a tell document
-// during decoding. the method return "self" for chaining.
+// during decoding. those methods return "self" for chaining.
 type Events interface {
 	// an explicit request to nest the next comment
 	// the only valid next input is WriteRune.
-	OnNestedComment() Commentator
+	OnNestedComment() Events
 	// a value has started decoding; even a nil value should trigger this.
 	// any inline comments will live to the right of the value on the same line
 	// there can only be one inline comment, continued with optional nesting.
-	OnScalarValue() Commentator
+	OnScalarValue() Events
 	// a signature or dash in a collection has finished decoding.
 	// paragraphs can get treated as key comments,
 	// or headers for sub collection elements
 	// depending on the number of paragraphs and the following value.
-	OnKeyDecoded() Commentator
+	OnKeyDecoded() Events
 	// done with the current collection
 	// usually followed by "GetComments"
-	OnCollectionEnded() Commentator
-}
-
-// receive text from the decoded comments of a tell document.
-// its signature mirrors strings.StringBuilder.
-type RuneWriter interface {
+	OnCollectionEnded() Events
+	// receive text from the decoded comments of a tell document.
 	// each comment should start with a hash and space, and should end with a newline.
 	// newlines outside of a comment can sometimes alter the meaning of subsequent comments
-	// but are otherwise eaten. other runes should generate an error.
+	// but are otherwise eaten.
+	// the signature mirrors strings.StringBuilder, but always returns 0, nil
 	WriteRune(rune) (int, error)
 }
 
-type CommentResolver interface {
-	Commentator
-	GetComments() string
+type runeWriter interface {
+	WriteRune(rune) (int, error)
 }

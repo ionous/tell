@@ -39,7 +39,7 @@ func friendly(q rune) bool {
 	return q == runes.HTab || q >= runes.Space
 }
 
-func writeRunes(w RuneWriter, qs ...rune) {
+func writeRunes(w runeWriter, qs ...rune) {
 	for _, q := range qs {
 		w.WriteRune(q)
 	}
@@ -60,14 +60,14 @@ func writeBuffer(w buffer, str string, q rune) {
 }
 
 // writes a nest header to the passed writer, and the then reads the rest of the line
-func nestLine(name string, w RuneWriter, onEol func() charm.State) (ret charm.State) {
+func nestLine(name string, w runeWriter, onEol func() charm.State) (ret charm.State) {
 	writeRunes(w, runes.Newline, runes.HTab)
 	return readLine(name, w, onEol)
 }
 
 // errors if the next rune is not a hash,
 // then reads till the end of the comment line.
-func readLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
+func readLine(name string, w runeWriter, onEol func() charm.State) charm.State {
 	return charm.Statement(name, func(q rune) (ret charm.State) {
 		if q != runes.Hash {
 			ret = invalidRune(name, q)
@@ -80,13 +80,13 @@ func readLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
 }
 
 // assumes a comment hash has already been detected, write it and read till the end of the line.
-func handleComment(name string, w RuneWriter, onEol func() charm.State) charm.State {
+func handleComment(name string, w runeWriter, onEol func() charm.State) charm.State {
 	writeRunes(w, runes.Hash)
 	return innerLine(name, w, onEol)
 }
 
 // assumes a comment hash has already been read, read till the end of the line.
-func innerLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
+func innerLine(name string, w runeWriter, onEol func() charm.State) charm.State {
 	return charm.Self(name, func(self charm.State, q rune) (ret charm.State) {
 		switch {
 		case q == runes.Newline:

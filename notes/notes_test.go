@@ -14,7 +14,7 @@ func doNothing() charm.State {
 
 // for testing: write a comment and a newline
 // to write a fully blank line, pass the empty string
-func WriteLine(w RuneWriter, str string) {
+func WriteLine(w runeWriter, str string) {
 	if len(str) > 0 {
 		w.WriteRune(runes.Hash)
 		w.WriteRune(runes.Space)

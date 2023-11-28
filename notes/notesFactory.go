@@ -1,10 +1,10 @@
 package notes
 
-func KeepComments() CommentResolver {
+func KeepComments() Commentator {
 	return newNotes()
 }
 
-func DiscardComments() CommentResolver {
+func DiscardComments() Commentator {
 	return Nothing{}
 }
 
@@ -25,7 +25,7 @@ func newNotes() *commentResolver {
 
 type commentResolver struct {
 	ctx *context
-	Builder
+	runecast
 }
 
 func (p *commentResolver) GetComments() string {
@@ -33,5 +33,5 @@ func (p *commentResolver) GetComments() string {
 }
 
 func (p *commentResolver) GetAllComments() []string {
-	return p.Builder.GetAllComments(p.ctx)
+	return p.runecast.GetAllComments(p.ctx)
 }
