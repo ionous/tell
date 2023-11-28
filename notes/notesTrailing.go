@@ -6,20 +6,27 @@ import (
 )
 
 // read an inline or trailing comment ( after a collection scalar )
-func readTrailing(w RuneWriter, wroteDash bool) charm.State {
-	in := trailingDecoder{w, !wroteDash}
+func readTrailing(ctx *context, wroteDash bool) charm.State {
+	in := trailingDecoder{ctx, !wroteDash}
 	return in.awaitComment()
 }
 
+// read an inline trailing comment
+func readInline(ctx *context) charm.State {
+	in := trailingDecoder{ctx, false}
+	return in.awaitInline()
+}
+
 type trailingDecoder struct {
-	w     RuneWriter
+	*context
 	extra bool
 }
 
 func (d *trailingDecoder) writeMark() {
-	d.w.WriteRune(runes.CollectionMark)
+	d.out.writeTerms()
+	d.out.WriteRune(runes.CollectionMark)
 	if d.extra {
-		d.w.WriteRune(runes.CollectionMark)
+		d.out.WriteRune(runes.CollectionMark)
 	}
 }
 
@@ -30,7 +37,7 @@ func (d *trailingDecoder) awaitComment() charm.State {
 		switch q {
 		case runes.Hash: // its an inline comment...
 			d.writeMark()
-			ret = handleComment("firstInline", d.w, d.awaitNested)
+			ret = handleComment("firstInline", d.out, d.awaitNested)
 		case runes.Newline: // now, we see it might be a block.
 			ret = d.awaitBlock()
 		}
@@ -47,7 +54,7 @@ func (d *trailingDecoder) awaitInline() charm.State {
 		switch q {
 		case runes.Hash:
 			d.writeMark()
-			ret = handleComment("firstInline", d.w, d.awaitNested)
+			ret = handleComment("firstInline", d.out, d.awaitNested)
 		}
 		return
 	})
@@ -61,7 +68,7 @@ func (d *trailingDecoder) awaitBlock() charm.State {
 			ret = self
 		case runes.HTab: // after the newline, the comment should be indented:
 			d.writeMark()
-			ret = nestLine("firstBlock", d.w, d.awaitNested)
+			ret = nestLine("firstBlock", d.out, d.awaitNested)
 		}
 		return
 	})
@@ -72,7 +79,7 @@ func (d *trailingDecoder) awaitNested() charm.State {
 	return charm.Statement("awaitNested", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
-			ret = nestLine("readAligned", d.w, d.awaitNested)
+			ret = nestLine("readAligned", d.out, d.awaitNested)
 		}
 		return
 	})

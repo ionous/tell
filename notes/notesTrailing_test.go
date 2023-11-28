@@ -1,7 +1,6 @@
 package notes
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
@@ -30,12 +29,28 @@ func TestTrailingInline(t *testing.T) {
 
 	for i, test := range tests {
 		expect := expected[i]
-		var buf strings.Builder
-		if e := charm.Parse(test, readTrailing(&buf, true)); e != nil {
+		ctx := newContext()
+		if e := charm.Parse(test, readTrailing(ctx, true)); e != nil {
 			t.Fatal(e)
-		} else if got := buf.String(); got != expect {
+		} else if got := ctx.out.Resolve(); got != expect {
 			t.Logf("test %d: \nwant %q \nhave %q", i, expect, got)
 			t.Fail()
 		}
+	}
+}
+
+// minimalist testing of document scalar comments
+func TestInlineOnly(t *testing.T) {
+	const expected = "" +
+		"\r# one\n\t# two\n\t# three"
+
+	ctx := newContext()
+	b := build(readInline(ctx))
+	//
+	WriteLine(b.Inplace(), "one")
+	WriteLine(b.OnNestedComment(), "two")
+	WriteLine(b.OnNestedComment(), "three")
+	if got := b.GetComments(ctx)[0]; got != expected {
+		t.Fatalf("got %q expected %q", got, expected)
 	}
 }

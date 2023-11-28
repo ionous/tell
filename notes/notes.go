@@ -7,7 +7,6 @@ package notes
 type Commentator interface {
 	Events
 	RuneWriter
-	Resolver
 }
 
 // events indicate different sections of a tell document
@@ -24,10 +23,10 @@ type Events interface {
 	// paragraphs can get treated as key comments,
 	// or headers for sub collection elements
 	// depending on the number of paragraphs and the following value.
-	//
-	// fix? GetComments() is the implicit "EndCollection" --
-	// maybe better would be an explicit EndCollection that hands back the resolver or comments
 	OnKeyDecoded() Commentator
+	// done with the current collection
+	// usually followed by "GetComments"
+	OnCollectionEnded() Commentator
 }
 
 // receive text from the decoded comments of a tell document.
@@ -37,11 +36,4 @@ type RuneWriter interface {
 	// newlines outside of a comment can sometimes alter the meaning of subsequent comments
 	// but are otherwise eaten. other runes should generate an error.
 	WriteRune(rune) (int, error)
-}
-
-// pull finished comments from the commentator
-type Resolver interface {
-	// end of the current collection
-	// returns its comment block
-	GetComments() string
 }

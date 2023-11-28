@@ -9,10 +9,10 @@ func IsNothing(c Commentator) (okay bool) {
 	return
 }
 
-func (n Nothing) OnNestedComment() Commentator { return n }
-func (n Nothing) OnKeyDecoded() Commentator    { return n }
-func (n Nothing) OnScalarValue() Commentator   { return n }
-func (n Nothing) GetComments() string          { return "" }
+func (n Nothing) OnNestedComment() Commentator   { return n }
+func (n Nothing) OnKeyDecoded() Commentator      { return n }
+func (n Nothing) OnScalarValue() Commentator     { return n }
+func (n Nothing) OnCollectionEnded() Commentator { return n }
 func (n Nothing) WriteRune(rune) (_ int, _ error) {
 	return
 }

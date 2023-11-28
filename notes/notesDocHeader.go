@@ -5,41 +5,27 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// the starting point of every tell document.
-// assumes all comments are document headers
-// until seeing a nested comment or a fully blank line.
-// after "opting in" -- keeps one paragraphed buffered
-// ready to be given to the first collection as an element header.
-// if there is no such collection, treats the buffered para as header.
-type docStartDecoder struct {
+type docHeader struct {
 	*context
-	inlineScalar,
-	newCollection makeState
 }
 
-func docStart(ctx *context, inlineScalar, newCollection makeState) charm.State {
-	d := docStartDecoder{ctx, inlineScalar, newCollection}
-	return charm.Step(d.awaitHeader(), d.awaitValue())
-}
-
-// parent state: awaits for doc scalar or collection
-func (d *docStartDecoder) awaitValue() charm.State {
-	return charm.Statement("awaitValue", func(q rune) (ret charm.State) {
-		switch q {
-		case runeKey:
-			ret = d.newCollection()
-		case runeValue:
-			ret = d.inlineScalar()
-		default:
-			ret = charm.Error(invalidRune("awaitValue", q))
-		}
-		return
-	})
+// the starting point of every tell document.
+// by default, comments at the start are "document headers".
+// by opting in, authors can designate comments for the first element of the first collection.
+//
+// opting in happens by nesting comments or having a fully blank line.
+// after nesting, it gives the last nested group to the element.
+//
+// if there is no such collection, treats the buffer as header.
+//
+func newHeader(ctx *context) charm.State {
+	d := docHeader{ctx}
+	return d.awaitHeader()
 }
 
 // child state: awaits to decode the first header comment;
 // allow parent state to decode values
-func (d *docStartDecoder) awaitHeader() (ret charm.State) {
+func (d *docHeader) awaitHeader() (ret charm.State) {
 	return charm.Self("awaitHeader", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
@@ -56,7 +42,7 @@ func (d *docStartDecoder) awaitHeader() (ret charm.State) {
 // immediately after the first comment:
 // keep reading paragraphs of header, nest the header, or switch to buffering lines.
 // allow parent state to decode values
-func (d *docStartDecoder) extendHeader() charm.State {
+func (d *docHeader) extendHeader() charm.State {
 	return charm.Statement("extendHeader", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab: // nested header, switch to buffering after done
@@ -75,11 +61,8 @@ func (d *docStartDecoder) extendHeader() charm.State {
 
 // after a blank line, start looking for new paragraphs.
 // other events are handled by the parent
-func (d *docStartDecoder) awaitParagraph() charm.State {
-	if d.buf.Len() > 0 {
-		panic("expects the buffer has been flushed to the doc header")
-	}
-	//
+func (d *docHeader) awaitParagraph() charm.State {
+	// buffers comments to send them to the first element of the next collection ( if any )
 	return awaitParagraph("docLines", func() charm.State {
 		return handleComment("newParagraph", &d.buf, d.awaitBuf)
 	})
@@ -87,7 +70,7 @@ func (d *docStartDecoder) awaitParagraph() charm.State {
 
 // keep nesting the output, or start buffering.
 // allow parent state to decode values
-func (d *docStartDecoder) awaitNest() charm.State {
+func (d *docHeader) awaitNest() charm.State {
 	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
@@ -101,7 +84,7 @@ func (d *docStartDecoder) awaitNest() charm.State {
 
 // keep the buffer filled with a maximum of one paragraph.
 // allow parent state to decode values
-func (d *docStartDecoder) awaitBuf() charm.State {
+func (d *docHeader) awaitBuf() charm.State {
 	return charm.Statement("awaitBuf", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab: // nest into the current buffered paragraph

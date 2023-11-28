@@ -17,7 +17,7 @@ import (
 func TestCollection(t *testing.T) {
 	const expected = "\r# key\n# more key"
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 	// we just created the collection above, so write the key comment:
 	// - # key
@@ -48,7 +48,7 @@ func TestKeyHeaderSplit(t *testing.T) {
 		"# buffered header", // the sub sequence has a header
 	}
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 
 	// we just created the collection above, so write the key comment:
@@ -59,7 +59,7 @@ func TestKeyHeaderSplit(t *testing.T) {
 	// ....- "subcollection"
 	b.OnKeyDecoded().OnScalarValue()
 	//
-	if got := ctx.GetAllComments(); slices.Compare(got, expected) != 0 {
+	if got := b.GetComments(ctx); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 		}
@@ -84,7 +84,7 @@ func TestKeyHeaderJoin(t *testing.T) {
 			"\r# inline",
 	}
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 
 	// documents only have one value, in this case a sequence
@@ -97,10 +97,7 @@ func TestKeyHeaderJoin(t *testing.T) {
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
-	// egad... 1 "\r# key\n# buffered key\r# inline# more key"
-	// it must be buffering and not flushing when it sees the value
-	//
-	got := ctx.GetAllComments()
+	got := b.GetComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -131,7 +128,7 @@ func TestKeyNest(t *testing.T) {
 			"\n\t# third nesting",
 	}
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 
 	// documents only have one value, in this case a sequence
@@ -146,7 +143,7 @@ func TestKeyNest(t *testing.T) {
 	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
 	//
-	got := ctx.GetAllComments()
+	got := b.GetComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -178,7 +175,7 @@ func TestKeyNestCollection(t *testing.T) {
 			"\n\t# nested header",
 	}
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 
 	// documents only have one value, in this case a sequence
@@ -194,7 +191,7 @@ func TestKeyNestCollection(t *testing.T) {
 	//
 	// ..- "subcollection scalar"
 	b.OnKeyDecoded().OnScalarValue()
-	got := ctx.GetAllComments()
+	got := b.GetComments(ctx)
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -205,11 +202,16 @@ func TestKeyNestCollection(t *testing.T) {
 }
 
 // terms should have form feeds between each other
+//
+// - 1
+// - 2
+// - 3 # comment
+//
 func TestEmptyTerms(t *testing.T) {
 	const expected = "" +
 		"\f\f\r\r# comment"
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 	// the builder started the collection
 	// and the collection has an implicit first term
@@ -219,7 +221,7 @@ func TestEmptyTerms(t *testing.T) {
 	}
 	WriteLine(b.OnScalarValue(), "comment")
 	//
-	if got := ctx.GetComments(); got != expected {
+	if got := b.GetComments(ctx)[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -232,29 +234,27 @@ func TestEmptyTerms(t *testing.T) {
 // - 1
 // # 2
 // - 2
-// ...
-func xTestTermHeaders(t *testing.T) {
+//
+func TestTermHeaders(t *testing.T) {
 	const expected = "" +
-		"# 0" +
 		"\f# 1" +
 		"\f# 2"
 	ctx := newContext()
-	n := newCollection(ctx, doNothing)
+	n := newCollection(ctx)
 	b := build(n)
 	//
 	for i := 0; i < 3; i++ {
+		// the zeroth key exists because of newCollection
+		// for all subsequent entries: write a header.
 		if i > 0 {
+			WriteLine(b.Inplace(), strconv.Itoa(i))
 			b.OnKeyDecoded()
 		}
 		// a scalar value followed by a newline:
 		WriteLine(b.OnScalarValue(), "")
-		// on the next line: a comment
-		WriteLine(b.Inplace(), strconv.Itoa(i+1))
 	}
-	// fix: have to determine how to end correctly.
-	// b.send(runePopped)
-	//
-	if got := ctx.GetComments(); got != expected {
+
+	if got := b.GetComments(ctx)[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}

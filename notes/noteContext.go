@@ -1,61 +1,44 @@
 package notes
 
 import (
-	"io"
-	"slices"
-	"strings"
-
 	"github.com/ionous/tell/runes"
 )
 
 type context struct {
 	out   *pendingBlock
 	stack stack
-	buf   strings.Builder
+	// alt: each state could have its own buffer
+	// the code uses some implicit hand offs across states
+	// letting things stick in the buf and on the start of the new state flushing it.
+	// ( ex. buffered doc headers, or inter key comments which get pulled into the next element )
+	buf stringsBuilder
 }
 
 func newContext() *context {
 	return &context{out: new(pendingBlock)}
 }
 
-func (ctx *context) newBlock() {
-	prev, next := ctx.out, new(pendingBlock)
-	ctx.stack.push(prev) // remember the former block
-	ctx.out = next
-	ctx.flush() // write the current buffer to out ( the new collection comment )
-}
-
-func (ctx *context) GetComments() string {
-	// hrm.... the correct thing might be sending pop() to everyone...
-	if ctx.buf.Len() > 0 {
-		ctx.flush(runes.Newline)
-	}
-	str := ctx.out.String()
-	ctx.out = nil
-	return str
-}
-
-func (ctx *context) GetAllComments() (ret []string) {
-	ret = append(ret, ctx.GetComments())
-	for len(ctx.stack) > 0 {
-		prev := ctx.stack.pop()
-		ret = append(ret, prev.String())
-	}
-	slices.Reverse(ret)
-	return
+func (p *context) newBlock() {
+	prev, next := p.out, new(pendingBlock)
+	p.stack.push(prev) // remember the former block
+	p.out = next
+	p.flush(-1) // write the current buffer to out ( the new collection comment )
 }
 
 // write passed runes, and then the buffer, to out
-func (ctx *context) flush(qs ...rune) {
-	if cnt := ctx.out.terms; cnt > 0 {
-		for i := 0; i < cnt; i++ {
-			ctx.out.WriteRune(runes.Record)
-		}
-		ctx.out.terms = 0
+func (p *context) flush(q rune) {
+	if str := p.buf.Resolve(); len(str) > 0 {
+		p.out.writeTerms()
+		writeBuffer(p.out, str, q)
 	}
-	if str := ctx.buf.String(); len(str) > 0 {
-		writeRunes(ctx.out, qs...)
-		io.WriteString(ctx.out, str)
-		ctx.buf.Reset()
-	}
+}
+
+func (p *context) pop() {
+	// whatever we have is what we have
+	// p.res.push(p.out)
+	// any buffer right now is for the parent container
+	parent := p.stack.pop()
+	p.out = parent
+	// and now it has those contents
+	p.flush(runes.Newline)
 }

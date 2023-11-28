@@ -6,11 +6,6 @@ func NewPrinter(c Commentator) Commentator {
 
 type printer struct{ c Commentator }
 
-func (p printer) GetComments() string {
-	println("GetComments")
-	return p.c.GetComments()
-}
-
 func (p printer) WriteRune(r rune) (int, error) {
 	print(string(r))
 	return p.c.WriteRune(r)
@@ -31,5 +26,11 @@ func (p printer) OnScalarValue() Commentator {
 func (p printer) OnKeyDecoded() Commentator {
 	println("OnKeyDecoded")
 	p.c.OnKeyDecoded()
+	return p
+}
+
+func (p printer) OnCollectionEnded() Commentator {
+	println("OnCollectionEnded")
+	p.c.OnCollectionEnded()
 	return p
 }

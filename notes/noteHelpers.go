@@ -2,22 +2,30 @@ package notes
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
 
-type makeState func() charm.State
-
-// a state which creates the passed state to handle a rune
-func kickOff(m makeState) charm.State {
-	return charm.Statement("kickOff", func(q rune) charm.State {
-		return charm.RunState(q, m())
-	})
+type stringsBuilder struct {
+	strings.Builder
 }
 
-func invalidRune(name string, q rune) error {
-	return fmt.Errorf("unexpected rune %q during %s", q, name)
+func (p *stringsBuilder) Resolve() string {
+	str := p.String()
+	p.Reset()
+	return str
+}
+
+// generate an error state
+// ( rune term still returns as unhandled )
+func invalidRune(name string, q rune) (ret charm.State) {
+	if q != runeTerm {
+		e := fmt.Errorf("unexpected rune %q during %s", q, name)
+		ret = charm.Error(e)
+	}
+	return
 }
 
 // these runes can be used by authors in comments
@@ -35,6 +43,20 @@ func writeRunes(w RuneWriter, qs ...rune) {
 	}
 }
 
+type buffer interface {
+	WriteRune(rune) (int, error)
+	WriteString(string) (int, error)
+}
+
+func writeBuffer(w buffer, str string, q rune) {
+	if len(str) > 0 {
+		if q > 0 {
+			writeRunes(w, q)
+		}
+		w.WriteString(str)
+	}
+}
+
 // writes a nest header to the passed writer, and the then reads the rest of the line
 func nestLine(name string, w RuneWriter, onEol func() charm.State) (ret charm.State) {
 	writeRunes(w, runes.Newline, runes.HTab)
@@ -46,7 +68,7 @@ func nestLine(name string, w RuneWriter, onEol func() charm.State) (ret charm.St
 func readLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
 	return charm.Statement(name, func(q rune) (ret charm.State) {
 		if q != runes.Hash {
-			ret = charm.Error(invalidRune(name, q))
+			ret = invalidRune(name, q)
 		} else {
 			w.WriteRune(runes.Hash)
 			ret = innerLine(name, w, onEol)
@@ -71,7 +93,7 @@ func innerLine(name string, w RuneWriter, onEol func() charm.State) charm.State 
 			w.WriteRune(q)
 			ret = self
 		default:
-			ret = charm.Error(invalidRune(name, q))
+			ret = invalidRune(name, q)
 		}
 		return
 	})

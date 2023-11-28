@@ -1,12 +1,24 @@
 package notes
 
-import "strings"
+import (
+	"github.com/ionous/tell/runes"
+)
 
 type stack []*pendingBlock
 
 type pendingBlock struct {
-	strings.Builder
+	stringsBuilder
 	terms int // count empty terms
+}
+
+// write passed runes, and then the buffer, to out
+func (p *pendingBlock) writeTerms() {
+	if cnt := p.terms; cnt > 0 {
+		for i := 0; i < cnt; i++ {
+			p.WriteRune(runes.Record)
+		}
+		p.terms = 0
+	}
 }
 
 func (s stack) top() *pendingBlock {
