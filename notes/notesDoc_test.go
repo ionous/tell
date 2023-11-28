@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -84,6 +85,62 @@ func TestDocFooter(t *testing.T) {
 	WriteLine(b.Inplace(), "two")
 	if got := b.GetComments(ctx)[0]; got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
+	}
+}
+
+// newlines should split doc header into element headers
+//
+// # one
+//
+// # two
+// - "collection"
+func TestDocHeaderSplit(t *testing.T) {
+	var expected = []string{
+		"# one", // 0. the document has a header
+		"# two", // 1. the sequence has a header
+	}
+	//
+	ctx := newContext()
+	b := build(newDocument(ctx))
+	WriteLine(b.Inplace(), "one")
+	WriteLine(b.Inplace(), "")
+	WriteLine(b.Inplace(), "two")
+	b.OnKeyDecoded().OnScalarValue()
+	//
+	got := b.GetComments(ctx)
+	if slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
+	}
+}
+
+// nesting should split doc header into element headers
+//
+// # one
+//  # nest
+// # two
+// - "collection"
+func TestDocHeaderSplitNest(t *testing.T) {
+	var expected = []string{
+		"# one\n\t# nest", // 0. the document has a header
+		"# two",           // 1. the sequence has a header
+	}
+	//
+	ctx := newContext()
+	b := build(newDocument(ctx))
+	WriteLine(b.Inplace(), "one")
+	WriteLine(b.OnNestedComment(), "nest")
+	WriteLine(b.Inplace(), "two")
+	b.OnKeyDecoded()
+	//
+	got := b.GetComments(ctx)
+	if slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
 	}
 }
 
