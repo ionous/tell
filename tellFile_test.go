@@ -27,7 +27,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	focus = "emptyComments"
+	// focus = "emptyDoc1"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -87,10 +87,10 @@ func readTell(filePath string) (ret any, err error) {
 		doc := decode.NewDocument(stdmap.Builder, comments)
 		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
 			err = e
-		} else if cmt := pbuf.String(); len(cmt) > 0 {
+		} else if pbuf != nil && pbuf.Len() > 0 {
 			ret = map[string]any{
 				"content": res,
-				"comment": cmt,
+				"comment": pbuf.String(),
 			}
 		} else {
 			ret = map[string]any{
