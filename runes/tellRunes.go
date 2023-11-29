@@ -15,5 +15,3 @@ const (
 	WordSep           = ':'  // keywords in a signature are separated by a colon
 	Space             = ' '
 )
-
-const Nestline = "\n\t"
