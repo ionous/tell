@@ -12,10 +12,10 @@ func newDocument(ctx *context) charm.State {
 func newBody(ctx *context) charm.State {
 	return charm.Statement("awaitValue", func(q rune) (ret charm.State) {
 		switch q {
-		case runeTerm:
+		case runeEof:
 			// flush the unused buffer as additional headers with newline
-			if str := ctx.buf.Resolve(); len(str) > 0 {
-				writeBuffer(ctx.out, str, runes.Newline)
+			if str := ctx.resolveBuffer(); len(str) > 0 {
+				writeBuffer(&ctx.out, str, runes.Newline)
 			}
 			ret = charm.Error(nil) // there's only one buffer, so we're done.
 
@@ -24,6 +24,7 @@ func newBody(ctx *context) charm.State {
 				charm.Statement("afterScalar", func(q rune) (ret charm.State) {
 					return docEnd(ctx).NewRune(q)
 				}))
+
 		case runeKey:
 			ret = charm.Step(newCollection(ctx),
 				charm.Statement("afterCollection", func(q rune) (ret charm.State) {

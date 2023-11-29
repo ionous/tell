@@ -22,8 +22,11 @@ func keyComments(ctx *context) charm.State {
 }
 
 // everything after any blank line gets buffered together.
-func (d *keyCommentDecoder) bufferAll() charm.State {
+func (d *keyCommentDecoder) bufferAll(mark bool) charm.State {
 	return awaitParagraph("bufferAll", func() charm.State {
+		if mark {
+			d.out.WriteRune(runes.CollectionMark)
+		}
 		return handleAll(&d.buf)
 	})
 }
@@ -34,11 +37,9 @@ func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
 		switch q {
 		case runes.Hash:
 			d.out.WriteRune(runes.CollectionMark)
-			ret = handleComment("keyLine", d.out, d.awaitNest)
+			ret = handleComment("keyLine", &d.out, d.awaitNest)
 		case runes.Newline:
-			// tbd: hopefully, this interoperates with nil values okay
-			d.out.WriteRune(runes.CollectionMark)
-			ret = d.bufferAll()
+			ret = d.bufferAll(true)
 		}
 		return
 	})
@@ -49,11 +50,11 @@ func (d *keyCommentDecoder) awaitNest() (ret charm.State) {
 	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
-			ret = nestLine("nestOutput", d.out, d.awaitNest)
+			ret = nestLine("nestOutput", &d.out, d.awaitNest)
 		case runes.Hash:
 			ret = handleComment("firstBuffer", &d.buf, d.awaitBuffering)
 		case runes.Newline:
-			ret = d.bufferAll()
+			ret = d.bufferAll(false)
 		}
 		return
 	})
@@ -71,7 +72,7 @@ func (d *keyCommentDecoder) awaitBuffering() (ret charm.State) {
 			d.flush(runes.Newline)
 			ret = handleComment("newBuffer", &d.buf, d.awaitBuffering)
 		case runes.Newline:
-			ret = d.bufferAll()
+			ret = d.bufferAll(false)
 		}
 		return
 	})

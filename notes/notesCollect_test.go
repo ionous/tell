@@ -3,6 +3,7 @@ package notes
 import (
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/runes"
@@ -16,9 +17,9 @@ import (
 //
 func TestCollection(t *testing.T) {
 	const expected = "\r# key\n# more key"
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+	var str strings.Builder
+	ctx := newContext(&str)
+	b := newCommentBuilder(ctx, newCollection(ctx))
 	// we just created the collection above, so write the key comment:
 	// - # key
 	WriteLine(b.Inplace(), "key")
@@ -28,7 +29,7 @@ func TestCollection(t *testing.T) {
 	b.OnScalarValue()
 	//
 	ctx.flush(runes.Newline) // hrm
-	got := ctx.out.String()
+	got := str.String()
 	if got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fatal("mismatch")
@@ -43,13 +44,12 @@ func TestCollection(t *testing.T) {
 // ....- "subcollection"
 func TestKeyHeaderSplit(t *testing.T) {
 	var expected = []string{
-		"",
 		"\r# key",           // the sequence has key
 		"# buffered header", // the sub sequence has a header
 	}
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
 
 	// we just created the collection above, so write the key comment:
 	// - # key
@@ -57,9 +57,9 @@ func TestKeyHeaderSplit(t *testing.T) {
 	// ..# buffered header
 	WriteLine(b.Inplace(), "buffered header")
 	// ....- "subcollection"
-	b.OnKeyDecoded().OnScalarValue()
+	b.BeginCollection(stack.new()).OnScalarValue()
 	//
-	if got := b.GetAllComments(ctx); slices.Compare(got, expected) != 0 {
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 		}
@@ -75,17 +75,15 @@ func TestKeyHeaderSplit(t *testing.T) {
 // .."scalar" # inline
 func TestKeyHeaderJoin(t *testing.T) {
 	var expected = []string{
-		// 0. the document has no comments
-		"",
 		// 1. the sequence has key
 		"\r# key" +
 			"\n# buffered key" +
 			"\n# more key" +
 			"\r# inline",
 	}
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
 
 	// documents only have one value, in this case a sequence
 	// - # key
@@ -97,7 +95,7 @@ func TestKeyHeaderJoin(t *testing.T) {
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
-	got := b.GetAllComments(ctx)
+	got := stack.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -117,8 +115,6 @@ func TestKeyHeaderJoin(t *testing.T) {
 // .."scalar"
 func TestKeyNest(t *testing.T) {
 	var expected = []string{
-		// 0. the document has no comments
-		"",
 		// 1. the sequence has key
 		"\r# key" +
 			"\n\t# nested key" +
@@ -127,9 +123,9 @@ func TestKeyNest(t *testing.T) {
 			"\n# third key" +
 			"\n\t# third nesting",
 	}
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
@@ -143,7 +139,7 @@ func TestKeyNest(t *testing.T) {
 	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
 	//
-	got := b.GetAllComments(ctx)
+	got := stack.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -163,8 +159,6 @@ func TestKeyNest(t *testing.T) {
 // ..- "subcollection scalar"
 func TestKeyNestCollection(t *testing.T) {
 	var expected = []string{
-		// 0. the document has no comments
-		"",
 		// 1. the sequence has key
 		"\r# key" +
 			"\n\t# nested key" +
@@ -174,9 +168,10 @@ func TestKeyNestCollection(t *testing.T) {
 		"# buffered header" +
 			"\n\t# nested header",
 	}
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
@@ -190,8 +185,8 @@ func TestKeyNestCollection(t *testing.T) {
 	WriteLine(b.OnNestedComment(), "nested header")
 	//
 	// ..- "subcollection scalar"
-	b.OnKeyDecoded().OnScalarValue()
-	got := b.GetAllComments(ctx)
+	b.BeginCollection(stack.new()).OnScalarValue()
+	got := stack.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -210,9 +205,10 @@ func TestKeyNestCollection(t *testing.T) {
 func TestEmptyTerms(t *testing.T) {
 	const expected = "" +
 		"\f\f\r\r# comment"
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+
+	var str strings.Builder
+	ctx := newContext(&str)
+	b := newCommentBuilder(ctx, newCollection(ctx))
 	// the builder started the collection
 	// and the collection has an implicit first term
 	// these are the two subsequent terms -- so two newlines
@@ -221,7 +217,7 @@ func TestEmptyTerms(t *testing.T) {
 	}
 	WriteLine(b.OnScalarValue(), "comment")
 	//
-	if got := b.GetAllComments(ctx)[1]; got != expected {
+	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -238,9 +234,10 @@ func TestTermHeaders(t *testing.T) {
 	const expected = "" +
 		"\f# 1" +
 		"\f# 2"
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
+
+	var str strings.Builder
+	ctx := newContext(&str)
+	b := newCommentBuilder(ctx, newCollection(ctx))
 	//
 	for i := 0; i < 3; i++ {
 		// the zeroth key exists because of newCollection
@@ -252,7 +249,7 @@ func TestTermHeaders(t *testing.T) {
 		// a scalar value followed by a newline:
 		WriteLine(b.OnScalarValue(), "")
 	}
-	if got := b.GetAllComments(ctx)[1]; got != expected {
+	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -269,41 +266,51 @@ func TestTermHeaders(t *testing.T) {
 //
 // ie. [1,[2,3],[4,[5]],6]
 func TestCollectBeginEnd(t *testing.T) {
-	ctx := newContext()
-	n := newCollection(ctx)
-	b := build(n)
-	// in order of closure (end bracket)
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
+	// in order of left bracket
 	// everything here appears as inline comments (\r\r)
 	// each comma is a formfeed, with trailing sub-collections are trimmed.
-	var got []string
 	expected := []string{
-		"\r\r# 2\f\r\r# 3",
-		"\r\r# 5", // the array closest to 5 ends before, 4...5
-		"\r\r# 4",
 		"\r\r# 1\f\f\f\r\r# 6", // the outer most array ends last
+		"\r\r# 2\f\r\r# 3",
+		"\r\r# 4",
+		"\r\r# 5", // the array closest to 5 ends before, 4...5
 		// [1,*,*,6] 3 comma separators, 3 form feeds.
 	}
 
-	WriteLine(b.OnKeyDecoded().OnScalarValue(), "1")
-	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "2")
+	// no initial key because "newCollection" was our key
+	WriteLine(b.OnScalarValue(), "1")
+	WriteLine(b.OnKeyDecoded().BeginCollection(stack.new()).OnScalarValue(), "2")
 	WriteLine(b.OnKeyDecoded().OnScalarValue(), "3")
 	b.OnCollectionEnded()
-	got = append(got, ctx.res)
-	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "4")
-	WriteLine(b.OnKeyDecoded().OnKeyDecoded().OnScalarValue(), "5")
-	b.OnCollectionEnded()
-	got = append(got, ctx.res)
-	b.OnCollectionEnded()
-	got = append(got, ctx.res)
+	WriteLine(b.OnKeyDecoded().BeginCollection(stack.new()).OnScalarValue(), "4")
+	WriteLine(b.OnKeyDecoded().BeginCollection(stack.new()).OnScalarValue(), "5")
+	b.OnCollectionEnded().OnCollectionEnded()
 	WriteLine(b.OnKeyDecoded().OnScalarValue(), "6")
-	b.OnCollectionEnded()
-	got = append(got, ctx.res)
 	//
-	// got := b.GetComments(ctx)
+	got := stack.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 		}
 		t.Fatal("mismatch")
 	}
+}
+
+type stringStack []*strings.Builder
+
+func (f *stringStack) new() *strings.Builder {
+	next := new(strings.Builder)
+	(*f) = append(*f, next)
+	return next
+}
+
+func (f *stringStack) Strings() []string {
+	out := make([]string, len(*f))
+	for i, buf := range *f {
+		out[i] = buf.String()
+	}
+	return out
 }

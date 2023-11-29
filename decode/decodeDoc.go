@@ -6,6 +6,7 @@ import (
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/maps"
 	"github.com/ionous/tell/notes"
+	"github.com/ionous/tell/runes"
 )
 
 // document decoder
@@ -41,6 +42,11 @@ func (doc *Document) ReadLines(src io.RuneReader, start charm.State) (err error)
 		err = e
 	}
 	return
+}
+
+func (doc *Document) PopAll() error {
+	doc.notes.WriteRune(runes.Newline) // fix?
+	return doc.History.PopAll()
 }
 
 // ugly: if preserve comments is true,

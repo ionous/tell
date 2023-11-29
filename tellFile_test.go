@@ -27,7 +27,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	// focus = "headerFooterComment1"
+	focus = "emptyComments"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -75,14 +75,19 @@ func readTell(filePath string) (ret any, err error) {
 	if fp, e := tellData.Open(filePath); e != nil {
 		err = e
 	} else {
-		comments := notes.NewCommentator(strings.Contains(strings.ToLower(filePath), "comment"))
+		// fix: might be cleaner to have a "BeginCollection" for document too
+		var pbuf *strings.Builder // document level comment data
+		if strings.Contains(strings.ToLower(filePath), "comment") {
+			pbuf = new(strings.Builder)
+		}
+		comments := notes.NewCommentator(pbuf)
 		if len(focus) > 0 {
 			comments = notes.NewPrinter(comments)
 		}
 		doc := decode.NewDocument(stdmap.Builder, comments)
 		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
 			err = e
-		} else if cmt := comments.GetComments(); len(cmt) > 0 {
+		} else if cmt := pbuf.String(); len(cmt) > 0 {
 			ret = map[string]any{
 				"content": res,
 				"comment": cmt,

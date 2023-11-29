@@ -7,35 +7,37 @@ func NewPrinter(c Commentator) Commentator {
 
 type printer struct{ c Commentator }
 
-func (p printer) GetComments() string {
-	return p.c.GetComments()
+func (p printer) BeginCollection(w RuneWriter) Commentator {
+	println("BeginCollection")
+	p.c.BeginCollection(w)
+	return p
 }
 
-func (p printer) WriteRune(r rune) (int, error) {
-	print(string(r))
-	return p.c.WriteRune(r)
-}
-
-func (p printer) OnNestedComment() Events {
+func (p printer) OnNestedComment() Commentator {
 	println("OnNestedComment")
 	p.c.OnNestedComment()
 	return p
 }
 
-func (p printer) OnScalarValue() Events {
+func (p printer) OnScalarValue() Commentator {
 	println("OnScalarValue")
 	p.c.OnScalarValue()
 	return p
 }
 
-func (p printer) OnKeyDecoded() Events {
+func (p printer) OnKeyDecoded() Commentator {
 	println("OnKeyDecoded")
 	p.c.OnKeyDecoded()
 	return p
 }
 
-func (p printer) OnCollectionEnded() Events {
+func (p printer) OnCollectionEnded() Commentator {
 	println("OnCollectionEnded")
 	p.c.OnCollectionEnded()
 	return p
+}
+
+func (p printer) WriteRune(r rune) (int, error) {
+	print(string(r))
+	return p.c.WriteRune(r)
 }

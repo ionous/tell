@@ -4,16 +4,16 @@ package notes
 type Nothing struct{}
 
 // helper to see whether the implementation of Commentator discards comments
-func IsNothing(c Events) (okay bool) {
+func IsNothing(c Commentator) (okay bool) {
 	_, okay = c.(Nothing)
 	return
 }
 
-func (n Nothing) OnNestedComment() Events   { return n }
-func (n Nothing) OnKeyDecoded() Events      { return n }
-func (n Nothing) OnScalarValue() Events     { return n }
-func (n Nothing) OnCollectionEnded() Events { return n }
-func (n Nothing) GetComments() (_ string)   { return }
+func (n Nothing) BeginCollection(RuneWriter) Commentator { return n }
+func (n Nothing) OnNestedComment() Commentator           { return n }
+func (n Nothing) OnKeyDecoded() Commentator              { return n }
+func (n Nothing) OnScalarValue() Commentator             { return n }
+func (n Nothing) OnCollectionEnded() Commentator         { return n }
 func (n Nothing) WriteRune(rune) (_ int, _ error) {
 	return
 }

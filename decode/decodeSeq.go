@@ -2,6 +2,7 @@ package decode
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/notes"
@@ -12,9 +13,10 @@ import (
 // a dash, whitespace, the value, trailing whitespace.
 // then loops back to itself to handle the next dash.
 type Sequence struct {
-	doc    *Document
-	depth  int
-	values []any
+	doc          *Document
+	depth, count int
+	values       []any
+	comments     strings.Builder // for comments
 }
 
 // re: depth value decoding must first discover whether the dash is part of a number
@@ -23,6 +25,7 @@ func NewSequence(doc *Document, depth int) *Sequence {
 	c := &Sequence{doc: doc, depth: depth}
 	if keepComments := !notes.IsNothing(doc.notes); keepComments {
 		c.values = make([]any, 1)
+		c.doc.notes.BeginCollection(&c.comments)
 	}
 	return c
 }
@@ -36,10 +39,12 @@ func (c *Sequence) EntryDecoder() charm.State {
 	ent := tellEntry{
 		doc:          c.doc,
 		depth:        c.depth + 2,
+		count:        c.count,
 		pendingValue: scalarValue{emptyValue},
 		addsValue: func(val any) (_ error) {
 			if val != emptyValue {
 				c.values = append(c.values, val)
+				c.count++
 			}
 			return
 		},
@@ -69,8 +74,7 @@ func (c *Sequence) EntryDecoder() charm.State {
 // used by parent collections to read the completed collection
 func (c *Sequence) FinalizeValue() (ret any, err error) {
 	if !notes.IsNothing(c.doc.notes) {
-		str := c.doc.notes.GetComments()
-		c.values[0] = str
+		c.values[0] = c.comments.String()
 	}
 	ret, c.values = c.values, nil
 	return

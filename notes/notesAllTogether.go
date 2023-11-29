@@ -8,17 +8,17 @@ import (
 // decode every comment encountered into a designated stream
 // treats everything that isn't a paragraph, blank line, or comment line as unhandled.
 type mulitBlockDecoder struct {
-	w runeWriter
+	w RuneWriter
 }
 
 // assumes the next rune is a comment hash
-func readAll(w runeWriter) charm.State {
+func readAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
 	return readLine("readFirst", w, d.awaitAll)
 }
 
 // assumes there's already been a comment hash, and we need to read content.
-func handleAll(w runeWriter) charm.State {
+func handleAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
 	return d.handleNext()
 }

@@ -2,6 +2,7 @@ package notes
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -12,10 +13,10 @@ import (
 func TestDocEmptyish(t *testing.T) {
 	const expected = "" +
 		"# emptyish"
-
-	b := newNotes()
+	var str strings.Builder
+	b := newNotes(&str)
 	WriteLine(b.Inplace(), "emptyish")
-	if got := b.GetAllComments()[0]; got != expected {
+	if got := str.String(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
 }
@@ -28,12 +29,12 @@ func TestDocEmptyish(t *testing.T) {
 func TestDocHeaderLines(t *testing.T) {
 	const expected = "" +
 		"# header\n# subheader"
-
-	b := newNotes()
+	var str strings.Builder
+	b := newNotes(&str)
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.Inplace(), "subheader")
 	//
-	if got := b.GetAllComments()[0]; got != expected {
+	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -50,13 +51,15 @@ func TestDocHeaderNest(t *testing.T) {
 	const expected = "" +
 		"# header\n\t# nest\n# subheader\n\t# nest"
 
-	b := newNotes()
+	var str strings.Builder
+	b := newNotes(&str)
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.OnNestedComment(), "nest")
 	WriteLine(b.Inplace(), "subheader")
 	WriteLine(b.OnNestedComment(), "nest")
+	b.OnCollectionEnded() // flush the document
 	//
-	if got := b.GetAllComments()[0]; got != expected {
+	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -74,13 +77,14 @@ func TestDocHeaderSplit(t *testing.T) {
 		"# two", // 1. the sequence has a header
 	}
 	//
-	b := newNotes()
+	var str stringStack
+	b := newNotes(str.new())
 	WriteLine(b.Inplace(), "one")
 	WriteLine(b.Inplace(), "")
 	WriteLine(b.Inplace(), "two")
-	b.OnKeyDecoded().OnScalarValue()
+	b.BeginCollection(str.new()).OnScalarValue()
 	//
-	got := b.GetAllComments()
+	got := str.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -101,13 +105,14 @@ func TestDocHeaderSplitNest(t *testing.T) {
 		"# two",           // 1. the sequence has a header
 	}
 	//
-	b := newNotes()
+	var str stringStack
+	b := newNotes(str.new())
 	WriteLine(b.Inplace(), "one")
 	WriteLine(b.OnNestedComment(), "nest")
 	WriteLine(b.Inplace(), "two")
-	b.OnKeyDecoded()
+	b.BeginCollection(str.new())
 	//
-	got := b.GetAllComments()
+	got := str.Strings()
 	if slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
@@ -126,13 +131,14 @@ func TestDocScalar(t *testing.T) {
 	const expected = "" +
 		"# header\n# subheader\r# inline\f# footer"
 
-	b := newNotes()
+	var str strings.Builder
+	b := newNotes(&str)
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.Inplace(), "subheader")
 	WriteLine(b.OnScalarValue(), "inline")
 	WriteLine(b.Inplace(), "footer")
 	//
-	if got := b.GetAllComments()[0]; got != expected {
+	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -147,13 +153,16 @@ func TestDocCollection(t *testing.T) {
 	const expected = "" +
 		"# header\n# subheader\f# footer"
 
-	b := newNotes()
+	var str stringStack
+	b := newNotes(str.new())
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.Inplace(), "subheader")
-	WriteLine(b.OnKeyDecoded().OnScalarValue(), "")
+	WriteLine(b.BeginCollection(str.new()).OnScalarValue(), "")
 	WriteLine(b.Inplace(), "footer")
+	b.OnEof() // flush the document
+
 	//
-	if got := b.GetAllComments()[0]; got != expected {
+	if got := str.Strings()[0]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}
@@ -165,16 +174,19 @@ func TestDocCollection(t *testing.T) {
 // ..# more key<eof>
 func TestKeyNil(t *testing.T) {
 	var expected = "\r# key\n# more key"
-	b := newNotes()
+
+	var str stringStack
+	b := newNotes(str.new())
 	// documents only have one value, in this case a sequence
 	// - # key
-	WriteLine(b.OnKeyDecoded(), "key")
+	WriteLine(b.BeginCollection(str.new()), "key")
 	// ..# more key ( but no eol )
 	for _, q := range "# more key" {
 		b.WriteRune(q)
 	}
+	b.OnEof() // flush the document
 	//
-	if got := b.GetAllComments()[1]; got != expected {
+	if got := str.Strings()[1]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
 	}

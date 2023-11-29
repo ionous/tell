@@ -1,43 +1,61 @@
 package notes
 
 import (
+	"strings"
+
 	"github.com/ionous/tell/runes"
 )
 
 type context struct {
-	out   *pendingBlock
+	out   pendingBlock
 	stack stack
 	// alt: each state could have its own buffer
 	// the code uses some implicit hand offs across states
 	// letting things stick in the buf and on the start of the new state flushing it.
 	// ( ex. buffered doc headers, or inter key comments which get pulled into the next element )
-	buf Lines
-	res string
+	buf            Lines
+	bufData        strings.Builder
+	nextCollection RuneWriter // from BeginCollection
 }
 
-func newContext() *context {
-	return &context{out: new(pendingBlock)}
+// fix: might be cleaner for tell to have a "BeginCollection" for document too
+// especially because it sends a mismatched EndCollection to flush the document...
+// ( rather than passing the runewriter at the start )
+func newContext(w RuneWriter) *context {
+	ctx := &context{nextCollection: w, out: makeBlock(w)}
+	ctx.buf.out = &ctx.bufData
+	return ctx
 }
 
 func (p *context) newBlock() {
-	prev, next := p.out, new(pendingBlock)
+	var w RuneWriter
+	w, p.nextCollection = p.nextCollection, nil
+	if w == nil {
+		panic("missing begin collection?")
+	}
+	prev, next := p.out, makeBlock(w)
 	p.stack.push(prev) // remember the former block
 	p.out = next
 	p.flush(-1) // write the current buffer to out ( the new collection comment )
 }
 
+func (p *context) resolveBuffer() (ret string) {
+	if ret = p.bufData.String(); len(ret) > 0 {
+		p.bufData.Reset()
+	}
+	return
+}
+
 // write passed runes, and then the buffer, to out
 func (p *context) flush(q rune) {
-	if str := p.buf.Resolve(); len(str) > 0 {
+	if str := p.resolveBuffer(); len(str) > 0 {
 		p.out.writeTerms()
-		writeBuffer(p.out, str, q)
+		writeBuffer(&p.out, str, q)
 	}
 }
 
 // called on end collection.
 func (p *context) pop() {
-	// whatever we have is what we have
-	p.res = p.out.Resolve()
 	// any buffer right now is for the parent container
 	parent := p.stack.pop()
 	p.out = parent

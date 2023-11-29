@@ -8,7 +8,7 @@ import (
 // represents a member of a collection
 type tellEntry struct {
 	doc          *Document
-	depth        int
+	depth, count int
 	pendingValue pendingValue
 	addsValue    func(any) error
 }
@@ -20,6 +20,8 @@ func (ent *tellEntry) finalizeEntry() (err error) {
 		// finalizeEntry is the one moment common to all values (incl nil)
 		if !isPendingCollection(ent.pendingValue) {
 			ent.doc.notes.OnScalarValue()
+		} else {
+			ent.doc.notes.OnCollectionEnded()
 		}
 		if val, e := ent.pendingValue.FinalizeValue(); e != nil {
 			err = e
@@ -34,7 +36,11 @@ func (ent *tellEntry) finalizeEntry() (err error) {
 // immediately after the key has been decoded:
 // parses contents and loops (by popping) after its done
 func StartContentDecoding(ent *tellEntry) charm.State {
-	ent.doc.notes.OnKeyDecoded() // kind of an ugly place... but oh well.
+	if ent.count > 0 {
+		// kind of ugly... but oh well.
+		// might have been better to have notes eat the first key after collection.
+		ent.doc.notes.OnKeyDecoded()
+	}
 	return charm.Step(ContentDecoder(ent),
 		charm.Self("after entry", func(afterEntry charm.State, r rune) (ret charm.State) {
 			switch r {

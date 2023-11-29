@@ -2,6 +2,7 @@ package decode
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/maps"
@@ -10,24 +11,30 @@ import (
 )
 
 type Mapping struct {
-	doc    *Document
-	depth  int
-	key    Signature
-	values maps.Builder
+	doc          *Document
+	depth, count int
+	key          Signature
+	values       maps.Builder
+	comments     strings.Builder // for comments
 }
 
 // maybe doc is a factory even?
 func NewMapping(doc *Document, depth int) *Mapping {
 	keepComments := !notes.IsNothing(doc.notes)
-	return &Mapping{doc: doc, depth: depth, values: doc.makeMap(keepComments)}
+	m := &Mapping{doc: doc, depth: depth, values: doc.makeMap(keepComments)}
+	if keepComments {
+		m.doc.notes.BeginCollection(&m.comments)
+	}
+	return m
 }
 
 // a state that can parse one key-value pair
-//  uses doc.Push() to loop at a given indent.
+// caller uses doc.Push() to loop at a given indent.
 func (c *Mapping) EntryDecoder() charm.State {
 	ent := tellEntry{
 		doc:          c.doc,
 		depth:        c.depth + 2,
+		count:        c.count,
 		pendingValue: scalarValue{}, // unlike seq, maps can set the nil value by default
 		addsValue: func(val any) (err error) {
 			if c.key.IsKeyPending() {
@@ -36,6 +43,7 @@ func (c *Mapping) EntryDecoder() charm.State {
 				err = e
 			} else {
 				c.values = c.values.Add(key, val)
+				c.count++
 			}
 			return
 		},
@@ -62,7 +70,7 @@ func (c *Mapping) FinalizeValue() (ret any, err error) {
 		err = errors.New("signature must end with a colon, did you forget to quote a value?")
 	} else {
 		if !notes.IsNothing(c.doc.notes) {
-			str := c.doc.notes.GetComments()
+			str := c.comments.String()
 			c.values = c.values.Add("", str)
 		}
 		ret, c.values = c.values.Map(), nil

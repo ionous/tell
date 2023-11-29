@@ -4,17 +4,12 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
 
-func doNothing() charm.State {
-	return nil
-}
-
 // for testing: write a comment and a newline
 // to write a fully blank line, pass the empty string
-func WriteLine(w runeWriter, str string) {
+func WriteLine(w RuneWriter, str string) {
 	if len(str) > 0 {
 		w.WriteRune(runes.Hash)
 		w.WriteRune(runes.Space)
@@ -26,20 +21,24 @@ func WriteLine(w runeWriter, str string) {
 }
 
 // test an example similar to the one in the read me
+//
+// # header
+// - "value" # inline
+// # footer
+//
 func TestReadmeExample(t *testing.T) {
 	var expected = []string{
 		"# header\f# footer",
 		"\r\r# inline",
 	}
-
-	b := newNotes()
+	var stack stringStack
+	b := newNotes(stack.new())
 	WriteLine(b.Inplace(), "header")
-	WriteLine(b.OnKeyDecoded().OnScalarValue(), "inline")
+	WriteLine(b.BeginCollection(stack.new()).OnScalarValue(), "inline")
 	WriteLine(b.Inplace(), "footer")
+	b.OnEof()
 	//
-	//
-	got := b.GetAllComments()
-	if slices.Compare(got, expected) != 0 {
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 			t.Logf("x %q", expected[i])
@@ -58,18 +57,19 @@ func TestCommentBlock(t *testing.T) {
 			"\r# inline\n\t# nested inline",
 	}
 
-	b := newNotes()
+	var stack stringStack
+	b := newNotes(stack.new())
 	WriteLine(b.Inplace(), "header")
 	WriteLine(b.OnNestedComment(), "nested header")
-	WriteLine(b.OnKeyDecoded(), "key")
+	WriteLine(b.BeginCollection(stack.new()), "key")
 	WriteLine(b.OnNestedComment(), "nested key")
 	WriteLine(b.OnScalarValue(), "inline")
 	WriteLine(b.OnNestedComment(), "nested inline")
 	WriteLine(b.Inplace(), "footer")
 	WriteLine(b.Inplace(), "extra footer")
+	b.OnEof()
 	//
-	got := b.GetAllComments()
-	if slices.Compare(got, expected) != 0 {
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 			t.Logf("x %q", expected[i])

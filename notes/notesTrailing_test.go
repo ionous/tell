@@ -1,6 +1,7 @@
 package notes
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
@@ -29,10 +30,11 @@ func TestTrailingInline(t *testing.T) {
 
 	for i, test := range tests {
 		expect := expected[i]
-		ctx := newContext()
+		var str strings.Builder
+		ctx := newContext(&str)
 		if e := charm.Parse(test, readTrailing(ctx, true)); e != nil {
 			t.Fatal(e)
-		} else if got := ctx.out.Resolve(); got != expect {
+		} else if got := str.String(); got != expect {
 			t.Logf("test %d: \nwant %q \nhave %q", i, expect, got)
 			t.Fail()
 		}
@@ -44,13 +46,14 @@ func TestInlineOnly(t *testing.T) {
 	const expected = "" +
 		"\r# one\n\t# two\n\t# three"
 
-	ctx := newContext()
-	b := build(readInline(ctx))
+	var str strings.Builder
+	ctx := newContext(&str)
+	b := makeRunecast(readInline(ctx))
 	//
 	WriteLine(b.Inplace(), "one")
 	WriteLine(b.OnNestedComment(), "two")
 	WriteLine(b.OnNestedComment(), "three")
-	if got := b.GetAllComments(ctx)[0]; got != expected {
+	if got := str.String(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
 }

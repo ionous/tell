@@ -37,8 +37,8 @@ func (d *trailingDecoder) awaitComment() charm.State {
 		switch q {
 		case runes.Hash: // its an inline comment...
 			d.writeMark()
-			ret = handleComment("firstInline", d.out, d.awaitNested)
-		case runes.Newline: // now, we see it might be a block.
+			ret = handleComment("firstInline", &d.out, d.awaitNested)
+		case runes.Newline: // now, we see it might be a block
 			ret = d.awaitBlock()
 		}
 		return
@@ -54,7 +54,7 @@ func (d *trailingDecoder) awaitInline() charm.State {
 		switch q {
 		case runes.Hash:
 			d.writeMark()
-			ret = handleComment("firstInline", d.out, d.awaitNested)
+			ret = handleComment("firstInline", &d.out, d.awaitNested)
 		}
 		return
 	})
@@ -68,7 +68,7 @@ func (d *trailingDecoder) awaitBlock() charm.State {
 			ret = self
 		case runes.HTab: // after the newline, the comment should be indented:
 			d.writeMark()
-			ret = nestLine("firstBlock", d.out, d.awaitNested)
+			ret = nestLine("firstBlock", &d.out, d.awaitNested)
 		}
 		return
 	})
@@ -79,7 +79,7 @@ func (d *trailingDecoder) awaitNested() charm.State {
 	return charm.Statement("awaitNested", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
-			ret = nestLine("readAligned", d.out, d.awaitNested)
+			ret = nestLine("readAligned", &d.out, d.awaitNested)
 		}
 		return
 	})

@@ -39,11 +39,12 @@ func TestKeyBuffering(t *testing.T) {
 		test := strings.Join(lines[:i+1], "\n")
 		a, b := expectations[i*2+0], expectations[i*2+1]
 
-		ctx := newContext()
+		var str strings.Builder
+		ctx := newContext(&str)
 		if e := charm.Parse(test, keyComments(ctx)); e != nil {
 			t.Fatal(e)
 		} else {
-			out, buf := ctx.out.String(), ctx.buf.String()
+			out, buf := str.String(), ctx.resolveBuffer()
 			if out != a || buf != b {
 				t.Logf("test %d got:\n%q\n:%q", i, out, buf)
 				t.Fail()
@@ -71,11 +72,12 @@ func TestKeyBlank(t *testing.T) {
 		test := lines[0]
 		a, b := expectations[i*2+0], expectations[i*2+1]
 
-		ctx := newContext()
+		var str strings.Builder
+		ctx := newContext(&str)
 		if e := charm.Parse(test, keyComments(ctx)); e != nil {
 			t.Fatal(e)
 		} else {
-			out, buf := ctx.out.String(), ctx.buf.String()
+			out, buf := str.String(), ctx.resolveBuffer()
 			if out != a || buf != b {
 				t.Logf("test %d got:\n%q\n:%q", i, out, buf)
 				t.Fail()

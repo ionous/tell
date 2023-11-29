@@ -1,39 +1,24 @@
 package notes
 
 import (
-	"strings"
-
 	"github.com/ionous/tell/runes"
 )
 
 // lines are automatically whitespace trimmed.
 type Lines struct {
-	buf    strings.Builder
-	spaces int // helpers to trim trailing whitespace
+	out           RuneWriter
+	spaces, total int // helpers to trim trailing whitespace
 }
 
-func (n *Lines) String() string {
-	return n.buf.String()
-}
-
-// number of runes in the buffer.
+// approximate count of runes in the buffer.
 func (n *Lines) Len() int {
-	return n.buf.Len()
+	return n.total
 }
 
-// return the buffer, then clear it.
-func (n *Lines) Resolve() string {
-	str := n.buf.String()
-	n.buf.Reset()
-	return str
-}
-
-// fix? for now, assume that s is trimmed
-func (n *Lines) WriteString(s string) (ret int, err error) {
-	if len(s) > 0 {
-		n.writeSpaces()
-		ret, err = n.buf.WriteString(s)
-	}
+// for now assume that s is trimmed
+func (n *Lines) WriteString(str string) (ret int, err error) {
+	ret, err = writeString(n.out, str)
+	n.total = ret + n.writeSpaces()
 	return
 }
 
@@ -42,7 +27,6 @@ func (n *Lines) WriteString(s string) (ret int, err error) {
 // they aren't always written into the comment block.
 func (n *Lines) WriteRune(q rune) (_ int, _ error) {
 	if q == runes.Space {
-
 		n.spaces++ // helper to trim trailing spaces
 	} else {
 		if q == runes.Newline {
@@ -50,19 +34,33 @@ func (n *Lines) WriteRune(q rune) (_ int, _ error) {
 		} else {
 			n.writeSpaces()
 		}
-		n.buf.WriteRune(q)
+		n.out.WriteRune(q)
+		n.total++
 	}
 	return
 }
 
-func (n *Lines) writeSpaces() {
-	if n.spaces > 0 {
-		dupe(&n.buf, n.spaces, runes.Space)
+func (n *Lines) writeSpaces() (ret int) {
+	if ret = n.spaces; ret > 0 {
+		dupe(n.out, n.spaces, runes.Space)
 		n.spaces = 0
 	}
+	return
 }
 
-func dupe(w runeWriter, cnt int, q rune) {
+func writeString(w RuneWriter, str string) (ret int, _ error) {
+	if out, ok := w.(stringWriter); ok {
+		ret, _ = out.WriteString(str)
+	} else {
+		for _, q := range str {
+			n, _ := w.WriteRune(q)
+			ret += n
+		}
+	}
+	return
+}
+
+func dupe(w RuneWriter, cnt int, q rune) {
 	for i := 0; i < cnt; i++ {
 		w.WriteRune(q)
 	}

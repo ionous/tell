@@ -29,7 +29,7 @@ func (d *docHeader) awaitHeader() (ret charm.State) {
 	return charm.Self("awaitHeader", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			ret = handleComment("firstLine", d.out, d.extendHeader)
+			ret = handleComment("firstLine", &d.out, d.extendHeader)
 		case runes.Newline:
 			ret = self // keep looping on fully blank lines
 		default:
@@ -46,10 +46,10 @@ func (d *docHeader) extendHeader() charm.State {
 	return charm.Statement("extendHeader", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab: // nested header, switch to buffering after done
-			ret = nestLine("nestHeader", d.out, d.awaitNest)
+			ret = nestLine("nestHeader", &d.out, d.awaitNest)
 		case runes.Hash:
 			d.out.WriteRune(runes.Newline)
-			ret = handleComment("nextLine", d.out, d.extendHeader)
+			ret = handleComment("nextLine", &d.out, d.extendHeader)
 		case runes.Newline: // fully blank line
 			ret = d.awaitParagraph() // buf is empty, so dont need to flush
 		default:
@@ -74,7 +74,7 @@ func (d *docHeader) awaitNest() charm.State {
 	return charm.Statement("awaitNest", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab:
-			ret = nestLine("nestHeader", d.out, d.awaitNest)
+			ret = nestLine("nestHeader", &d.out, d.awaitNest)
 		default:
 			ret = d.awaitBuf().NewRune(q)
 		}
