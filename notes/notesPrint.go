@@ -21,6 +21,11 @@ func (p printer) OnEof() {
 	println("--- eof ---")
 	p.c.WriteRune(runes.Eof)
 }
+
+func (p printer) IsNothing() bool {
+	return IsNothing(p.c)
+}
+
 func (p printer) BeginCollection(w RuneWriter) Commentator {
 	println("BeginCollection")
 	p.c.BeginCollection(w)

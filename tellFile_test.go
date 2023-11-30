@@ -27,7 +27,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	// focus = "emptyDoc1"
+	// focus = "smallCatalog"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -37,7 +37,7 @@ func TestFiles(t *testing.T) {
 			jsonName := tellName[:len(tellName)-4] + "json"
 			if (len(focus) > 0 && !strings.Contains(tellName, focus)) ||
 				strings.HasPrefix(shortName, "x_") {
-				t.Log("skipping", tellName)
+				// t.Log("skipping", tellName)
 				continue
 			}
 			//
@@ -76,21 +76,23 @@ func readTell(filePath string) (ret any, err error) {
 		err = e
 	} else {
 		// fix: might be cleaner to have a "BeginCollection" for document too
-		var pbuf *strings.Builder // document level comment data
-		if strings.Contains(strings.ToLower(filePath), "comment") {
-			pbuf = new(strings.Builder)
+		var buf strings.Builder // document level comment data
+		var comments notes.Commentator
+		if !strings.Contains(strings.ToLower(filePath), "comment") {
+			comments = notes.DiscardComments()
+		} else {
+			comments = notes.NewCommentator(&buf)
 		}
-		comments := notes.NewCommentator(pbuf)
 		if len(focus) > 0 {
 			comments = notes.NewPrinter(comments)
 		}
 		doc := decode.NewDocument(stdmap.Builder, comments)
 		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
 			err = e
-		} else if pbuf != nil && pbuf.Len() > 0 {
+		} else if str := buf.String(); len(str) > 0 {
 			ret = map[string]any{
 				"content": res,
-				"comment": pbuf.String(),
+				"comment": str,
 			}
 		} else {
 			ret = map[string]any{

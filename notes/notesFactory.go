@@ -9,14 +9,8 @@ func DiscardComments() Commentator {
 	return Nothing{}
 }
 
-// passing w will discard all contents
 func NewCommentator(w RuneWriter) (ret Commentator) {
-	if w != nil {
-		ret = newNotes(w)
-	} else {
-		ret = DiscardComments()
-	}
-	return
+	return newNotes(w)
 }
 
 func newNotes(w RuneWriter) *commentBuilder {
