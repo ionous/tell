@@ -6,14 +6,19 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// internal rune used to indicate the end of a comment
+// to help share handling with Newline,NextIndent
+// todo? could refactor to use charm.Step, tho that time might be better spent on unwinding next indent
+const commentLine = '\v'
+
 // interpret every up to, and including, the end of the line as a comment.
-// sends the last rune -- the newline -- to the passed eol state.
+// sends the last rune -- the newline as CommentLine -- to the passed eol state.
 func CommentDecoder(out notes.Commentator, eol charm.State) charm.State {
 	out.WriteRune(runes.Hash) // ick.
 	return charm.Self("decode comment", func(self charm.State, r rune) (ret charm.State) {
 		out.WriteRune(r)
 		if r == runes.Newline {
-			ret = eol.NewRune(r)
+			ret = eol.NewRune(commentLine)
 		} else {
 			ret = self
 		}
@@ -29,10 +34,11 @@ func NestedCommentDecoder(doc *Document) charm.State {
 	return charm.Self("nested comment", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Hash:
-			doc.notes.OnNestedComment()
-			ret = CommentDecoder(doc.notes, self)
-		case runes.Newline:
-			ret = MaintainIndent(doc, self, depth)
+			ret = CommentDecoder(doc.notes.OnNestedComment(), self)
+		case commentLine:
+			// fix: this eats all newlines
+			// but nested should be altogether
+			ret = MaintainIndent(doc, depth, self)
 		}
 		return
 	})

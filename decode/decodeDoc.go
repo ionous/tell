@@ -6,7 +6,6 @@ import (
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/maps"
 	"github.com/ionous/tell/notes"
-	"github.com/ionous/tell/runes"
 )
 
 // document decoder
@@ -45,7 +44,6 @@ func (doc *Document) ReadLines(src io.RuneReader, start charm.State) (err error)
 }
 
 func (doc *Document) PopAll() error {
-	doc.notes.WriteRune(runes.Newline) // fix?
 	return doc.History.PopAll()
 }
 
@@ -65,11 +63,7 @@ func (doc *Document) EntryDecoder() charm.State {
 		depth:        depth,
 		pendingValue: scalarValue{emptyValue},
 		addsValue: func(val any) (_ error) {
-			if val == emptyValue {
-				val = nil // empty document
-			} else {
-				doc.value = val // tbd: error if already written?
-			}
+			doc.value = val // tbd: error if already written?
 			return
 		},
 	}

@@ -42,10 +42,8 @@ func (c *Sequence) EntryDecoder() charm.State {
 		count:        c.count,
 		pendingValue: scalarValue{emptyValue},
 		addsValue: func(val any) (_ error) {
-			if val != emptyValue {
-				c.values = append(c.values, val)
-				c.count++
-			}
+			c.values = append(c.values, val)
+			c.count++
 			return
 		},
 	}

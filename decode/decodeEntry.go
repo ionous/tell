@@ -15,17 +15,17 @@ type tellEntry struct {
 
 // called when the indentation level is popped.
 func (ent *tellEntry) finalizeEntry() (err error) {
-	// protects against double call for the sake of decodeDoc
+	// protects against double call
+	// ( ex. finalization in LineValueDecoder, vs pop due to eof )
 	if ent.pendingValue != nil {
-		// finalizeEntry is the one moment common to all values (incl nil)
-		if !isPendingCollection(ent.pendingValue) {
-			ent.doc.notes.OnScalarValue()
-		} else {
-			ent.doc.notes.OnCollectionEnded()
-		}
 		if val, e := ent.pendingValue.FinalizeValue(); e != nil {
 			err = e
-		} else {
+		} else if val != emptyValue {
+			if !isPendingCollection(ent.pendingValue) {
+				ent.doc.notes.OnScalarValue()
+			} else {
+				ent.doc.notes.OnCollectionEnded()
+			}
 			err = ent.addsValue(val)
 		}
 		ent.pendingValue = nil
@@ -57,17 +57,20 @@ func ContentDecoder(ent *tellEntry) charm.State {
 		switch r {
 		case runes.Space:
 			ret = contents
-		case runes.Newline: // a blank line with no contents is the header.
+		case runes.Hash: // a hash starts the key comment
+			if at := ent.doc.Col; at >= ent.depth {
+				ret = KeyCommentDecoder(ent, at)
+			}
+		case runes.Newline:
+			ent.doc.notes.WriteRune(r)
+			fallthrough
+		case commentLine: // a blank line with no contents is the header.
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				if at >= ent.depth {
 					ret = HeaderDecoder(ent, at, LineValueDecoder(ent))
 				}
 				return
 			})
-		case runes.Hash: // a hash starts the key comment
-			if at := ent.doc.Col; at >= ent.depth {
-				ret = KeyCommentDecoder(ent, at)
-			}
 		default:
 			if ent.doc.Col >= ent.depth {
 				ret = DecodeLineValue(ent, r)
@@ -104,8 +107,10 @@ func HeaderDecoder(ent *tellEntry, depth int, next charm.State) charm.State {
 			ret = next.NewRune(r)
 		case runes.Hash:
 			ret = CommentDecoder(ent.doc.notes, header)
-
 		case runes.Newline:
+			ent.doc.notes.WriteRune(r)
+			fallthrough
+		case commentLine:
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				switch {
 				case at == depth:
@@ -132,7 +137,10 @@ func SubheaderDecoder(ent *tellEntry, depth int) charm.State {
 		case runes.Hash:
 			ret = CommentDecoder(ent.doc.notes, header)
 		case runes.Newline:
-			ret = MaintainIndent(ent.doc, header, depth)
+			ent.doc.notes.WriteRune(r)
+			fallthrough
+		case commentLine:
+			ret = MaintainIndent(ent.doc, depth, header)
 		}
 		return
 	})
@@ -151,49 +159,38 @@ func DecodeLineValue(ent *tellEntry, r rune) (ret charm.State) {
 // expects the *next* rune is the first rune of a value
 // reads that value (if any) and any inline comment describing it.
 func LineValueDecoder(ent *tellEntry) (ret charm.State) {
-	return charm.Step(ValueDecoder(ent), InlineCommentDecoder(ent))
+	return charm.Step(ValueDecoder(ent),
+		charm.MakeState(func() charm.State {
+			ent.finalizeEntry()
+			return PostValueDecoder(ent)
+		}))
 }
 
-// these are comments to the right of a known value.
-func InlineCommentDecoder(ent *tellEntry) (ret charm.State) {
+// the space to the right of a non-nil value
+// ( nil-value comments look like key comments )
+func PostValueDecoder(ent *tellEntry) (ret charm.State) {
 	inlineIndent := -1
 	return charm.Self("inline comment", func(loop charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Space: // eat spaces on the line after the value
 			ret = loop
-
-		case runes.Hash: // an inline comment? read it; loop back to handle the newline.
+		case runes.Hash:
 			inlineIndent = ent.doc.Col
 			ret = CommentDecoder(ent.doc.notes, loop)
-
-		case runes.Newline: // a newline ( regardless of whether there was a comment )
+		case runes.Newline:
+			// the newline distinguishes trailing inline from block comments
+			// the problem here is that --- we know there should be a value
+			// but its not written yet.
+			ent.doc.notes.WriteRune(r)
+			fallthrough
+		case commentLine: // a newline ( regardless of whether there was a comment )
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
-				if at == inlineIndent { // inline comments are all left aligned
-					ret = loop
-				} else { // a footer lives between the term and less than any inline comments
-					// FIX? i changed this to > ...  think that more correct
-					// should it be two spaces?
-					if (at > ent.depth) && (inlineIndent < 0 || at < inlineIndent) {
-						ret = FooterDecoder(ent, at)
-					}
+				if (at == inlineIndent) ||
+					((at > ent.depth) && (inlineIndent < 0 || at < inlineIndent)) {
+					ret = NestedCommentDecoder(ent.doc)
 				}
 				return
 			})
-		}
-		return
-	})
-}
-
-// an optional comment can appear on the first line after a value
-// starts on something other than whitespace
-// at the indent we want to stick with.
-func FooterDecoder(ent *tellEntry, wantIndent int) charm.State {
-	return charm.Self("trailing comments", func(loop charm.State, r rune) (ret charm.State) {
-		switch r {
-		case runes.Hash:
-			ret = CommentDecoder(ent.doc.notes, loop)
-		case runes.Newline:
-			ret = MaintainIndent(ent.doc, loop, wantIndent)
 		}
 		return
 	})

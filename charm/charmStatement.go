@@ -19,3 +19,10 @@ func (s *funcState) String() string {
 func (s *funcState) NewRune(r rune) State {
 	return s.closure(r)
 }
+
+// Creates a state on demand
+func MakeState(next func() State) State {
+	return Statement("makeState", func(q rune) State {
+		return RunState(q, next())
+	})
+}
