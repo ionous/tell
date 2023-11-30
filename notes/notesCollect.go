@@ -73,7 +73,7 @@ func (d *collectionDecoder) interElement() charm.State {
 			} else {
 				// there were some trailing comments
 				// this requires an end marker
-				d.flush(runes.Record)
+				d.flush(runes.NextRecord)
 			}
 			ret = d.keyContents()
 

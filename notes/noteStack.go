@@ -22,7 +22,7 @@ func makeBlock(w RuneWriter) pendingBlock {
 func (p pendingBlock) writeTerms() {
 	if cnt := p.terms; cnt > 0 {
 		for i := 0; i < cnt; i++ {
-			p.WriteRune(runes.Record)
+			p.WriteRune(runes.NextRecord)
 		}
 		p.terms = 0
 	}

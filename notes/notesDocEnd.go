@@ -27,7 +27,7 @@ func docEnd(ctx *context) charm.State {
 // then write the form feed to separate it from all that came before.
 func (d *docEndDecoder) awaitFooter() charm.State {
 	return awaitParagraph("awaitFooter", func() charm.State {
-		writeRunes(&d.out, runes.Record)
+		writeRunes(&d.out, runes.NextRecord)
 		return handleAll(&d.out)
 	})
 }

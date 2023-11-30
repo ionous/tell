@@ -25,7 +25,7 @@ func keyComments(ctx *context) charm.State {
 func (d *keyCommentDecoder) bufferAll(mark bool) charm.State {
 	return awaitParagraph("bufferAll", func() charm.State {
 		if mark {
-			d.out.WriteRune(runes.CollectionMark)
+			d.out.WriteRune(runes.KeyValue)
 		}
 		return handleAll(&d.buf)
 	})
@@ -36,7 +36,7 @@ func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
 	return charm.Statement("awaitFirst", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			d.out.WriteRune(runes.CollectionMark)
+			d.out.WriteRune(runes.KeyValue)
 			ret = handleComment("keyLine", &d.out, d.awaitNest)
 		case runes.Newline:
 			ret = d.bufferAll(true)

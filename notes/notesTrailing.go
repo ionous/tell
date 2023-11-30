@@ -24,9 +24,9 @@ type trailingDecoder struct {
 
 func (d *trailingDecoder) writeMark() {
 	d.out.writeTerms()
-	d.out.WriteRune(runes.CollectionMark)
+	d.out.WriteRune(runes.KeyValue)
 	if d.extra {
-		d.out.WriteRune(runes.CollectionMark)
+		d.out.WriteRune(runes.KeyValue)
 	}
 }
 
