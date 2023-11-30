@@ -1,6 +1,9 @@
 package notes
 
-import "github.com/ionous/tell/charm"
+import (
+	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
+)
 
 func DiscardComments() Commentator {
 	return Nothing{}
@@ -45,7 +48,7 @@ func (p *commentBuilder) Inplace() Commentator {
 // tell will pop all its pending collections triggering the final flush
 // for testing, sometimes that's a bit annoying
 func (p *commentBuilder) OnEof() {
-	p.cast.send(runeEof)
+	p.cast.send(runes.Eof)
 }
 
 func (p *commentBuilder) BeginCollection(w RuneWriter) Commentator {
@@ -71,7 +74,7 @@ func (p *commentBuilder) OnKeyDecoded() Commentator {
 
 func (p *commentBuilder) OnCollectionEnded() Commentator {
 	if len(p.ctx.stack) == 0 {
-		p.cast.send(runeEof)
+		p.cast.send(runes.Eof)
 	} else {
 		p.cast.OnCollectionEnded()
 	}

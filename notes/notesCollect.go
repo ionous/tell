@@ -27,7 +27,7 @@ func (d *collectionDecoder) keyValue() charm.State {
 	return charm.Statement("keyValue", func(q rune) (ret charm.State) {
 		wroteDash := d.out.Len()-d.keyCommentStart > 0
 		switch q {
-		case runeEof:
+		case runes.Eof:
 			// flush any buffer collected from keyComments
 			// ( we're stepped to -- its parent -- so we'll hit here if its canceled )
 			d.flush(runes.Newline)
@@ -57,7 +57,7 @@ func (d *collectionDecoder) keyValue() charm.State {
 func (d *collectionDecoder) interElement() charm.State {
 	return charm.Self("interElement", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
-		case runeEof:
+		case runes.Eof:
 			// if the document gets terminated before the collection is closed
 			// we should be writing any buffered comments to the parent container
 			// ( this happens for any document with a top level or deeper sequence )

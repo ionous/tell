@@ -10,7 +10,7 @@ import (
 // generate an error state
 // ( rune term still returns as unhandled )
 func invalidRune(name string, q rune) (ret charm.State) {
-	if q != runeEof {
+	if q != runes.Eof {
 		e := fmt.Errorf("unexpected rune %q during %s", q, name)
 		ret = charm.Error(e)
 	}

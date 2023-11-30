@@ -12,7 +12,7 @@ func newDocument(ctx *context) charm.State {
 func newBody(ctx *context) charm.State {
 	return charm.Statement("awaitValue", func(q rune) (ret charm.State) {
 		switch q {
-		case runeEof:
+		case runes.Eof:
 			// flush the unused buffer as additional headers with newline
 			if str := ctx.resolveBuffer(); len(str) > 0 {
 				writeBuffer(&ctx.out, str, runes.Newline)

@@ -15,7 +15,6 @@ type runecast struct {
 // internal runes for the Commentator interface:
 // one per Commentator method.
 const (
-	runeEof       = -1 // early termination; ex. eof
 	runeCollected = '\f'
 	runeValue     = '\v'
 	runeKey       = '\r'
@@ -60,7 +59,7 @@ func (b *runecast) WriteRune(q rune) (_ int, _ error) {
 }
 
 func (b *runecast) send(q rune) {
-	if next := b.state.NewRune(q); next == nil && q != runeEof {
+	if next := b.state.NewRune(q); next == nil && q != runes.Eof {
 		// no states left to parse remaining input
 		err := fmt.Errorf("unhandled rune %q in %q", q, charm.StateName(b.state))
 		panic(err)
