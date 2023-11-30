@@ -40,11 +40,6 @@ type commentBuilder struct {
 	cast runecast
 }
 
-// helper for testing: returns b without doing anything.
-func (p *commentBuilder) Inplace() Commentator {
-	return p
-}
-
 // tell will pop all its pending collections triggering the final flush
 // for testing, sometimes that's a bit annoying
 func (p *commentBuilder) OnEof() {
@@ -74,6 +69,7 @@ func (p *commentBuilder) OnKeyDecoded() Commentator {
 
 func (p *commentBuilder) OnCollectionEnded() Commentator {
 	if len(p.ctx.stack) == 0 {
+		// hrmm.... ex. TestDocHeaderNest, and tell iteslf.
 		p.cast.send(runes.Eof)
 	} else {
 		p.cast.OnCollectionEnded()

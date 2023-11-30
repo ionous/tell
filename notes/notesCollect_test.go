@@ -22,9 +22,9 @@ func TestCollection(t *testing.T) {
 	b := newCommentBuilder(ctx, newCollection(ctx))
 	// we just created the collection above, so write the key comment:
 	// - # key
-	WriteLine(b.Inplace(), "key")
+	WriteLine(b, "key")
 	// ..# more key
-	WriteLine(b.Inplace(), "more key")
+	WriteLine(b, "more key")
 	// .."value"
 	b.OnScalarValue()
 	//
@@ -53,9 +53,9 @@ func TestKeyHeaderSplit(t *testing.T) {
 
 	// we just created the collection above, so write the key comment:
 	// - # key
-	WriteLine(b.Inplace(), "key")
+	WriteLine(b, "key")
 	// ..# buffered header
-	WriteLine(b.Inplace(), "buffered header")
+	WriteLine(b, "buffered header")
 	// ....- "subcollection"
 	b.BeginCollection(stack.new()).OnScalarValue()
 	//
@@ -87,11 +87,11 @@ func TestKeyHeaderJoin(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key
-	WriteLine(b.Inplace(), "key")
+	WriteLine(b, "key")
 	// ..# buffered key
-	WriteLine(b.Inplace(), "buffered key")
+	WriteLine(b, "buffered key")
 	// ..# more key
-	WriteLine(b.Inplace(), "more key")
+	WriteLine(b, "more key")
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
@@ -129,13 +129,13 @@ func TestKeyNest(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
-	WriteLine(b.Inplace(), "key")
+	WriteLine(b, "key")
 	WriteLine(b.OnNestedComment(), "nested key")
 	// ..# buffered key & nesting
-	WriteLine(b.Inplace(), "second key")
+	WriteLine(b, "second key")
 	WriteLine(b.OnNestedComment(), "second nesting")
 	// ..# buffered key & nesting
-	WriteLine(b.Inplace(), "third key")
+	WriteLine(b, "third key")
 	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
 	//
@@ -175,13 +175,13 @@ func TestKeyNestCollection(t *testing.T) {
 
 	// documents only have one value, in this case a sequence
 	// - # key & nesting
-	WriteLine(b.Inplace(), "key")
+	WriteLine(b, "key")
 	WriteLine(b.OnNestedComment(), "nested key")
 	// ..# buffered key & nesting
-	WriteLine(b.Inplace(), "second key")
+	WriteLine(b, "second key")
 	WriteLine(b.OnNestedComment(), "second nesting")
 	// ..# buffered key & nesting
-	WriteLine(b.Inplace(), "buffered header")
+	WriteLine(b, "buffered header")
 	WriteLine(b.OnNestedComment(), "nested header")
 	//
 	// ..- "subcollection scalar"
@@ -243,7 +243,7 @@ func TestTermHeaders(t *testing.T) {
 		// the zeroth key exists because of newCollection
 		// for all subsequent entries: write a header.
 		if i > 0 {
-			WriteLine(b.Inplace(), strconv.Itoa(i))
+			WriteLine(b, strconv.Itoa(i))
 			b.OnKeyDecoded()
 		}
 		// a scalar value followed by a newline:
@@ -252,6 +252,38 @@ func TestTermHeaders(t *testing.T) {
 	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fail()
+	}
+}
+
+// for the sake of documents, footers right to their parent
+// - - 1
+//   # header
+//   - 2
+//   # footer
+//
+// ie. [[1,2]]
+func TestCollectionFooter(t *testing.T) {
+	// in order of left bracket
+	expected := []string{
+		"\f# footer", // the outer most sequence
+		"\f# header", // the inner most sequence
+	}
+
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
+	//
+	WriteLine(b.BeginCollection(stack.new()).OnScalarValue(), "")
+	WriteLine(b, "header")
+	WriteLine(b.OnKeyDecoded().OnScalarValue(), "")
+	WriteLine(b, "footer")
+	b.OnCollectionEnded()
+	//
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
 	}
 }
 
@@ -290,8 +322,7 @@ func TestCollectBeginEnd(t *testing.T) {
 	b.OnCollectionEnded().OnCollectionEnded()
 	WriteLine(b.OnKeyDecoded().OnScalarValue(), "6")
 	//
-	got := stack.Strings()
-	if slices.Compare(got, expected) != 0 {
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
 		for i, el := range got {
 			t.Logf("%d %q", i, el)
 		}

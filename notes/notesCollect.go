@@ -57,18 +57,6 @@ func (d *collectionDecoder) keyValue() charm.State {
 func (d *collectionDecoder) interElement() charm.State {
 	return charm.Self("interElement", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
-		case runes.Eof:
-			// if the document gets terminated before the collection is closed
-			// we should be writing any buffered comments to the parent container
-			// ( this happens for any document with a top level or deeper sequence )
-			// ex. see: TestTermHeaders, TestDocCollection
-			if str := d.resolveBuffer(); len(str) > 0 {
-				parent := d.stack.top()
-				parent.writeTerms()
-				writeBuffer(&parent, str, runes.Record)
-			}
-			ret = charm.Error(nil) // there's only one buffer, so we're done.
-
 		// buffer everything
 		// the comments will either become footer comments for the parent container
 		// or, a header for a new element
@@ -90,11 +78,20 @@ func (d *collectionDecoder) interElement() charm.State {
 			ret = d.keyContents()
 
 		case runeCollected:
-			// any buffer right now is for the parent container
-			// ( pop handles that )
+			// write any buffered comments to the parent container
+			// tbd: it makes sense for documents, not sure in general.
 			if d.pop(); len(d.stack) > 0 {
 				ret = self
+			} else {
+				// ex. TestDocCollection
+				ret = charm.Error(nil)
 			}
+
+		case runes.Eof:
+			// write any buffered comments to the parent container
+			d.pop()
+			ret = charm.Error(nil) // there's only one buffer, so we're done.
+
 		default:
 			ret = invalidRune("interElement", q)
 		}

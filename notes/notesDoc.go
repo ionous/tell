@@ -14,6 +14,7 @@ func newBody(ctx *context) charm.State {
 		switch q {
 		case runes.Eof:
 			// flush the unused buffer as additional headers with newline
+			// ex. TestDocHeaderNest
 			if str := ctx.resolveBuffer(); len(str) > 0 {
 				writeBuffer(&ctx.out, str, runes.Newline)
 			}

@@ -5,6 +5,12 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// parsing after a document scalar
+// ( or, via an explicit end collection
+//   which, tbd, might happen if a top level document collection is indented.
+//   b/c any footer would be to the left of the collection keys.
+//   document collections normally wind up parsing the end of a document as
+//   a header for a "missing" final element.re: interElement )
 type docEndDecoder struct {
 	*context
 }

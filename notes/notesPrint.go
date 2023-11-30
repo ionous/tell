@@ -1,12 +1,26 @@
 package notes
 
+import "github.com/ionous/tell/runes"
+
 // wrap commentator calls with print/ln(s)
 func NewPrinter(c Commentator) Commentator {
 	return printer{c}
 }
 
+func newPrinter(c Commentator) printer {
+	return printer{c}
+}
+
 type printer struct{ c Commentator }
 
+func (p printer) Inplace() Commentator {
+	return p
+}
+
+func (p printer) OnEof() {
+	println("--- eof ---")
+	p.c.WriteRune(runes.Eof)
+}
 func (p printer) BeginCollection(w RuneWriter) Commentator {
 	println("BeginCollection")
 	p.c.BeginCollection(w)

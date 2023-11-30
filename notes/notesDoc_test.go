@@ -15,7 +15,7 @@ func TestDocEmptyish(t *testing.T) {
 		"# emptyish"
 	var str strings.Builder
 	b := newNotes(&str)
-	WriteLine(b.Inplace(), "emptyish")
+	WriteLine(b, "emptyish")
 	if got := str.String(); got != expected {
 		t.Fatalf("got %q expected %q", got, expected)
 	}
@@ -31,8 +31,8 @@ func TestDocHeaderLines(t *testing.T) {
 		"# header\n# subheader"
 	var str strings.Builder
 	b := newNotes(&str)
-	WriteLine(b.Inplace(), "header")
-	WriteLine(b.Inplace(), "subheader")
+	WriteLine(b, "header")
+	WriteLine(b, "subheader")
 	//
 	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
@@ -53,9 +53,9 @@ func TestDocHeaderNest(t *testing.T) {
 
 	var str strings.Builder
 	b := newNotes(&str)
-	WriteLine(b.Inplace(), "header")
+	WriteLine(b, "header")
 	WriteLine(b.OnNestedComment(), "nest")
-	WriteLine(b.Inplace(), "subheader")
+	WriteLine(b, "subheader")
 	WriteLine(b.OnNestedComment(), "nest")
 	b.OnCollectionEnded() // flush the document
 	//
@@ -79,9 +79,9 @@ func TestDocHeaderSplit(t *testing.T) {
 	//
 	var str stringStack
 	b := newNotes(str.new())
-	WriteLine(b.Inplace(), "one")
-	WriteLine(b.Inplace(), "")
-	WriteLine(b.Inplace(), "two")
+	WriteLine(b, "one")
+	WriteLine(b, "")
+	WriteLine(b, "two")
 	b.BeginCollection(str.new()).OnScalarValue()
 	//
 	got := str.Strings()
@@ -107,9 +107,9 @@ func TestDocHeaderSplitNest(t *testing.T) {
 	//
 	var str stringStack
 	b := newNotes(str.new())
-	WriteLine(b.Inplace(), "one")
+	WriteLine(b, "one")
 	WriteLine(b.OnNestedComment(), "nest")
-	WriteLine(b.Inplace(), "two")
+	WriteLine(b, "two")
 	b.BeginCollection(str.new())
 	//
 	got := str.Strings()
@@ -124,16 +124,16 @@ func TestDocHeaderSplitNest(t *testing.T) {
 // test a document with a scalar and footer.
 //
 // # header
-// "value"
+// "scalar"
 // # footer
 func TestDocScalar(t *testing.T) {
 	const expected = "# header\f# footer"
 	//
 	var str strings.Builder
 	b := newNotes(&str)
-	WriteLine(b.Inplace(), "header")
+	WriteLine(b, "header")
 	WriteLine(b.OnScalarValue(), "")
-	WriteLine(b.Inplace(), "footer") // not nested, so footer.
+	WriteLine(b, "footer") // not nested, so footer.
 	//
 	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
@@ -152,10 +152,10 @@ func TestDocScalarInline(t *testing.T) {
 
 	var str strings.Builder
 	b := newNotes(&str)
-	WriteLine(b.Inplace(), "header")
-	WriteLine(b.Inplace(), "subheader")
+	WriteLine(b, "header")
+	WriteLine(b, "subheader")
 	WriteLine(b.OnScalarValue(), "inline")
-	WriteLine(b.Inplace(), "footer")
+	WriteLine(b, "footer")
 	//
 	if got := str.String(); got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
@@ -164,22 +164,21 @@ func TestDocScalarInline(t *testing.T) {
 }
 
 // test a document with a collection and footer.
+// ( see also: TestCollectionFooter )
 //
 // # header
 // - "sequence"
 // # footer
 func TestDocCollection(t *testing.T) {
 	const expected = "" +
-		"# header\n# subheader\f# footer"
+		"# header\f# footer"
 
 	var str stringStack
 	b := newNotes(str.new())
-	WriteLine(b.Inplace(), "header")
-	WriteLine(b.Inplace(), "subheader")
+	WriteLine(b, "header")
 	WriteLine(b.BeginCollection(str.new()).OnScalarValue(), "")
-	WriteLine(b.Inplace(), "footer")
-	b.OnEof() // flush the document
-
+	WriteLine(b, "footer")
+	b.OnEof()
 	//
 	if got := str.Strings()[0]; got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)

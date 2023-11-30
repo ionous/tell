@@ -58,5 +58,5 @@ func (p *context) pop() {
 	parent := p.stack.pop()
 	p.out = parent
 	// and now it has those contents
-	p.flush(runes.Newline)
+	p.flush(runes.Record)
 }

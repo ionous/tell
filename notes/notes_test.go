@@ -33,9 +33,9 @@ func TestReadmeExample(t *testing.T) {
 	}
 	var stack stringStack
 	b := newNotes(stack.new())
-	WriteLine(b.Inplace(), "header")
+	WriteLine(b, "header")
 	WriteLine(b.BeginCollection(stack.new()).OnScalarValue(), "inline")
-	WriteLine(b.Inplace(), "footer")
+	WriteLine(b, "footer")
 	b.OnEof()
 	//
 	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
@@ -59,14 +59,14 @@ func TestCommentBlock(t *testing.T) {
 
 	var stack stringStack
 	b := newNotes(stack.new())
-	WriteLine(b.Inplace(), "header")
+	WriteLine(b, "header")
 	WriteLine(b.OnNestedComment(), "nested header")
 	WriteLine(b.BeginCollection(stack.new()), "key")
 	WriteLine(b.OnNestedComment(), "nested key")
 	WriteLine(b.OnScalarValue(), "inline")
 	WriteLine(b.OnNestedComment(), "nested inline")
-	WriteLine(b.Inplace(), "footer")
-	WriteLine(b.Inplace(), "extra footer")
+	WriteLine(b, "footer")
+	WriteLine(b, "extra footer")
 	b.OnEof()
 	//
 	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
