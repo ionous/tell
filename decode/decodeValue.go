@@ -38,7 +38,7 @@ func ValueDecoder(ent *tellEntry) charm.State {
 			// negative numbers or sequences
 			ret = charm.Statement("dashing", func(r rune) (ret charm.State) {
 				// no space indicates a number `-5`
-				if r != runes.Space && r != runes.Newline {
+				if !isWhitespace(r) {
 					ret = val.newNum()
 				} else {
 					// a space indicates a sequence `- 5`
@@ -117,7 +117,7 @@ func (val *tellValue) tryBool(r rune, makeNext func(str string) charm.State) (re
 			ret = charm.Statement("post bool", func(r rune) (ret charm.State) {
 				// the word "true" or "false" needs to check the rune after it
 				// if it doesn't then jump to the next state
-				if r != runes.Space && r != runes.Newline {
+				if !isWhitespace(r) {
 					ret = makeNext(partial).NewRune(r)
 				}
 				return
@@ -125,4 +125,12 @@ func (val *tellValue) tryBool(r rune, makeNext func(str string) charm.State) (re
 		}
 		return
 	}).NewRune(r)
+}
+
+func isWhitespace(q rune) (ret bool) {
+	switch q {
+	case runes.Space, runes.Newline, runes.Eof:
+		ret = true
+	}
+	return
 }

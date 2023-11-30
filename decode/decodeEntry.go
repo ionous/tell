@@ -1,6 +1,8 @@
 package decode
 
 import (
+	"errors"
+
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
@@ -12,6 +14,9 @@ type tellEntry struct {
 	pendingValue pendingValue
 	addsValue    func(any) error
 }
+
+// unparsed values are guarded by the empty value.
+var emptyValue = errors.New("empty value")
 
 // called when the indentation level is popped.
 func (ent *tellEntry) finalizeEntry() (err error) {
@@ -44,6 +49,8 @@ func StartContentDecoding(ent *tellEntry) charm.State {
 	return charm.Step(ContentDecoder(ent),
 		charm.Self("after entry", func(afterEntry charm.State, r rune) (ret charm.State) {
 			switch r {
+			case runes.Eof:
+				ret = charm.Error(nil)
 			case runes.Newline: // pop to find an appropriate next state
 				ret = NextIndent(ent.doc, nil)
 			}
@@ -61,6 +68,8 @@ func ContentDecoder(ent *tellEntry) charm.State {
 			if at := ent.doc.Col; at >= ent.depth {
 				ret = KeyCommentDecoder(ent, at)
 			}
+		case runes.Eof:
+			ret = charm.Error(nil)
 		case runes.Newline:
 			ent.doc.notes.WriteRune(r)
 			fallthrough
@@ -107,6 +116,8 @@ func HeaderDecoder(ent *tellEntry, depth int, next charm.State) charm.State {
 			ret = next.NewRune(r)
 		case runes.Hash:
 			ret = CommentDecoder(ent.doc.notes, header)
+		case runes.Eof:
+			ret = charm.Error(nil)
 		case runes.Newline:
 			ent.doc.notes.WriteRune(r)
 			fallthrough
@@ -136,6 +147,8 @@ func SubheaderDecoder(ent *tellEntry, depth int) charm.State {
 			ret = DecodeLineValue(ent, r)
 		case runes.Hash:
 			ret = CommentDecoder(ent.doc.notes, header)
+		case runes.Eof:
+			ret = charm.Error(nil)
 		case runes.Newline:
 			ent.doc.notes.WriteRune(r)
 			fallthrough
@@ -150,7 +163,7 @@ func SubheaderDecoder(ent *tellEntry, depth int) charm.State {
 // reads that value (if any) and any inline comment describing it.
 func DecodeLineValue(ent *tellEntry, r rune) (ret charm.State) {
 	// dont bother trying to read a value if it wasn't meant to be.
-	if r != runes.Newline && r != runes.Space {
+	if !isWhitespace(r) {
 		ret = charm.RunState(r, LineValueDecoder(ent))
 	}
 	return
@@ -170,13 +183,15 @@ func LineValueDecoder(ent *tellEntry) (ret charm.State) {
 // ( nil-value comments look like key comments )
 func PostValueDecoder(ent *tellEntry) (ret charm.State) {
 	inlineIndent := -1
-	return charm.Self("inline comment", func(loop charm.State, r rune) (ret charm.State) {
+	return charm.Self("inline comment", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
 		case runes.Space: // eat spaces on the line after the value
-			ret = loop
+			ret = self
 		case runes.Hash:
 			inlineIndent = ent.doc.Col
-			ret = CommentDecoder(ent.doc.notes, loop)
+			ret = CommentDecoder(ent.doc.notes, self)
+		case runes.Eof:
+			ret = charm.Error(nil)
 		case runes.Newline:
 			// the newline distinguishes trailing inline from block comments
 			// the problem here is that --- we know there should be a value

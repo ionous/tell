@@ -1,7 +1,6 @@
 package decode
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/ionous/tell/charm"
@@ -30,9 +29,6 @@ func NewSequence(doc *Document, depth int) *Sequence {
 	return c
 }
 
-// unparsed values are guarded by the empty value.
-var emptyValue = errors.New("empty value")
-
 // a state that can parse one key:value pair
 // intended to be used with doc.Push() to loop at a given indent.
 func (c *Sequence) EntryDecoder() charm.State {
@@ -57,10 +53,7 @@ func (c *Sequence) EntryDecoder() charm.State {
 			ret = charm.RunState(r, HeaderDecoder(&ent, c.depth, self))
 
 		case runes.Dash:
-			// unlike map, we dont need to hand off the dash rune;
-			// only the runes after; also: map's default value
-			// is set to nil, because the results are guarded by a successful key;
-			// for sequence it starts invalid, and the nil default is set here.
+			// we dont need to hand off the dash rune itself
 			ent.pendingValue = scalarValue{}
 			ret = StartContentDecoding(&ent)
 		}

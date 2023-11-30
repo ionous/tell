@@ -6,6 +6,7 @@ import (
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/maps"
 	"github.com/ionous/tell/notes"
+	"github.com/ionous/tell/runes"
 )
 
 // document decoder
@@ -37,14 +38,21 @@ func (doc *Document) ReadLines(src io.RuneReader, start charm.State) (err error)
 	run := charm.Parallel("parse lines", FilterControlCodes(), UnhandledError(start), &doc.Cursor)
 	if e := charm.Read(src, run); e != nil {
 		err = e
-	} else if e := doc.PopAll(); e != nil {
-		err = e
+	} else {
+		// some values (ex. number) dont finish until whitespace
+		// send eol to flush them out; pop alone doesnt place nice with notes
+		// ( because for instance, it can send an "EndCollection" without an eol of the comment line;
+		//   but cant simply send eol to notes alone, because then it would eol before the scalar flush. )
+		if next := charm.RunState(runes.Eof, run); next != nil {
+			if es, ok := next.(charm.Terminal); ok && es != charm.Error(nil) {
+				err = es
+			}
+		}
+		if err == nil {
+			err = doc.PopAll()
+		}
 	}
 	return
-}
-
-func (doc *Document) PopAll() error {
-	return doc.History.PopAll()
 }
 
 // ugly: if preserve comments is true,

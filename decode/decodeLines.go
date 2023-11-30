@@ -8,13 +8,15 @@ import (
 // find the next indent, and use the callback to determine the next state.
 // if the callback is null or returns a null state, this pops to find an appropriate state.
 func NextIndent(doc *Document, onIndent func(at int) charm.State) charm.State {
-	return charm.Self("next indent", func(loop charm.State, r rune) (ret charm.State) {
+	return charm.Self("next indent", func(self charm.State, r rune) (ret charm.State) {
 		switch r {
-		case runes.Space, commentLine:
-			ret = loop
+		case runes.Eof:
+			ret = charm.Error(nil)
 		case runes.Newline:
 			doc.notes.WriteRune(runes.Newline)
-			ret = loop
+			ret = self
+		case runes.Space, commentLine:
+			ret = self
 		default:
 			var next charm.State
 			if onIndent != nil {
@@ -42,10 +44,10 @@ func isDone(c charm.State) (okay bool) {
 	return
 }
 
-func MaintainIndent(doc *Document, depth int, loop charm.State) charm.State {
+func MaintainIndent(doc *Document, depth int, self charm.State) charm.State {
 	return NextIndent(doc, func(at int) (ret charm.State) {
 		if at == depth {
-			ret = loop
+			ret = self
 		}
 		return
 	})

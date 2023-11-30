@@ -25,10 +25,10 @@ var isValidSignaturePrefix = unicode.IsLetter
 // colons separate word parts
 func (sig *Signature) NewRune(r rune) (ret charm.State) {
 	switch {
-	case r == runes.Space && !sig.IsKeyPending():
+	case isWhitespace(r) && !sig.IsKeyPending():
 		break // done
 
-	case r == runes.Newline:
+	case r == runes.Newline || r == runes.Eof:
 		if sig.IsKeyPending() {
 			e := errors.New("keys can't span lines")
 			ret = charm.Error(e)

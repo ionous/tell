@@ -12,6 +12,8 @@ type Cursor struct {
 // update the cursor; errors on all control characters except Newline.
 func (c *Cursor) NewRune(r rune) charm.State {
 	switch {
+	case r == runes.Eof:
+		// do nothing
 	case r == runes.Newline:
 		c.Row++
 		c.Col = 0
