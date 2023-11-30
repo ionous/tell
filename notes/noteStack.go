@@ -19,7 +19,7 @@ func makeBlock(w RuneWriter) pendingBlock {
 }
 
 // write passed runes, and then the buffer, to out
-func (p pendingBlock) writeTerms() {
+func (p *pendingBlock) writeTerms() {
 	if cnt := p.terms; cnt > 0 {
 		for i := 0; i < cnt; i++ {
 			p.WriteRune(runes.NextRecord)
