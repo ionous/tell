@@ -35,7 +35,7 @@ func (c *Mapping) EntryDecoder() charm.State {
 		doc:          c.doc,
 		depth:        c.depth + 2,
 		count:        c.count,
-		pendingValue: scalarValue{}, // unlike seq, maps can set the nil value by default
+		pendingValue: scalarValue{emptyValue},
 		addsValue: func(val any) (err error) {
 			if c.key.IsKeyPending() {
 				err = errors.New("signature must end with a colon, did you forget to quote a value?")
@@ -52,12 +52,23 @@ func (c *Mapping) EntryDecoder() charm.State {
 		switch r {
 		case runes.Hash:
 			ret = charm.RunState(r, HeaderDecoder(&ent, c.depth, self))
+		case runes.Eof:
+			ret = charm.Error(nil)
+		case runes.Space, runes.Newline:
+			ret = self
 		default:
-			// key and after key:
-			ret = charm.RunStep(r, &c.key, charm.Statement("after key", func(r rune) charm.State {
-				// unlike sequence, we need to hand off the first character that isnt the key
-				return StartContentDecoding(&ent).NewRune(r)
-			}))
+			if isValidSignaturePrefix(r) {
+				// we'll set nil as soon as we start something that looks like a key
+				// addsValue() above handles an invalid key
+				// ( and allows a document beep:<eof> to parse as a nil mapping value )
+				ent.pendingValue = scalarValue{}
+
+				// key and after key:
+				ret = charm.RunStep(r, &c.key, charm.Statement("after key", func(r rune) charm.State {
+					// unlike sequence, we need do need to hand off the first character that isnt the key
+					return StartContentDecoding(&ent).NewRune(r)
+				}))
+			}
 		}
 		return
 	})
