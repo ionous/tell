@@ -5,17 +5,17 @@ import (
 )
 
 // uses concrete instances:
-// because Lines holds a pointer; pendingBlock doesnt need to be one too.
+// because RuneWriter is an interface; pendingBlock doesnt need a pointer.
 type stack []pendingBlock
 
 // an in-progress comment block
 type pendingBlock struct {
-	Lines     // space trimming writer
+	Lines     // rune counting writer
 	terms int // count empty terms
 }
 
 func makeBlock(w RuneWriter) pendingBlock {
-	return pendingBlock{Lines: Lines{out: w}}
+	return pendingBlock{Lines: Lines{w: w}}
 }
 
 // write passed runes, and then the buffer, to out

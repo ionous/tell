@@ -22,9 +22,7 @@ func (d *collectionDecoder) keyContents() charm.State {
 	return charm.Step(keyComments(d.context), d.keyValue())
 }
 
-//
-// just got a key, handle whatever's next.
-//
+// just got a key, handle whatever's next
 func (d *collectionDecoder) keyValue() charm.State {
 	return charm.Statement("keyValue", func(q rune) (ret charm.State) {
 		wroteDash := d.out.Len()-d.keyCommentStart > 0
@@ -65,7 +63,6 @@ func (d *collectionDecoder) interElement() charm.State {
 			// ( this happens for any document with a top level or deeper sequence )
 			// ex. see: TestTermHeaders, TestDocCollection
 			if str := d.resolveBuffer(); len(str) > 0 {
-				d.bufData.Reset()
 				parent := d.stack.top()
 				parent.writeTerms()
 				writeBuffer(&parent, str, runes.Record)

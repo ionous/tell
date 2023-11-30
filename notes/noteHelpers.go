@@ -26,6 +26,18 @@ func friendly(q rune) bool {
 	return q == runes.HTab || q >= runes.Space
 }
 
+func writeString(w RuneWriter, str string) (ret int, _ error) {
+	if out, ok := w.(stringWriter); ok {
+		ret, _ = out.WriteString(str)
+	} else {
+		for _, q := range str {
+			n, _ := w.WriteRune(q)
+			ret += n
+		}
+	}
+	return
+}
+
 func writeRunes(w RuneWriter, qs ...rune) {
 	for _, q := range qs {
 		w.WriteRune(q)

@@ -124,10 +124,29 @@ func TestDocHeaderSplitNest(t *testing.T) {
 // test a document with a scalar and footer.
 //
 // # header
-// # subheader
-// "value" # inline
+// "value"
 // # footer
 func TestDocScalar(t *testing.T) {
+	const expected = "# header\f# footer"
+	//
+	var str strings.Builder
+	b := newNotes(&str)
+	WriteLine(b.Inplace(), "header")
+	WriteLine(b.OnScalarValue(), "")
+	WriteLine(b.Inplace(), "footer") // not nested, so footer.
+	//
+	if got := str.String(); got != expected {
+		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fail()
+	}
+}
+
+// test a document with a scalar and footer.
+//
+// # header
+// "value" # inline
+// # footer
+func TestDocScalarInline(t *testing.T) {
 	const expected = "" +
 		"# header\n# subheader\r# inline\f# footer"
 

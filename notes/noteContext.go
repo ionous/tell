@@ -13,8 +13,7 @@ type context struct {
 	// the code uses some implicit hand offs across states
 	// letting things stick in the buf and on the start of the new state flushing it.
 	// ( ex. buffered doc headers, or inter key comments which get pulled into the next element )
-	buf            Lines
-	bufData        strings.Builder
+	buf            strings.Builder
 	nextCollection RuneWriter // from BeginCollection
 }
 
@@ -23,7 +22,6 @@ type context struct {
 // ( rather than passing the runewriter at the start )
 func newContext(w RuneWriter) *context {
 	ctx := &context{nextCollection: w, out: makeBlock(w)}
-	ctx.buf.out = &ctx.bufData
 	return ctx
 }
 
@@ -40,8 +38,8 @@ func (p *context) newBlock() {
 }
 
 func (p *context) resolveBuffer() (ret string) {
-	if ret = p.bufData.String(); len(ret) > 0 {
-		p.bufData.Reset()
+	if ret = p.buf.String(); len(ret) > 0 {
+		p.buf.Reset()
 	}
 	return
 }
