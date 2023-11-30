@@ -13,19 +13,33 @@ import (
 // everything after an blank line gets buffered together.
 type keyCommentDecoder struct {
 	*context
+	wroteKey bool // written if there's any comment
 }
 
 // awaits an initial paragraph, comment hash, or newline.
-func keyComments(ctx *context) charm.State {
-	d := keyCommentDecoder{ctx}
-	return d.awaitFirst()
+func makeKeyComments(ctx *context) keyCommentDecoder {
+	return keyCommentDecoder{ctx, false}
+}
+
+func (d *keyCommentDecoder) NewRune(q rune) charm.State {
+	return d.awaitFirst().NewRune(q)
+}
+
+func (d *keyCommentDecoder) writeKey() {
+	if d.wroteKey {
+		panic("invalid key state")
+	}
+	d.out.writeTerms()
+	d.out.WriteRune(runes.KeyValue)
+	d.wroteKey = true
 }
 
 // everything after any blank line gets buffered together.
-func (d *keyCommentDecoder) bufferAll(mark bool) charm.State {
+func (d *keyCommentDecoder) bufferAll(needMark bool) charm.State {
 	return awaitParagraph("bufferAll", func() charm.State {
-		if mark {
-			d.out.WriteRune(runes.KeyValue)
+
+		if needMark {
+			d.writeKey()
 		}
 		return handleAll(&d.buf)
 	})
@@ -36,7 +50,7 @@ func (d *keyCommentDecoder) awaitFirst() (ret charm.State) {
 	return charm.Statement("awaitFirst", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			d.out.WriteRune(runes.KeyValue)
+			d.writeKey()
 			ret = handleComment("keyLine", &d.out, d.awaitNest)
 		case runes.Newline:
 			ret = d.bufferAll(true)

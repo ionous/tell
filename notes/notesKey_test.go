@@ -41,7 +41,8 @@ func TestKeyBuffering(t *testing.T) {
 
 		var str strings.Builder
 		ctx := newContext(&str)
-		if e := charm.Parse(test, keyComments(ctx)); e != nil {
+		key := makeKeyComments(ctx)
+		if e := charm.Parse(test, &key); e != nil {
 			t.Fatal(e)
 		} else {
 			out, buf := str.String(), ctx.resolveBuffer()
@@ -74,7 +75,8 @@ func TestKeyBlank(t *testing.T) {
 
 		var str strings.Builder
 		ctx := newContext(&str)
-		if e := charm.Parse(test, keyComments(ctx)); e != nil {
+		key := makeKeyComments(ctx)
+		if e := charm.Parse(test, &key); e != nil {
 			t.Fatal(e)
 		} else {
 			out, buf := str.String(), ctx.resolveBuffer()

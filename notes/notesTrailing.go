@@ -6,28 +6,36 @@ import (
 )
 
 // read an inline or trailing comment ( after a collection scalar )
-func readTrailing(ctx *context, wroteDash bool) charm.State {
-	in := trailingDecoder{ctx, !wroteDash}
+func readTrailing(ctx *context, wroteKey bool) charm.State {
+	in := trailingDecoder{ctx, !wroteKey, false}
 	return in.awaitComment()
 }
 
 // read an inline trailing comment
 func readInline(ctx *context) charm.State {
-	in := trailingDecoder{ctx, false}
+	in := trailingDecoder{ctx, false, false}
 	return in.awaitInline()
 }
 
 type trailingDecoder struct {
 	*context
-	extra bool
+	needKey, wroteValue bool
 }
 
-func (d *trailingDecoder) writeMark() {
+func (d *trailingDecoder) NewRune(q rune) charm.State {
+	return d.awaitComment().NewRune(q)
+}
+
+func (d *trailingDecoder) writeValue() {
+	if d.wroteValue {
+		panic("invalid value state")
+	}
 	d.out.writeTerms()
 	d.out.WriteRune(runes.KeyValue)
-	if d.extra {
+	if d.needKey {
 		d.out.WriteRune(runes.KeyValue)
 	}
+	d.wroteValue = true
 }
 
 // trailing block comments start on a newline in the document
@@ -36,7 +44,7 @@ func (d *trailingDecoder) awaitComment() charm.State {
 	return charm.Statement("awaitComment", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash: // its an inline comment...
-			d.writeMark()
+			d.writeValue()
 			ret = handleComment("firstInline", &d.out, d.awaitNested)
 		case runes.Newline: // now, we see it might be a block
 			ret = d.awaitBlock()
@@ -53,7 +61,7 @@ func (d *trailingDecoder) awaitInline() charm.State {
 	return charm.Statement("awaitInline", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.Hash:
-			d.writeMark()
+			d.writeValue()
 			ret = handleComment("firstInline", &d.out, d.awaitNested)
 		}
 		return
@@ -67,7 +75,7 @@ func (d *trailingDecoder) awaitBlock() charm.State {
 		case runes.Newline: // keep looking
 			ret = self
 		case runes.HTab: // after the newline, the comment should be indented:
-			d.writeMark()
+			d.writeValue()
 			ret = nestLine("firstBlock", &d.out, d.awaitNested)
 		}
 		return

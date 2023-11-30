@@ -7,30 +7,27 @@ import (
 
 type collectionDecoder struct {
 	*context
-	keyCommentStart int
 }
 
 // flush the current buffer to the new collection
 func newCollection(ctx *context) charm.State {
 	ctx.newBlock()
-	d := collectionDecoder{ctx, 0}
+	d := collectionDecoder{ctx}
 	return d.keyContents()
 }
 
 func (d *collectionDecoder) keyContents() charm.State {
-	d.keyCommentStart = d.out.Len()
-	return charm.Step(keyComments(d.context), d.keyValue())
+	k := makeKeyComments(d.context)
+	return charm.Step(&k, d.keyValue(&k))
 }
 
 // just got a key, handle whatever's next
-func (d *collectionDecoder) keyValue() charm.State {
+func (d *collectionDecoder) keyValue(k *keyCommentDecoder) charm.State {
 	return charm.Statement("keyValue", func(q rune) (ret charm.State) {
-		wroteDash := d.out.Len()-d.keyCommentStart > 0
 		switch q {
 		case runes.Eof:
 			// flush any buffer collected from keyComments
-			// ( we're stepped to -- its parent -- so we'll hit here if its canceled )
-			d.flush(runes.Newline)
+			d.flush(runes.Newline) // to buffer, it had a comment, and wrote its mark.
 			ret = charm.Error(nil) // there's only one buffer, so we're done.
 
 		case runeKey: // a sub-collection
@@ -39,9 +36,9 @@ func (d *collectionDecoder) keyValue() charm.State {
 
 		case runeValue: // a scalar value
 			// flush the buffer (from keyComments) to the current collection
-			// because there is no new collection.
+			// because there is no new collection; trailing comments write directly to "out".
 			d.flush(runes.Newline)
-			ret = charm.Step(readTrailing(d.context, wroteDash), d.interElement())
+			ret = charm.Step(readTrailing(d.context, k.wroteKey), d.interElement())
 
 		default: // ex. cant pop before there's a value
 			ret = invalidRune("keyValue", q)
@@ -66,9 +63,9 @@ func (d *collectionDecoder) interElement() charm.State {
 		case runeKey:
 			// new key for current container
 			// - "prev key"
-			// # trailing comment
+			// # footer comment ( from the above interElement "buffer everything" )
 			// - "new key"
-			if d.buf.Len() == 0 { // no trailing comments
+			if d.buf.Len() == 0 { // no footer comments
 				d.out.terms++
 			} else {
 				// there were some trailing comments
@@ -83,7 +80,7 @@ func (d *collectionDecoder) interElement() charm.State {
 			if d.pop(); len(d.stack) > 0 {
 				ret = self
 			} else {
-				// ex. TestDocCollection
+				// ex. xTestDocCollection
 				ret = charm.Error(nil)
 			}
 
