@@ -9,11 +9,15 @@ import (
 
 // for testing: write a comment and a newline
 // to write a fully blank line, pass the empty string
+// the automatic eol can be avoided by sending \b
 func WriteLine(w RuneWriter, str string) {
 	if len(str) > 0 {
 		w.WriteRune(runes.Hash)
 		w.WriteRune(runes.Space)
 		for _, r := range str {
+			if r == '\b' {
+				return
+			}
 			w.WriteRune(r)
 		}
 	}
