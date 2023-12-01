@@ -1,6 +1,6 @@
 {
 	"content": [
-    "\r# a single inline comment\n# can be extended with normal\n# trailing comments.",
+    "\r\r# a single inline comment\n\t# can use a trailing block comment\n\t# but it will be normalized to right aligned when reformatting.",
     "inline and trailing"
   ]
 }

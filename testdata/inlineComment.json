@@ -1,6 +1,6 @@
 {
 	 "content": [
-    "\r# one inline comment\n\t# right aligned\f\r# another inline comment\f\r# and more",
+    "\r\r# one inline comment\n\t# right aligned\f\r\r# another inline comment\f\r\r# and more",
     5,
     10,
     11,

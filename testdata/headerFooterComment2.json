@@ -1,7 +1,7 @@
 {
-    "comment": "# header",
+    "comment": "# header\f# footer",
     "content": [
-        "\f# footer",
+        "",
         "sequence"
        ]
 }

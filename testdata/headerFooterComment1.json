@@ -1,4 +1,4 @@
 {
-  "comment": "# header\r\n# footer",
+  "comment": "# header\f# footer",
   "content": "scalar"
 }

@@ -1,6 +1,6 @@
 {
 	  "content": [
-        "# comments for nil values\n# are handled as \"entry\" comments",
+        "\r# comments for nil values\n# are handled as normal key comments",
         null
     ]
 }
