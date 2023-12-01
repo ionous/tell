@@ -201,8 +201,15 @@ func PostValueDecoder(ent *tellEntry) (ret charm.State) {
 		case commentLine: // a newline ( regardless of whether there was a comment )
 			ret = NextIndent(ent.doc, func(at int) (ret charm.State) {
 				// ent.depth is the indentation of the value; not the key/dash.
+				// except for document level... :/
+				var nested bool
+				if cnt := ent.doc.History.Len(); cnt == 1 {
+					nested = at > ent.depth
+				} else if cnt > 1 {
+					nested = (at >= ent.depth)
+				}
 				if (at == inlineIndent) ||
-					((at >= ent.depth) && (inlineIndent < 0 || at < inlineIndent)) {
+					(nested && (inlineIndent < 0 || at < inlineIndent)) {
 					ret = NestedCommentDecoder(ent.doc)
 				}
 				return

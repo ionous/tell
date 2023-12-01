@@ -14,6 +14,10 @@ type moment struct {
 	popfn  func() error
 }
 
+func (h *History) Len() int {
+	return len(h.els)
+}
+
 func (h *History) Push(indent int, c charm.State) charm.State {
 	return h.PushCallback(indent, c, func() (_ error) { return })
 }
