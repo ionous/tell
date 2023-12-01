@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/ionous/tell/runes"
 )
 
 // test a sequence with two key comments and a scalar value
@@ -27,11 +25,38 @@ func TestCollection(t *testing.T) {
 	WriteLine(b, "more key")
 	// .."value"
 	b.OnScalarValue()
-	//
-	ctx.flush(runes.Newline) // hrm
+	b.OnEof() // hrm
 	got := str.String()
 	if got != expected {
 		t.Logf("\nwant %q \nhave %q", expected, got)
+		t.Fatal("mismatch")
+	}
+}
+
+// test a sequence with two key comments and a scalar value
+// ( see also: TestKyBlank which is the lower level version of this )
+// -
+// ..# header comment
+// ..- "sequence"
+//
+func TestEmptyKeyComment(t *testing.T) {
+	expected := []string{
+		"", // empty key comment
+		"# header comment",
+	}
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
+	//
+	WriteLine(b, "") // empty key comment
+	WriteLine(b, "header comment")
+	b.BeginCollection(stack.new()).OnScalarValue()
+	//
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+			t.Logf("x %q", expected[i])
+		}
 		t.Fatal("mismatch")
 	}
 }

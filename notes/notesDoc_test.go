@@ -190,7 +190,7 @@ func TestDocCollection(t *testing.T) {
 // and a nil.
 // - # key
 // ..# more key<eof>
-func TestKeyNil(t *testing.T) {
+func TestMissingValue(t *testing.T) {
 	var expected = "\r# key\n# more key"
 
 	var str stringStack

@@ -64,9 +64,8 @@ func TestKeyBlank(t *testing.T) {
 
 	// pairs expected container, buffer output
 	expectations := []string{
-		// a blank line mean only buffered content
-		// and... tbd: a key marker
-		/* 0 */ "\r", "# one\n# two",
+		"", // a blank line mean only buffered content
+		"# one\n# two",
 	}
 
 	for i := 0; i < len(lines); i++ {

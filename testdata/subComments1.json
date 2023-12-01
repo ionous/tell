@@ -1,8 +1,8 @@
 {
   "content": [
-    "# without nesting, the first *line* describes the entry",
+     "\r# assuming no initial blank line\n# all left aligned comments\n# describe the key not the sub collection.",
     {
-      "": "# and anything else acts as a \"header\" for the the first element\n# of the sub-collection.",
+      "": "",
       "sub:collection:with:": "one element"
     }
   ]

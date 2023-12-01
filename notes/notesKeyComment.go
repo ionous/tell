@@ -41,9 +41,7 @@ func (d *keyCommentDecoder) bufferAll() charm.State {
 		switch q {
 		case runes.Newline:
 			ret = awaitParagraph("afterBlankLine", func() charm.State {
-				if !d.wroteKey {
-					d.writeKey()
-				}
+				// doesn't write key... the comment was blank after all.
 				return handleAll(&d.buf)
 			})
 		}
@@ -68,7 +66,7 @@ func (d *keyCommentDecoder) awaitSecond() (ret charm.State) {
 	return charm.Statement("awaitSecond", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab: // nesting opts in *subsequent* comments to the key/header cycle
-			ret = nestLine("nestOutput", &d.out, d.splitComments)
+			ret = nestLine("secondNests", &d.out, d.splitLater)
 		case runes.Hash: // could be all left-aligned, or the third might use nesting.
 			ret = handleComment("secondLine", &d.buf, d.awaitThird)
 		}
@@ -83,7 +81,7 @@ func (d *keyCommentDecoder) awaitThird() (ret charm.State) {
 	return charm.Statement("awaitThird", func(q rune) (ret charm.State) {
 		switch q {
 		case runes.HTab: // nesting opts-in to buffering headers
-			ret = nestLine("nestOutput", &d.buf, d.splitComments)
+			ret = nestLine("thirdNests", &d.buf, d.splitComments)
 		case runes.Hash:
 			// three unnested comments means everything is a key comment
 			// make sure to flush after reading so it doesnt get moved to a header.
@@ -94,6 +92,19 @@ func (d *keyCommentDecoder) awaitThird() (ret charm.State) {
 		default:
 			// when only two comment lines; flush so they dont get moved to a header.
 			d.flush(runes.Newline)
+		}
+		return
+	})
+}
+
+// play out nesting, and then start buffering
+func (d *keyCommentDecoder) splitLater() (ret charm.State) {
+	return charm.Statement("splitLater", func(q rune) (ret charm.State) {
+		switch q {
+		case runes.HTab:
+			ret = nestLine("keepNesting", &d.out, d.splitLater)
+		case runes.Hash:
+			ret = handleComment("nowBuffer", &d.buf, d.splitComments)
 		}
 		return
 	})

@@ -6,6 +6,7 @@ import (
 )
 
 // from inlineComment.tell
+// ( fixed: misordering of \f and \r )
 //
 // - 5  # one inline comment
 // - 11 # and more
@@ -31,11 +32,12 @@ func TestInlineCollection(t *testing.T) {
 }
 
 // from subComments1.tell
+// ( fixed: redefined left-alignment now means key comments )
 //
 // - # one
-//   # two
-//   # three
-//   - "one element"
+// ..# two
+// ..# three
+// ..- "sequence"
 func TestSubComments(t *testing.T) {
 	var expected = []string{
 		"",
@@ -52,6 +54,37 @@ func TestSubComments(t *testing.T) {
 	b.BeginCollection(stack.new()).
 		OnScalarValue().
 		OnCollectionEnded().
+		OnCollectionEnded()
+	//
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+			// t.Logf("x %q", expected[i])
+		}
+		t.Fatal("mismatch")
+	}
+}
+
+// from entryExampleComments.tell
+// ( fixed: extra newline b/t two and three )
+//
+// - # one
+// ....# two
+// ....# three
+// .."value"
+func TestNestedKeyComment(t *testing.T) {
+	var expected = []string{
+		"",
+		"\r# one\n\t# two\n\t# three",
+	}
+	var stack stringStack
+	b := newNotes(stack.new())
+
+	b.BeginCollection(stack.new())
+	WriteLine(b, "one")
+	WriteLine(b.OnNestedComment(), "two")
+	WriteLine(b.OnNestedComment(), "three")
+	b.OnScalarValue().
 		OnCollectionEnded()
 	//
 	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
