@@ -10,12 +10,12 @@ type stack []pendingBlock
 
 // an in-progress comment block
 type pendingBlock struct {
-	Lines     // rune counting writer
-	terms int // count empty terms
+	RuneWriter     // comment block writer
+	terms      int // count empty terms
 }
 
 func makeBlock(w RuneWriter) pendingBlock {
-	return pendingBlock{Lines: Lines{w: w}}
+	return pendingBlock{w, 0}
 }
 
 // write passed runes, and then the buffer, to out
