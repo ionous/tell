@@ -73,7 +73,7 @@ func readLine(name string, w RuneWriter, onEol func() charm.State) charm.State {
 	})
 }
 
-// assumes a comment hash has already been detected, write it and read till the end of the line.
+// assumes a comment hash has already been detected, write that hash and read till the end of the line.
 func handleComment(name string, w RuneWriter, onEol func() charm.State) charm.State {
 	writeRunes(w, runes.Hash)
 	return innerLine(name, w, onEol)

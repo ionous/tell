@@ -34,37 +34,6 @@ func TestCollection(t *testing.T) {
 		t.Logf("\nwant %q \nhave %q", expected, got)
 		t.Fatal("mismatch")
 	}
-
-}
-
-// when there's a subcollection, the key should split
-// between the parent container and the header of the first element.
-// - # key
-// ..# buffered header
-// ....- "subcollection"
-func TestKeyHeaderSplit(t *testing.T) {
-	var expected = []string{
-		"\r# key",           // the sequence has key
-		"# buffered header", // the sub sequence has a header
-	}
-	var stack stringStack
-	ctx := newContext(stack.new())
-	b := newCommentBuilder(ctx, newCollection(ctx))
-
-	// we just created the collection above, so write the key comment:
-	// - # key
-	WriteLine(b, "key")
-	// ..# buffered header
-	WriteLine(b, "buffered header")
-	// ....- "subcollection"
-	b.BeginCollection(stack.new()).OnScalarValue()
-	//
-	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
-		for i, el := range got {
-			t.Logf("%d %q", i, el)
-		}
-		t.Fatal("mismatch")
-	}
 }
 
 // when there's a scalar value, the key should stick
@@ -104,7 +73,69 @@ func TestKeyHeaderJoin(t *testing.T) {
 	}
 }
 
-// the document parser doesnt really hhandle this
+// when there's a subcollection, the key should NOT split
+// between the parent container and the header of the first element.
+// - # key
+// ..# buffered key
+// ..- "subcollection"
+func TestKeyHeaderSplit(t *testing.T) {
+	var expected = []string{
+		"\r# key\n# buffered key", // the sub sequence has a header
+		"",
+	}
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
+
+	// we just created the collection above, so write the key comment:
+	// - # key
+	WriteLine(b, "key")
+	// ..# buffered key
+	WriteLine(b, "buffered key")
+	// ..- "subcollection"
+	b.BeginCollection(stack.new()).OnScalarValue()
+	//
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
+	}
+}
+
+// nesting the third key comment should cause an "opt in" to splitting.
+// - # key
+// ..# buffered header
+// ....# nest opt in
+// ..- "subcollection"
+func TestKeyHeaderNest(t *testing.T) {
+	var expected = []string{
+		"\r# key",
+		"# buffered header\n\t# nest opt in",
+	}
+	var stack stringStack
+	ctx := newContext(stack.new())
+	b := newCommentBuilder(ctx, newCollection(ctx))
+
+	// we just created the collection above, so write the key comment:
+	// - # key
+	WriteLine(b, "key")
+	// ..# buffered header
+	WriteLine(b, "buffered header")
+	// ....# nest opt in
+	WriteLine(b.OnNestedComment(), "nest opt in")
+	// ..- "subcollection"
+	b.BeginCollection(stack.new()).OnScalarValue()
+	//
+	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
+		for i, el := range got {
+			t.Logf("%d %q", i, el)
+		}
+		t.Fatal("mismatch")
+	}
+}
+
+// the document parser doesnt really handle this
 // but the comment builder can....
 // - # key
 // ....# nested key

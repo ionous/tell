@@ -25,11 +25,6 @@ func (d *collectionDecoder) keyContents() charm.State {
 func (d *collectionDecoder) keyValue(k *keyCommentDecoder) charm.State {
 	return charm.Statement("keyValue", func(q rune) (ret charm.State) {
 		switch q {
-		case runes.Eof:
-			// flush any buffer collected from keyComments
-			d.flush(runes.Newline) // to buffer, it had a comment, and wrote its mark.
-			ret = charm.Error(nil) // there's only one buffer, so we're done.
-
 		case runeKey: // a sub-collection
 			d.newBlock()
 			ret = d.keyContents()
@@ -39,6 +34,11 @@ func (d *collectionDecoder) keyValue(k *keyCommentDecoder) charm.State {
 			// because there is no new collection; trailing comments write directly to "out".
 			d.flush(runes.Newline)
 			ret = charm.Step(readTrailing(d.context, k.wroteKey), d.interElement())
+
+		case runes.Eof:
+			// flush any buffer collected from keyComments
+			d.flush(runes.Newline) // to buffer, it had a comment, and wrote its mark.
+			ret = charm.Error(nil) // there's only one buffer, so we're done.
 
 		default: // ex. cant pop before there's a value
 			ret = invalidRune("keyValue", q)

@@ -11,19 +11,19 @@ type mulitBlockDecoder struct {
 	w RuneWriter
 }
 
-// assumes the next rune is a comment hash
+// assumes the next rune is a comment hash.
 func readAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
 	return readLine("readFirst", w, d.awaitAll)
 }
 
-// assumes there's already been a comment hash, and we need to read content.
+// assumes a comment hash has been detected, write it and read all remaining comments.
 func handleAll(w RuneWriter) charm.State {
 	d := mulitBlockDecoder{w}
 	return d.handleNext()
 }
 
-// read a line without nesting, then await the end of all things.
+// write a comment hash, read the line without nesting, then read or nest as needed.
 // any subsequent lines will nest
 func (d *mulitBlockDecoder) handleNext() charm.State {
 	return handleComment("handleNext", d.w, d.awaitAll)
