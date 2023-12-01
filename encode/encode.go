@@ -2,8 +2,8 @@ package encode
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"io"
 	"math"
 	r "reflect"
 	"strconv"
@@ -16,8 +16,8 @@ import (
 // see WriteDocument.
 func Encode(v any) (ret []byte, err error) {
 	var out bytes.Buffer
-	tabs := &TabWriter{Writer: &out}
-	if e := WriteDocument(tabs, v); e != nil {
+	enc := MakeEncoder(&out)
+	if e := enc.Encode(v); e != nil {
 		err = e
 	} else {
 		ret = out.Bytes()
@@ -25,19 +25,35 @@ func Encode(v any) (ret []byte, err error) {
 	return
 }
 
-// ends every document with a newline
-func WriteDocument(tabs *TabWriter, v any) (err error) {
-	if e := WriteValue(tabs, r.ValueOf(v), false); e != nil {
+func MakeEncoder(w io.Writer) Encoder {
+	return Encoder{
+		tabs:         TabWriter{Writer: w},
+		keep:         false,
+		newMapper:    SortedMap,
+		newSequencer: OrderedSequence,
+	}
+}
+
+type Encoder struct {
+	tabs         TabWriter
+	keep         bool
+	newMapper    func(*Encoder, r.Value) MappingIter
+	newSequencer func(*Encoder, r.Value) SequenceIter
+}
+
+func (enc *Encoder) Encode(v any) (err error) {
+	if e := enc.WriteValue(r.ValueOf(v), false); e != nil {
 		err = e
 	} else {
-		// end with an artificial newline?
-		tabs.WriteRune(runes.Newline)
+		// ends with an artificial newline
+		// fwiw: i guess go's json does too.
+		enc.tabs.Flush()
 	}
 	return
 }
 
 // writes a single value to the stream wrapped by tab writer
-func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
+func (enc *Encoder) WriteValue(v r.Value, indent bool) (err error) {
 	switch v.Kind() {
 	// write structs as maps?
 	// should struct names be used as part of the signature?
@@ -46,23 +62,23 @@ func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 
 	case r.Bool:
 		str := formatBool(v)
-		tab.WriteString(str)
+		enc.tabs.WriteString(str)
 
 	case r.Int, r.Int8, r.Int16, r.Int32, r.Int64:
 		str := formatInt(v)
-		tab.WriteString(str)
+		enc.tabs.WriteString(str)
 
 	case r.Uint, r.Uint8, r.Uint16, r.Uint32, r.Uint64:
 		// tbd: tag for format? ( hex, #, etc. )
 		str := formatUint(v)
-		tab.WriteString(str)
+		enc.tabs.WriteString(str)
 
 	case r.Float32, r.Float64:
 		str := formatFloat(v)
 		if f := v.Float(); math.IsInf(f, 0) || math.IsNaN(f) {
 			err = fmt.Errorf("unsupported value %s", str)
 		} else {
-			tab.WriteString(str)
+			enc.tabs.WriteString(str)
 		}
 
 	case r.String:
@@ -70,21 +86,20 @@ func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 		// and write long strings as heredocs?
 		// select raw strings based on the presence of escapes?
 		str := strconv.Quote(v.String())
-		tab.WriteString(str)
+		enc.tabs.WriteString(str)
 
 	case r.Pointer:
-		err = WriteValue(tab, v.Elem(), indent)
+		err = enc.WriteValue(v.Elem(), indent)
 
 	case r.Array, r.Slice:
 		// tbd: look at tag for "want array"?
 		if v.Len() > 0 {
 			if indent {
-				tab.Indent(true)
+				enc.tabs.Indent(true)
 			}
-			m := rseq{slice: v}
-			err = writeSequence(tab, &m)
+			err = enc.WriteSequence(enc.newSequencer(enc, v))
 			if indent {
-				tab.Indent(false)
+				enc.tabs.Indent(false)
 			}
 		}
 
@@ -94,12 +109,11 @@ func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 		} else {
 			if v.Len() > 0 {
 				if indent {
-					tab.Indent(true)
+					enc.tabs.Indent(true)
 				}
-				m := makeSortedMap(v)
-				err = writeMapping(tab, m)
+				err = enc.WriteMapping(enc.newMapper(enc, v))
 				if indent {
-					tab.Indent(false)
+					enc.tabs.Indent(false)
 				}
 			}
 		}
@@ -107,23 +121,22 @@ func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 	case r.Interface:
 		if t := v.Type(); t.Implements(mappingType) {
 			m := v.Interface().(Mapper)
-			err = writeMapping(tab, m.TellMapping())
+			err = enc.WriteMapping(m.TellMapping(enc))
 
 		} else if t.Implements(sequenceType) {
 			m := v.Interface().(Sequencer)
-			err = writeSequence(tab, m.TellSequence())
+			err = enc.WriteSequence(m.TellSequence(enc))
 
 		} else {
-			err = WriteValue(tab, v.Elem(), indent)
+			err = enc.WriteValue(v.Elem(), indent)
 		}
 
 	default:
-		// tbd: Complex64&128?
-		// others: Chan, Func, UnsafePointer
+		// others: Complex, Chan, Func, UnsafePointer
 		err = fmt.Errorf("unexpected type %s(%T)", v.Kind(), v.Type())
 	}
 	if err == nil {
-		tab.Newline()
+		enc.tabs.Newline()
 	}
 	return
 }
@@ -131,19 +144,30 @@ func WriteValue(tab *TabWriter, v r.Value, indent bool) (err error) {
 var mappingType = r.TypeOf((*Mapper)(nil)).Elem()
 var sequenceType = r.TypeOf((*Sequencer)(nil)).Elem()
 
-func writeMapping(tab *TabWriter, it MappingIter) (err error) {
+// get the value of an iterator, ducking down to GetReflectedValue if it exists
+func getValue(v interface{ GetValue() any }) (ret r.Value) {
+	if i, ok := v.(GetReflectedValue); ok {
+		ret = i.GetReflectedValue()
+	} else {
+		i := v.GetValue()
+		ret = r.ValueOf(i)
+	}
+	return
+}
+
+func (enc *Encoder) WriteMapping(it MappingIter) (err error) {
 	for it.Next() {
-		key, val := it.GetKey(), it.GetValue()
-		if key = validateKey(key); len(key) == 0 {
-			err = errors.New("invalid key")
+		raw, val := it.GetKey(), getValue(it)
+		if key := validateKey(raw); len(key) == 0 {
+			err = fmt.Errorf("invalid key %q", raw)
 			break
 		} else {
-			tab.Flush().WriteString(key)
+			enc.tabs.Flush().WriteString(key)
 			if key[len(key)-1] != runes.WordSep {
-				tab.WriteRune(runes.WordSep)
+				enc.tabs.WriteRune(runes.WordSep)
 			}
-			tab.Space()
-			if e := WriteValue(tab, r.ValueOf(val), true); e != nil {
+			enc.tabs.Space()
+			if e := enc.WriteValue(val, true); e != nil {
 				err = e
 				break
 			}
@@ -152,16 +176,16 @@ func writeMapping(tab *TabWriter, it MappingIter) (err error) {
 	return
 }
 
-func writeSequence(tab *TabWriter, it SequenceIter) (err error) {
+func (enc *Encoder) WriteSequence(it SequenceIter) (err error) {
 	for it.Next() {
-		val := it.GetValue()
-		tab.Flush().WriteRune(runes.Dash)
-		tab.Space()
-		if e := WriteValue(tab, r.ValueOf(val), true); e != nil {
+		val := getValue(it)
+		enc.tabs.Flush().WriteRune(runes.Dash)
+		enc.tabs.Space()
+		if e := enc.WriteValue(val, true); e != nil {
 			err = e
 			break
 		} else {
-			tab.Newline()
+			enc.tabs.Newline()
 		}
 	}
 	return

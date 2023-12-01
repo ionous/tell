@@ -13,7 +13,7 @@ type TabWriter struct {
 	io.Writer
 }
 
-type runeWriter interface {
+type RuneWriter interface {
 	WriteRune(r rune) (int, error)
 }
 
@@ -67,7 +67,7 @@ func (tab *TabWriter) WriteString(s string) (int, error) {
 }
 
 func (tab *TabWriter) WriteRune(r rune) (ret int, err error) {
-	if rw, ok := tab.Writer.(runeWriter); ok {
+	if rw, ok := tab.Writer.(RuneWriter); ok {
 		ret, err = rw.WriteRune(r)
 	} else {
 		// var scratch byte[4]

@@ -6,34 +6,31 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// implement comment iter for a standard comment block
-func StandardComments(str string) (ret CommentIter) {
-	return &cit{next: str}
+// // implement comment iter for a standard comment block
+func makeComments(str string) (ret cit) {
+	return cit{rest: str}
 }
 
 type cit struct {
-	curr, next string
+	curr, rest string
 }
 
 func (c *cit) Next() (okay bool) {
-	if okay = len(c.next) > 0; okay {
-		c.curr = c.next
-		if i := strings.IndexRune(c.next, runes.Record); i < 0 {
-			c.next = ""
+	if okay = len(c.rest) > 0; okay {
+		if i := strings.IndexRune(c.rest, runes.NextRecord); i < 0 {
+			c.curr = c.rest
+			c.rest = ""
 		} else {
-			c.next = c.next[i+1:]
+			c.curr, c.rest = c.rest[:i], c.rest[i+1:]
 		}
 	}
 	return
 }
 
-func (c *cit) Entry() Comment {
-	// curr := c.curr
-	// return Comment{
-	// 	//
-	// }
-	// if i := strings.IndexRune(c.next, runes.CollectionMark); i < 0 {
+func (c *cit) GetComment() Comment {
+	if curr := c.curr; len(curr) > 0 {
 
-	// runes.CollectionMark
-	panic("split c.curr into parts")
+
+	}
+	return Comment{}
 }
