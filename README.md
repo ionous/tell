@@ -1,17 +1,21 @@
 Tell
 --------
-A yaml-like text format with json-ish scalars. 
+A yaml-like text format with json-ish values. 
 
 
 ```yaml
 Tell: "A yaml-like text format."
 
+# Does this look suspiciously like the yaml overview?
+# I have no idea how that could have happened.
 What It Is: """
    A way of describing data containing string, number, and boolean values, 
    and collections of those values. As in yaml, collections can be 
    both key-value mappings, and sequences of values.
    """
 
+What It Is Not: "A subset of yaml."
+	
 Related Projects:
   - "YAML" # Official YAML Website: https://yaml.org/
   - "JSON" # Official JSON Website: http://json.org/
@@ -28,12 +32,12 @@ Some major differences:
 * No anchors or references.
 * Documents hold a single value.
 
-It isn't intended to be a subset of yaml, but it tries to be close enough to leverage syntax highlighting in editors, etc.
+It isn't intended to be a subset of yaml, but it tries to be close enough to leverage some syntax highlighting in markdown, editors, etc.
 
 Status 
 ----
 
-Version 0.
+Version 0.1
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -43,6 +47,7 @@ The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
+* encoding needs improvement.
 * heredocs are defined but not yet supported.
 * arrays would be nice, but aren't implemented.
 * error reporting needs improvement.
@@ -74,20 +79,18 @@ func ExampleMarshal() {
 	// Output: true
 }
 
-// a slightly expanded version showing some decoder options:
+// slightly lower level usage:
 func ExampleDocument() {
 	str := `true` // some tell document
-	var b 
-	// maps/imap contains a slice based ordered map.
+	// maps/imap contains a slice based ordered map implementation.
 	// maps/stdmap generates standard (unordered) go maps.
-	// maps/orderedmap uses Ian Coleman's ordered map.
-	doc := tell.NewDocument(imap.Builder, tell.KeepComments)
+	// maps/orderedmap uses Ian Coleman's ordered map implementation.
+	doc := decode.NewDocument(imap.Builder, notes.DiscardComments())
+	// ReadDoc takes a string reader
 	if res, e := doc.ReadDoc(strings.NewReader(str)); e != nil {
 		panic(e)
 	} else {
-		// results has document level comments
-		// and the parsed content.
-		fmt.Println(res.Content)
+		fmt.Println(res)
 	}
 	// Output: true
 }
@@ -152,7 +155,7 @@ Unlike `yaml`, if a value is specified on a line following its dash, the value m
 #### Mappings
 Mappings relate keys to values in an ordered fashion.
 
-Keys are defined with **signatures**: a series of one or more words, separated by colons, ending with a colon and whitespace. For example: `Hello:there: `. The first character of each word must be a (unicode) letter; subsequent characters can include letters, digits, and underscores _( **TBD**: this is somewhat arbitrary; what does yaml do? )_
+Keys for mappings are defined using **signatures**: a series of one or more words, separated by colons, ending with a colon and whitespace. For example: `Hello:there: `. The first character of each word must be a (unicode) letter; subsequent characters can include letters, digits, and underscores _( **TBD**: this is somewhat arbitrary; what does yaml do? )_
 
 For the same reason that nested sequences can appear inline, mappings can. However, `yaml` doesn't allow this and it's probably bad style. For example: `Key: Nested: "some value"` is equivalent to the json `{"Key:": {"Nested:": "some value" }`. Like sequences, if the value of a mapping appears on a following line, two spaces of indentation are required.
 
@@ -168,7 +171,6 @@ There are two types, one for each string type:
 2. **interpreted**, triple quotes: newlines are presentation; backslashes are special; double newlines provide structure.
 
 Whitespace in both string types is influenced by the position of the closing heredoc marker. Therefore, any text to the left of the closing marker is an error. Both string types can define an custom tag to end the heredoc ( even if, unfortunately, that breaks `yaml` syntax highlighting. )
-
 
 ```
   - """
@@ -202,87 +204,12 @@ _i'm quite taken with the way some markdown tools provide syntax coloring of tri
 ### Comments
 Hate me forever, comments are preserved, are significant, and introduce their own indentation rules. 
 
-**Rationale:** Comments are a good mechanism for communicating human intent. In [Tapestry](https://git.sr.ht/~ionous/tapestry), story files can be edited by hand, visually edited using blockly, or even extracted to present documentation, therefore it's important to preserve an author's comments across different transformations. ( This was one of the motivations for creating tell. )
+**Rationale:** Comments are a good mechanism for communicating human intent. In [Tapestry](https://git.sr.ht/~ionous/tapestry), story files can be edited by hand, visually edited using blockly, or even extracted to present documentation; therefore, it's important to preserve an author's comments across different transformations. ( This was one of the motivations for creating tell. )
 
-Tell's rules reflect how i think most people comment yaml-like documents.
-This, of course, is based on absolutely no research whatsoever. Still, my hope is that no special knowledge is needed. 
+As in yaml, tell comments begin with the `#` hash, **followed by a space**, and continue to the end of a line. Comments cannot appear within a scalar _( **TBD**: comma separated arrays split across lines might be an exception. )_  
 
-Comments begin with the `#` hash, **followed by a space**, and continue to the end of a line. Comments cannot appear within a scalar _( **TBD**: comma separated arrays split across lines might be an exception. )_  The position of a comment determines which document element a comment describes.
+This implementation stores the comments for a collection in a string called a "comment block". Each collection has its own comment block stored in the zeroth element of its sequence, the blank key of its mappings, or the comment field of its document.
 
-```yaml
-# header comments start at the indentation of the following collection.
-# header comments can continue at the same level of indentation.
-- "header example"
+**This means all collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _( **TBD**: arrays will probably need to be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_
 
-# for consistency with the comments for collection entries ( described below )
-  # nested indentation is allowed starting on the second line.
-  # is that good? i don't know.
-- "nested header example"
-
-- "inline example"  # inline comments follow a value.
-                    # they continue on following lines
-                    # if their comment hash marks are aligned.
-
-- "footer example"
-  # footer comments continue at a consistent indentation
-  # right at, or to the right of, the entry's indentation.
-  # ( but no nesting. )
-  
-- "inline and footer"   # an inline comment...
-  # can be extended with normal
-  # footer comments. ( and still no nesting. )
-
-- # comments describing a specific collection entry 
-    # start immediately after the entry's dash ( or signature. )
-    # they support nesting to continue the comment.
-  "entry example"
-  
-- # comments for nil values
-  # are the same as any other collection entries.
-  
-# for entries that contain sub collections....
-
-- # without nesting, the first *line* describes the entry.
-  # subsequent lines act as a "header" for
-  # the first element of the sub-collection.
-  sub:collection:with: "first element"
-  
-- 
-  # this is on the second line, so it describes the element.
-  sub:collection:with: "one element"
-
-- # for consistency, the entry
-    # can use nesting here.
-  # the header can also use nesting...
-    # just like this line does.
-  sub:collection:with: "one element"
-
-# closing comments are allowed for a document.
-# presumably matching the indentation at the start.
-```
-
-#### Comment storage:
-
-This implementation stores the comments for each collection separately in its own "comment block". Each comment block gets stored in the zeroth index of its sequence, the blank key of its mappings, or the comment field of its document. **This means all collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _(TODO: arrays should probably be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_ 
-
-Each comment block is a single string of text generated in the following manner:
-
-* Individual comments are stored as encountered. Each line gets trimmed of trailing spaces, hash marks are kept as part of the string. _( Keeping the hash makes it more obvious how internal leading spaces are handled, and makes it easier to split comments out of their stored block of text. )_
-* A carriage return (`\r`) separates the comments before an entry's marker (its dash or signature) from the comments after; effectively it replaces the value of an entry.
-* Line breaks between comments use line feed (`\n`), all nesting indentation is normalized to a single horizontal tab (`\t`)<sup>\[1]</sup>. For these purposes, left-aligned inline comments are considered nested; footer comments are not.
-* To separate comments for different collection entries, the end of each entry is indicated with a form feed (`\f`). _( Putting it at the end of each, rather than the start of each, keeps the first header comment with the first entry. )_
-* Fully blank lines are ignored.
-  
-The resulting block can then be trimmed of trailing whitespace. And, a program that wants to read ( or maintain ) comments can split or count by form feed to find the comments of particular entries. 
-
-For example, the comment block `"# header\r# inline\n# footer"` represents:
-
-```yaml
-# header 
-- "value" # inline
-# footer
-```
-
-The tests have plenty of other examples.
-
-\[1] _for nesting, i would have preferred a single vertical tab rather than the newline htab combo. unfortunately, json excludes vertical tab from its set of escaped control codes even though javascript supports it. :/ translating tell comments to json ( like tapestry does ) would have resulted in this ugliness: `\u000b`. the alternative, using backspace ( the only escape not already used ), feels very wrong._
+The readme in package notes gets into all the specifics.
