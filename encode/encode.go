@@ -26,23 +26,31 @@ func Encode(v any) (ret []byte, err error) {
 }
 
 func MakeEncoder(w io.Writer) Encoder {
+	var m MapTransform
+	var n SequenceTransform
 	return Encoder{
 		tabs:         TabWriter{Writer: w},
-		keep:         false,
-		newMapper:    SortedMap,
-		newSequencer: OrderedSequence,
+		newMapper:    m.makeMapping,
+		newSequencer: n.makeSequence,
 	}
 }
 
 type Encoder struct {
 	tabs         TabWriter
-	keep         bool
-	newMapper    func(*Encoder, r.Value) MappingIter
-	newSequencer func(*Encoder, r.Value) SequenceIter
+	newMapper    MappingFactory
+	newSequencer SequenceFactory
+}
+
+func (enc *Encoder) SetMapper(n MappingFactory) {
+	enc.newMapper = n
+}
+
+func (enc *Encoder) SetSequencer(n SequenceFactory) {
+	enc.newSequencer = n
 }
 
 func (enc *Encoder) Encode(v any) (err error) {
-	if e := enc.WriteValue(r.ValueOf(v), false); e != nil {
+	if e := enc.WriteValue(r.ValueOf(v), indentNone); e != nil {
 		err = e
 	} else {
 		// ends with an artificial newline
@@ -52,8 +60,16 @@ func (enc *Encoder) Encode(v any) (err error) {
 	return
 }
 
+type indentation int
+
+const (
+	indentNone indentation = iota
+	inlineLine
+	indentWithoutLine
+)
+
 // writes a single value to the stream wrapped by tab writer
-func (enc *Encoder) WriteValue(v r.Value, indent bool) (err error) {
+func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 	switch v.Kind() {
 	// write structs as maps?
 	// should struct names be used as part of the signature?
@@ -94,26 +110,30 @@ func (enc *Encoder) WriteValue(v r.Value, indent bool) (err error) {
 	case r.Array, r.Slice:
 		// tbd: look at tag for "want array"?
 		if v.Len() > 0 {
-			if indent {
-				enc.tabs.Indent(true)
+			if indent != indentNone {
+				enc.tabs.Indent(true, indent != indentWithoutLine)
 			}
-			err = enc.WriteSequence(enc.newSequencer(enc, v))
-			if indent {
-				enc.tabs.Indent(false)
+			if it, e := enc.newSequencer(v); e != nil {
+				err = e
+			} else if it != nil {
+				err = enc.WriteSequence(it)
+				if indent != indentNone {
+					enc.tabs.Indent(false, true)
+				}
 			}
 		}
 
 	case r.Map:
-		if t := v.Type(); t.Key().Kind() != r.String {
-			err = fmt.Errorf("map keys must be string, have %T", t)
-		} else {
-			if v.Len() > 0 {
-				if indent {
-					enc.tabs.Indent(true)
-				}
-				err = enc.WriteMapping(enc.newMapper(enc, v))
-				if indent {
-					enc.tabs.Indent(false)
+		if v.Len() > 0 {
+			if indent != indentNone {
+				enc.tabs.Indent(true, indent != indentWithoutLine)
+			}
+			if it, e := enc.newMapper(v); e != nil {
+				err = e
+			} else if it != nil {
+				err = enc.WriteMapping(it)
+				if indent != indentNone {
+					enc.tabs.Indent(false, true)
 				}
 			}
 		}
@@ -167,7 +187,7 @@ func (enc *Encoder) WriteMapping(it MappingIter) (err error) {
 				enc.tabs.WriteRune(runes.WordSep)
 			}
 			enc.tabs.Space()
-			if e := enc.WriteValue(val, true); e != nil {
+			if e := enc.WriteValue(val, inlineLine); e != nil {
 				err = e
 				break
 			}
@@ -181,7 +201,7 @@ func (enc *Encoder) WriteSequence(it SequenceIter) (err error) {
 		val := getValue(it)
 		enc.tabs.Flush().WriteRune(runes.Dash)
 		enc.tabs.Space()
-		if e := enc.WriteValue(val, true); e != nil {
+		if e := enc.WriteValue(val, indentWithoutLine); e != nil {
 			err = e
 			break
 		} else {

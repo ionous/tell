@@ -2,25 +2,42 @@ package encode
 
 import r "reflect"
 
+// if an interface value implements the Mapper,this will control serialization
+// see also MappingFactory
 type Mapper interface {
 	TellMapping(enc *Encoder) MappingIter
 }
 
+// if an interface value implements the Sequence, this will control serialization
+// see also SequenceFactory
 type Sequencer interface {
 	TellSequence(enc *Encoder) SequenceIter
 }
 
+// factory function for serializing native maps
+// r.Value is guaranteed to a kind of reflect.Map
+// the default encoder uses SortedMap or SortedMapFactory.
+// returning a nil iterator skips the value
+type MappingFactory func(r.Value) (MappingIter, error)
+
+// factory function for serializing slices and arrays.
+// the default encoder uses Sequence.
+// returning a nil iterator skips the value
+type SequenceFactory func(r.Value) (SequenceIter, error)
+
+// turns a value representing one or more comments
+// into an iterator. the encoder uses the iterator to generate comments for collections.
+type CommentFactory func(r.Value) (CommentIter, error)
+
 type MappingIter interface {
-	Next() bool
+	Next() bool // called before every element, false if there are no more elements
 	GetKey() string
-	GetValue() any
-	GetComment() Comment
+	GetValue() any // valid after next returns true
 }
 
 type SequenceIter interface {
-	Next() bool
-	GetValue() any
-	GetComment() Comment
+	Next() bool    // called before every element, false if there are no more elements
+	GetValue() any // valid after next returns true
 }
 
 // if implemented by the implementation of MappingIter or SequenceIter
@@ -40,6 +57,6 @@ type Comment struct {
 
 // comment access for collections
 type CommentIter interface {
-	Next() bool
-	GetComment() Comment
+	Next() bool          // called before every element, false if there are no more elements
+	GetComment() Comment // valid after next returns true
 }
