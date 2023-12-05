@@ -35,23 +35,36 @@ func (t Type) Scalar() (ret bool) {
 }
 
 type Notifier interface {
-	Decoded(Type, any) error
+	Decoded(Pos, Type, any) error
 }
 
-func MakeTokenizer(notify Notifier) charm.State {
+type Pos struct {
+	X, Y int
+}
+
+func NewTokenizer(notify Notifier) charm.State {
 	t := tokenizer{notifier: notify}
-	return t.decode()
+	return charm.Parallel("tokenizer", t.decode(), charmed.DecodePos(&t.curr.Y, &t.curr.X))
 }
 
 type tokenizer struct {
 	notifier    Notifier
-	indent      int  // left aligned whitespace
 	spaces      int  // token separated whitespace
 	afterIndent bool // specifically, are we *after* the indent
+	curr, start Pos
 }
 
 func (n *tokenizer) decode() charm.State {
 	return charm.Step(n.whitespace(), n.tokenize())
+}
+
+func (n *tokenizer) notifyRune(q rune, t Type, v any) (ret charm.State) {
+	if e := n.notifier.Decoded(n.start, t, v); e != nil {
+		ret = charm.Error(e)
+	} else {
+		ret = send(n.decode(), q)
+	}
+	return
 }
 
 func (n *tokenizer) whitespace() charm.State {
@@ -59,16 +72,13 @@ func (n *tokenizer) whitespace() charm.State {
 		switch q {
 		case runes.Space:
 			n.spaces++
-			if !n.afterIndent {
-				n.indent++
-			}
 			ret = self
 		case runes.Newline:
 			if !n.afterIndent {
-				n.notifier.Decoded(Comment, "")
+				// blank line
+				n.notifier.Decoded(n.curr, Comment, "")
 			}
 			n.spaces = 0
-			n.indent = 0
 			n.afterIndent = false
 			ret = self
 		case runes.Eof:
@@ -84,18 +94,19 @@ func (n *tokenizer) tokenize() charm.State {
 			e := errors.New("expected whitespace between tokens")
 			ret = charm.Error(e)
 		} else {
-			n.afterIndent = true
 			n.spaces = 0
+			n.afterIndent = true
+			n.start = n.curr
 			//
 			switch {
 			case q == runes.Hash:
 				next := n.commentDecoder()
 				ret = send(next, q)
 
-			case q == runes.InterpretedString:
+			case q == runes.InterpretQuote:
 				ret = n.interpretDecoding()
 
-			case q == runes.RawString:
+			case q == runes.RawQuote:
 				ret = n.rawDecoding()
 
 			case q == runes.Dash: // negative numbers or sequences
@@ -112,15 +123,6 @@ func (n *tokenizer) tokenize() charm.State {
 		}
 		return
 	})
-}
-
-func (n *tokenizer) notifyRune(q rune, t Type, v any) (ret charm.State) {
-	if e := n.notifier.Decoded(t, v); e != nil {
-		ret = charm.Error(e)
-	} else {
-		ret = send(n.decode(), q)
-	}
-	return
 }
 
 // if the passed rune might be start a bool value
@@ -142,15 +144,22 @@ func (n *tokenizer) wordDecoder() charm.State {
 			boolean := charmed.StringMatch(b.String())
 			ret = charm.Self("parallel", func(self charm.State, q rune) (ret charm.State) {
 				ret = self
-				// the boolean and sign states return nil on success
-				if boolean = boolean.NewRune(q); boolean == nil {
-					ret = n.notifyRune(q, Bool, b == boolTrue)
-				} else if sign = sign.NewRune(q); sign == nil {
-					// signature ends on whitespace ( so pass that on )
+				// sign succeeds and turns nil on whitespace after a colon;
+				// boolean on the rune after its last letter.
+				if sign = sign.NewRune(q); sign == nil {
 					ret = n.notifyRune(q, Key, sig.String())
-				} else if terminal(boolean) && terminal(sign) {
-					// if they both have error'd; we're done.
-					// ( if only one has error'd, it will keep returning the same error. )
+				} else if boolean = boolean.NewRune(q); boolean == nil {
+					// boolean shouldnt match: ex. "falsey"
+					if !runes.IsWhitespace(q) {
+						boolean = charm.Error(nil)
+					} else {
+						// note: this means a key "true true:" will be interpreted as
+						// a bool (true) followed by a key (true:)
+						ret = n.notifyRune(q, Bool, b == boolTrue)
+					}
+				} else if terminal(sign) {
+					// sign is mostly superset of bool; (except for the eof/eol cases)
+					// if it dies and boolean didnt just succeed; they're both dead.
 					ret = charm.Error(wordyError)
 				}
 				return
@@ -220,7 +229,7 @@ func (n *tokenizer) rawDecoding() charm.State {
 // fix? returns float64 because json does
 // could also return int64 when its int like
 func (n *tokenizer) numDecoder() charm.State {
-	var d charmed.NumberDecoder
+	var d charmed.NumParser
 	return charm.Step(d.Decode(), charm.Statement("numDecoder", func(q rune) (ret charm.State) {
 		if v, e := d.GetNumber(); e != nil {
 			ret = charm.Error(e)

@@ -21,10 +21,10 @@ func TestError(t *testing.T) {
 func TestTokens(t *testing.T) {
 	tests := []any{
 		// token, string to parse, result:
-		token.Comment, "\n", "",
+		token.Comment, "", "", //  a blank line
 		token.Bool, `true`, true,
-		token.Number, `5`, int64(5),
-		token.Number, `0x20`, uint64(0x20),
+		token.Number, `5`, 5,
+		token.Number, `0x20`, uint(0x20),
 		token.Number, `5.4`, 5.4,
 		token.InterpretedString, `"5.4"`, "5.4",
 
@@ -42,12 +42,14 @@ func TestTokens(t *testing.T) {
 		token.Comment, "# comment", "# comment",
 		token.Key, "-", "",
 		token.Key, "hello:world:", "hello:world:",
+		// make sure dash numbers are treated as negative numbers
+		token.Number, `-5`, -5,
 	}
 
 	// test all of the above in both the same and separate buffers
 	// at the very least it helps to validate tokens must be separated by whitespace.
-	var combined tokenPairs
-	run := token.MakeTokenizer(&combined)
+	var combined results
+	run := token.NewTokenizer(&combined)
 
 	for i := 0; i < len(tests); i += 3 {
 		wantType := tests[i+0].(token.Type)
@@ -78,32 +80,37 @@ func TestTokens(t *testing.T) {
 }
 
 func testOne(tokenType token.Type, testStr string, tokenValue any) (err error) {
-	var pairs tokenPairs
-	run := token.MakeTokenizer(&pairs)
+	var pairs results
+	run := token.NewTokenizer(&pairs)
 	if _, e := charm.Parse(testStr+"\n", run); e != nil {
 		err = compare(e, tokenValue)
 	} else if cnt := len(pairs); cnt == 0 {
 		err = errors.New("didn't collect any tokens")
 	} else {
 		last := pairs[cnt-1]
-		err = last.compare(tokenType, tokenValue)
+		if e := compare(last.pos, token.Pos{}); e != nil {
+			err = e
+		} else {
+			err = last.compare(tokenType, tokenValue)
+		}
 	}
 	return
 }
 
-type tokenPairs []tokenPair
+type results []result
 
-type tokenPair struct {
+type result struct {
+	pos        token.Pos
 	tokenType  token.Type
 	tokenValue any
 }
 
-func (s *tokenPairs) Decoded(tokenType token.Type, tokenValue any) (_ error) {
-	(*s) = append((*s), tokenPair{tokenType, tokenValue})
+func (s *results) Decoded(pos token.Pos, tokenType token.Type, tokenValue any) (_ error) {
+	(*s) = append((*s), result{pos, tokenType, tokenValue})
 	return
 }
 
-func (p tokenPair) compare(wantType token.Type, wantValue any) (err error) {
+func (p result) compare(wantType token.Type, wantValue any) (err error) {
 	if tt := p.tokenType; tt != wantType {
 		err = fmt.Errorf("mismatched types want: %s, have: %s", wantType, tt)
 	} else {
