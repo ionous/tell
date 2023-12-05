@@ -1,49 +1,68 @@
 package charmed
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
 
-// scans until the matching quote marker is found
-func ScanQuote(q rune, useEscapes bool, onDone func(string)) (ret charm.State) {
-	const escape = '\\'
-	var out strings.Builder
-	return charm.Self("findMatchingQuote", func(self charm.State, r rune) (ret charm.State) {
-		switch {
-		case r == q:
-			onDone(out.String())
-			ret = charm.Finished("quotes")
+// wraps a string builder to read a quoted string
+type QuoteDecoder struct {
+	strings.Builder
+}
 
-		case r == escape && useEscapes:
-			ret = charm.Statement("escape", func(r rune) (ret charm.State) {
-				if x, ok := escapes[r]; !ok {
-					e := fmt.Errorf("unknown escape sequence %q", r)
+// read until an InterpretedString (") end marker is found
+func (d *QuoteDecoder) Interpret() charm.State {
+	return d.ScanQuote(runes.InterpretQuote, true)
+}
+
+// read until an RawString (`) end marker is found
+func (d *QuoteDecoder) Record() charm.State {
+	return d.ScanQuote(runes.RawQuote, false)
+}
+
+// return a state which reads until the end of string, returns error if finished incorrectly
+func (d *QuoteDecoder) ScanQuote(match rune, useEscapes bool) charm.State {
+	const escape = '\\'
+	return charm.Self("scanQuote", func(self charm.State, q rune) (ret charm.State) {
+		switch {
+		case q == match:
+			// returns unhandled for the net rune:
+			ret = charm.Statement("quoted",
+				func(rune) charm.State { return nil })
+
+		case q == escape && useEscapes: // alt: could use Step and keep.
+			ret = charm.Statement("escaping", func(q rune) (ret charm.State) {
+				if x, ok := escapes[q]; !ok {
+					e := fmt.Errorf("unknown escape %s", runes.RuneName(q))
 					ret = charm.Error(e)
 				} else {
-					out.WriteRune(x)
+					d.WriteRune(x)
 					ret = self // loop...
 				}
 				return
 			})
 
-		case r == '\n':
-			e := errors.New("unexpected newline")
-			ret = charm.Error(e)
-
-		case r == charm.Eof:
-			e := errors.New("unexpected end of file")
+		case q == runes.Newline || q == runes.Eof:
+			e := fmt.Errorf("unexpected %s", runes.RuneName(q))
 			ret = charm.Error(e)
 
 		default:
-			out.WriteRune(r)
+			d.WriteRune(q)
 			ret = self // loop...
 		}
 		return
 	})
+}
+
+// scans until the matching quote marker is found
+func ScanQuote(match rune, useEscapes bool, onDone func(string)) (ret charm.State) {
+	var d QuoteDecoder
+	return charm.Step(d.ScanQuote(match, useEscapes), charm.OnExit("recite", func() {
+		onDone(d.String())
+	}))
 }
 
 var escapes = map[rune]rune{

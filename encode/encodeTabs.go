@@ -22,7 +22,6 @@ type RuneWriter interface {
 // a soft space -- eaten if theres a newline
 func (tab *TabWriter) Space() {
 	tab.spaces++
-	// tab.WriteRune(runes.Space)
 }
 
 func (tab *TabWriter) Newline() {

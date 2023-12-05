@@ -10,10 +10,10 @@ import (
 const Eof = rune(-1)
 
 // Parse sends each rune of string to the passed state chart,
-// and returns the last state which ran.
-func Parse(str string, first State) (err error) {
-	_, err = innerParse(first, strings.NewReader(str))
-	return
+// Returns the error underlying error states,
+// or the last returned state if there was no error.
+func Parse(str string, first State) (ret State, err error) {
+	return innerParse(first, strings.NewReader(str))
 }
 
 func Read(in io.RuneReader, first State) (err error) {

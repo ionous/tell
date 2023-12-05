@@ -1,25 +1,33 @@
 package charmed
 
 import (
+	"fmt"
 	"unicode/utf8"
 
 	"github.com/ionous/tell/charm"
 )
 
-// match the string; calls the match function when a full match or a mismatch is detected
-// sends the rune being processed ( so either the last of the string, or the mismatch )
-// as well as the length of the string on a full match, or index of the mismatch.
-func MatchString(str string, onMatch func(r rune, i int) charm.State) charm.State {
-	var i int // index in str
-	return charm.Self("match "+str, func(self charm.State, r rune) (ret charm.State) {
-		// if the string is empty match returns -1, and size is 0
-		if match, size := utf8.DecodeRuneInString(str[i:]); match != r {
-			ret = onMatch(r, i)
-		} else if i += size; i < len(str) {
-			ret = self // loop
-		} else if i == len(str) {
-			ret = onMatch(r, i)
+// returns error if failed to match, or unhandled on the rune after the matched string.
+// the empty string will return unmatched immediately.
+func StringMatch(str string) charm.State {
+	var idx int // index in str
+	return charm.Self("match", func(self charm.State, q rune) (ret charm.State) {
+		if cnt := len(str); idx < cnt {
+			if match, size := utf8.DecodeRuneInString(str[idx:]); match != q {
+				ret = charm.Error(mismatchedString{q, idx})
+			} else {
+				ret, idx = self, idx+size // loop
+			}
 		}
 		return
 	})
+}
+
+type mismatchedString struct {
+	q  rune
+	at int
+}
+
+func (m mismatchedString) Error() string {
+	return fmt.Sprintf("mismatched on %q at %d", m.q, m.at)
 }
