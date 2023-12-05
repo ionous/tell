@@ -39,7 +39,7 @@ func TestReadAll(t *testing.T) {
 		a := expectations[i]
 
 		var b strings.Builder
-		if e := charm.Parse(test, readAll(&b)); e != nil {
+		if _, e := charm.Parse(test, readAll(&b)); e != nil {
 			t.Fatal(e)
 		} else {
 			out := b.String()

@@ -86,8 +86,7 @@ func readTell(filePath string) (ret any, err error) {
 		if len(focus) > 0 {
 			comments = notes.NewPrinter(comments)
 		}
-		doc := decode.NewDocument(stdmap.Builder, comments)
-		if res, e := doc.ReadDoc(bufio.NewReader(fp)); e != nil {
+		if res, e := decode.Decode(bufio.NewReader(fp), stdmap.Builder, comments); e != nil {
 			err = e
 		} else if str := buf.String(); len(str) > 0 {
 			ret = map[string]any{

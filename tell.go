@@ -28,7 +28,7 @@ import (
 // except int16 and uint16 are encoded as hex values starting with '0x'.
 // NaN, infinities, and complex numbers will return an error.
 //
-// Strings are encoded as per strconv.Quote
+// # Strings are encoded as per strconv.Quote
 //
 // Arrays and slice values are encoded as tell sequences.
 // []byte is not handled in any special way. ( fix? )
@@ -42,7 +42,6 @@ import (
 // Any other types will error ( ie. functions, channels, and structs )
 //
 // All documents end with a newline.
-//
 func Marshal(v any) (ret []byte, err error) {
 	return encode.Encode(v)
 }
@@ -54,10 +53,8 @@ func Marshal(v any) (ret []byte, err error) {
 // bool, floating point, signed and unsigned integers, maps and slices.
 //
 // For more flexibility, see package decode
-//
 func Unmarshal(in []byte, pv any) (err error) {
-	doc := decode.NewDocument(stdmap.Builder, notes.DiscardComments())
-	if raw, e := doc.ReadDoc(bytes.NewReader(in)); e != nil {
+	if raw, e := decode.Decode(bytes.NewReader(in), stdmap.Builder, notes.DiscardComments()); e != nil {
 		err = e
 	} else {
 		res, out := r.ValueOf(raw), r.ValueOf(pv)

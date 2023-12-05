@@ -32,7 +32,7 @@ func TestTrailingInline(t *testing.T) {
 		expect := expected[i]
 		var str strings.Builder
 		ctx := newContext(&str)
-		if e := charm.Parse(test, readTrailing(ctx, true)); e != nil {
+		if _, e := charm.Parse(test, readTrailing(ctx, true)); e != nil {
 			t.Fatal(e)
 		} else if got := str.String(); got != expect {
 			t.Logf("test %d: \nwant %q \nhave %q", i, expect, got)
