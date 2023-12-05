@@ -18,9 +18,9 @@ func (n *SequenceTransform) Sequencer() SequenceFactory {
 type CommentLocation int
 
 const (
-	CommentsAtFront CommentLocation = iota
+	NoComments CommentLocation = iota
+	CommentsAtFront
 	CommentsAtBack
-	NoComments
 )
 
 // todo? sort values; by default sequences are not sorted
@@ -49,7 +49,7 @@ func (n *SequenceTransform) makeSequence(src r.Value) (ret SequenceIter, err err
 	} else {
 		newComments := n.commentFactory
 		if newComments == nil {
-			newComments = CommentBlock
+			newComments = DiscardComments
 		}
 		var cit CommentIter
 		if cnt := src.Len(); cnt > 0 {

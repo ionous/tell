@@ -32,11 +32,11 @@ func TestEncoding(t *testing.T) {
 		},
 		`bool: true
 hello: "there"
-map: 
+map:
   bool: true
   hello: "world"
   value: 11
-slice: 
+slice:
   - "5"
   - 5
   - false

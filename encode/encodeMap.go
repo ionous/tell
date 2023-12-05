@@ -63,7 +63,7 @@ func (m *MapTransform) makeMapping(src r.Value) (ret MappingIter, err error) {
 	}
 	newComments := m.commentFactory
 	if newComments == nil {
-		newComments = CommentBlock
+		newComments = DiscardComments
 	}
 
 	var mk mapKeys
