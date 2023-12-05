@@ -16,18 +16,6 @@ func RunState(r rune, state State) (ret State) {
 	return
 }
 
-// nil represents unhandled runes
-// so this function always returns nil
-func Unhandled() State { return nil }
-
-// for the very next rune, return nil ( unhandled )
-// it may be the end of parsing, or some parent state might be taking over from here on out.
-func Finished(reason string) State {
-	return Statement(reason, func(rune) (none State) {
-		return
-	})
-}
-
 // replaceable function for printing the name of a state
 // by default uses Stringer's String(), if not implemented it returns "unknown state"
 // test packages can overwrite with something that uses package reflect if desired.
