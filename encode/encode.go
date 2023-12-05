@@ -183,8 +183,8 @@ func (enc *Encoder) WriteMapping(it MappingIter) (err error) {
 			break
 		} else {
 			enc.tabs.Flush().WriteString(key)
-			if key[len(key)-1] != runes.WordSep {
-				enc.tabs.WriteRune(runes.WordSep)
+			if key[len(key)-1] != runes.Colon {
+				enc.tabs.WriteRune(runes.Colon)
 			}
 			enc.tabs.Space()
 			if e := enc.WriteValue(val, inlineLine); e != nil {
