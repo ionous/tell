@@ -58,7 +58,7 @@ func (sig *Signature) body(q rune) (done bool, err error) {
 			err = errors.New("keys can't span lines")
 		}
 
-	case q == runes.WordSep: // aka, a colon
+	case q == runes.Colon: // aka, a colon
 		if !sig.Pending() {
 			err = errors.New("words in signatures should be separated by a single colon")
 		} else {
@@ -66,7 +66,7 @@ func (sig *Signature) body(q rune) (done bool, err error) {
 			sig.lastSep = sig.Len() // makes it not pending till next valid rune
 		}
 
-	case q == runes.Space || q == runes.WordConnector || unicode.IsDigit(q):
+	case q == runes.Space || q == runes.Underscore || q == runes.Dash || unicode.IsDigit(q):
 		if !sig.Pending() {
 			err = errors.New("words in a signature should start with a letter")
 		} else {
