@@ -15,6 +15,10 @@ func (e Terminal) NewRune(r rune) (ret State) {
 	return e
 }
 
+func (e Terminal) Unwrap() error {
+	return e.err
+}
+
 func (e Terminal) Error() string {
 	return e.err.Error()
 }
