@@ -47,10 +47,10 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 			log.Println("error at", y, x)
 			err = es
 		}
+		d.memo.OnEof() // fix; can this be removed?
 		if err == nil {
 			ret, err = d.out.finalizeAll()
 		}
-		d.memo.OnEof() // fix; can this be removed?
 	}
 	return
 }
