@@ -18,8 +18,8 @@ func (p printer) Inplace() Commentator {
 }
 
 func (p printer) OnEof() {
-	println("--- eof ---")
-	p.c.WriteRune(runes.Eof)
+	println("*** EOF ***")
+	p.c.OnEof()
 }
 
 func (p printer) IsNothing() bool {
@@ -57,6 +57,9 @@ func (p printer) OnCollectionEnded() Commentator {
 }
 
 func (p printer) WriteRune(r rune) (int, error) {
+	if r == runes.Newline {
+		print("⏎")
+	}
 	print(string(r))
 	return p.c.WriteRune(r)
 }
