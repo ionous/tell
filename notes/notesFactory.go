@@ -37,7 +37,8 @@ type commentBuilder struct {
 // tell will pop all its pending collections triggering the final flush
 // for testing, sometimes that's a bit annoying
 func (p *commentBuilder) OnEof() {
-	p.cast.send(runes.Eof)
+	p.cast.OnEof()
+	p.ctx.flush(-1)
 }
 
 func (p *commentBuilder) BeginCollection(w RuneWriter) Commentator {

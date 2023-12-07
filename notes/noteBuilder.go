@@ -25,6 +25,15 @@ func (b *runecast) Inplace() Commentator {
 	return b
 }
 
+func (b *runecast) OnEof() {
+	// fix: this guards against double ending
+	// but ideally that wouldn't happen in the first place
+	// ( currently depends on whether any final footer comments are pending )
+	if b.state != nil {
+		b.send(charm.Eof)
+	}
+}
+
 // note: doesnt do anything with the runewriter
 // the whole statemachine requires a data sink anyways
 // ( see: commentBuilder )

@@ -122,6 +122,7 @@ func TestDocHeaderSplitNest(t *testing.T) {
 }
 
 // test a document with a scalar and footer.
+// ( also: headerFooterComment1.tell )
 //
 // # header
 // "scalar"
@@ -164,7 +165,7 @@ func TestDocScalarInline(t *testing.T) {
 }
 
 // test a document with a collection and footer.
-// ( see also: TestCollectionFooter )
+// ( see also: TestCollectionFooter; and headerFooterComment2.tell )
 //
 // # header
 // - "sequence"

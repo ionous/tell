@@ -45,6 +45,7 @@ func (p *context) resolveBuffer() (ret string) {
 }
 
 // write passed runes, and then the buffer, to out
+// ( ignores q < 0 )
 func (p *context) flush(q rune) {
 	if str := p.resolveBuffer(); len(str) > 0 {
 		p.out.writeTerms()

@@ -28,6 +28,8 @@ type Commentator interface {
 	// but are otherwise eaten.
 	// the signature mirrors strings.StringBuilder, but always returns 0, nil
 	WriteRune(rune) (int, error)
+	// tbd: how to remove this:
+	OnEof()
 }
 
 type RuneWriter interface {
