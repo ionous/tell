@@ -3,6 +3,7 @@ package decode
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ionous/tell/maps"
 )
@@ -13,18 +14,23 @@ type pendingValue interface {
 	finalize() any // return the collection
 }
 
-func newMapping(key string, values maps.Builder) pendingValue {
-	return &pendingMap{key: key, values: values}
+func newMapping(key string, values maps.Builder, comments *strings.Builder) pendingValue {
+	return &pendingMap{key: key, values: values, comments: comments}
 }
 
 type pendingMap struct {
-	values maps.Builder
-	key    string
+	key      string
+	values   maps.Builder
+	comments *strings.Builder
 }
 
 func (p *pendingMap) finalize() (ret any) {
 	if len(p.key) > 0 {
 		p.setValue(nil)
+	}
+	if p.comments != nil {
+		str := clearComments(&p.comments)
+		p.values.Add("", str)
 	}
 	return p.values.Map()
 }
@@ -50,18 +56,27 @@ func (p *pendingMap) setValue(val any) (err error) {
 	return
 }
 
-func newSequence() pendingValue {
-	return &pendingSeq{dashed: true}
+func newSequence(comments *strings.Builder) pendingValue {
+	var values []any
+	if comments != nil {
+		values = make([]any, 1)
+	}
+	return &pendingSeq{dashed: true, values: values, comments: comments}
 }
 
 type pendingSeq struct {
-	values []any
-	dashed bool
+	dashed   bool
+	values   []any
+	comments *strings.Builder
 }
 
 func (p *pendingSeq) finalize() (ret any) {
 	if p.dashed {
 		p.setValue(nil)
+	}
+	if p.comments != nil {
+		str := clearComments(&p.comments)
+		p.values[0] = str
 	}
 	return p.values
 }
@@ -106,4 +121,11 @@ func (p *pendingScalar) setKey(key string) error {
 
 func (p *pendingScalar) setValue(val any) (err error) {
 	return fmt.Errorf("unexpected value for document scalar %v(%T)", val, val)
+}
+
+func clearComments(a **strings.Builder) (ret string) {
+	ret = (*a).String()
+	(*a).Reset()
+	(*a) = nil
+	return
 }

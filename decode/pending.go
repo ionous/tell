@@ -1,7 +1,9 @@
 package decode
 
+import "github.com/ionous/tell/token"
+
 type pendingAt struct {
-	indent int
+	pos token.Pos
 	pendingValue
 }
 
