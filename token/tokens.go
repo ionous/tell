@@ -74,9 +74,9 @@ func (n *tokenizer) whitespace() charm.State {
 			n.spaces++
 			ret = self
 		case runes.Newline:
-			if !n.afterIndent {
-				// blank line
-				n.notifier.Decoded(n.curr, Comment, "")
+			if !n.afterIndent { // blank line
+				leftEdge := Pos{Y: n.curr.Y}
+				n.notifier.Decoded(leftEdge, Comment, "")
 			}
 			n.spaces = 0
 			n.afterIndent = false
@@ -205,7 +205,7 @@ func (n *tokenizer) commentDecoder() charm.State {
 			b.WriteRune(q)
 			ret = self
 		case runes.Newline, runes.Eof:
-			// tbd: using .indenting could send "trailing" vs. "full line comment"
+			// tbd: using indenting could send "trailing" vs. "full line comment"
 			ret = n.notifyRune(q, Comment, b.String())
 		}
 		return
