@@ -22,6 +22,9 @@
 - 
   # a header because of the leading blank line
   - "sequence"
+  
+Having:A:Long:Key:Might:Make:Header:Comments:Annoying: #
+  # you'd have to have a trailing hash on the line before
 
 - # key comment 
   # a header line because any use of
