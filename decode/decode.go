@@ -2,29 +2,86 @@ package decode
 
 import (
 	"fmt"
+	"io"
+	"log"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/charmed"
+	"github.com/ionous/tell/maps"
+	"github.com/ionous/tell/notes"
+	"github.com/ionous/tell/runes"
 	"github.com/ionous/tell/token"
 )
 
-type decoder struct {
+func MakeDecoder(maps maps.BuilderFactory,
+	comments notes.Commentator) Decoder {
+	return Decoder{
+		mapMaker: mapMaker{maps},
+		memo:     makeMemo(comments),
+	}
+}
+
+// configure the production of mappings
+func (d *Decoder) SetMapper(maps maps.BuilderFactory) {
+	d.mapMaker.create = maps
+}
+
+// configure the production of comment blocks
+func (d *Decoder) UseNotes(comments notes.Commentator) {
+	d.memo = makeMemo(comments)
+}
+
+// read a tell document from the passed stream
+func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
+	var x, y int
+	run := charm.Parallel("parallel",
+		charmed.FilterControlCodes(),
+		d.decodeDoc(), // tbd: wrap with charmed.UnhandledError()? why/why not.
+		charmed.DecodePos(&y, &x),
+	)
+	if e := charm.Read(src, run); e != nil {
+		log.Println("error at", y, x)
+		err = e
+	} else if next := charm.RunState(runes.Eof, run); next != nil {
+		if es, ok := next.(charm.Terminal); ok && es != charm.Error(nil) {
+			log.Println("error at", y, x)
+			err = es
+		}
+		if err == nil {
+			ret, err = d.out.finalizeAll()
+		}
+		d.memo.OnEof() // fix; can this be removed?
+	}
+	return
+}
+
+type Decoder struct {
 	out      output
 	mapMaker mapMaker
 	memo     memo
 	state    func(token.Pos, token.Type, any) error
+	// configure the tokenizer for the next decode
+	UseFloats bool
 }
 
-func (d *decoder) decode() charm.State {
-	d.state = d.docStart
-	return token.NewTokenizer(d)
-}
+// implements token dispatch, hiding it from the public interface
+type dispatcher struct{ *Decoder }
 
 // implements the token thingy
-func (d *decoder) Decoded(at token.Pos, tokenType token.Type, val any) error {
-	return d.state(at, tokenType, val)
+func (dispatch dispatcher) Decoded(at token.Pos, tokenType token.Type, val any) error {
+	return dispatch.state(at, tokenType, val)
 }
 
-func (d *decoder) docStart(at token.Pos, tokenType token.Type, val any) (err error) {
+func (d *Decoder) decodeDoc() charm.State {
+	d.state = d.docStart
+	t := token.Tokenizer{
+		Notifier:  dispatcher{d},
+		UseFloats: d.UseFloats,
+	}
+	return t.Decode()
+}
+
+func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err error) {
 	// tbd: change these into functions?
 	switch tokenType {
 	case token.Comment:
@@ -48,7 +105,7 @@ func (d *decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 }
 
 // the document value was written:
-func (d *decoder) docValue(at token.Pos, tokenType token.Type, val any) (err error) {
+func (d *Decoder) docValue(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
 		d.memo.noteAt(d.out.pos, at, val.(string))
@@ -59,7 +116,7 @@ func (d *decoder) docValue(at token.Pos, tokenType token.Type, val any) (err err
 }
 
 // a value has just been decoded:
-func (d *decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err error) {
+func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Key:
 		if at.X > d.out.pos.X {
@@ -87,7 +144,7 @@ func (d *decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 }
 
 // a key has just been decoded:
-func (d *decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err error) {
+func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
 		// greater will be a a comment ( maybe nested )
@@ -156,7 +213,7 @@ func (d *decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 	return
 }
 
-func (d *decoder) onComment(at token.Pos, tokenType token.Type, str string) (err error) {
+func (d *Decoder) onComment(at token.Pos, tokenType token.Type, str string) (err error) {
 	// is the (valid) comment for an earlier collection:
 	// see? you can have ternaries in go.... O_o
 	if ends, e := func() (ret int, err error) {

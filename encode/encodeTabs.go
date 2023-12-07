@@ -1,9 +1,7 @@
 package encode
 
 import (
-	"fmt"
 	"io"
-	"unicode/utf8"
 
 	"github.com/ionous/tell/runes"
 )
@@ -13,10 +11,6 @@ type TabWriter struct {
 	spaces int
 	lines  int
 	io.Writer
-}
-
-type RuneWriter interface {
-	WriteRune(r rune) (int, error)
 }
 
 // a soft space -- eaten if theres a newline
@@ -67,17 +61,8 @@ func (tab *TabWriter) WriteString(s string) (int, error) {
 	return io.WriteString(tab.Writer, s)
 }
 
-func (tab *TabWriter) WriteRune(r rune) (ret int, err error) {
-	if rw, ok := tab.Writer.(RuneWriter); ok {
-		ret, err = rw.WriteRune(r)
-	} else if !utf8.ValidRune(r) {
-		err = fmt.Errorf("rune %d out of range", r)
-	} else {
-		var scratch [utf8.UTFMax]byte
-		cnt := utf8.EncodeRune(scratch[:], r)
-		ret, err = tab.Write(scratch[:cnt])
-	}
-	return
+func (tab *TabWriter) WriteRune(q rune) (ret int, err error) {
+	return runes.WriteRune(tab.Writer, q)
 }
 
 func writeSpaces(w io.Writer, cnt int) {

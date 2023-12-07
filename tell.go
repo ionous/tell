@@ -2,10 +2,6 @@ package tell
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
-	"io"
-	r "reflect"
 
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/encode"
@@ -54,41 +50,9 @@ func Marshal(v any) (ret []byte, err error) {
 //
 // For more flexibility, see package decode
 func Unmarshal(in []byte, pv any) (err error) {
-	if raw, e := decode.Decode(bytes.NewReader(in), stdmap.Builder, notes.DiscardComments()); e != nil {
-		err = e
-	} else {
-		res, out := r.ValueOf(raw), r.ValueOf(pv)
-		if out.Kind() != r.Pointer {
-			err = errors.New("expected a pointer")
-		} else if out := out.Elem(); !out.CanSet() {
-			err = errors.New("expected a settable value")
-		} else {
-			if rt, ot := res.Type(), out.Type(); rt.AssignableTo(ot) {
-				out.Set(res)
-			} else if res.CanConvert(ot) {
-				out.Set(res.Convert(ot))
-			} else {
-				err = fmt.Errorf("result of %q cant be written to a pointer of %q", rt, ot)
-			}
-		}
+	dec := Decoder{
+		src:   bytes.NewReader(in),
+		inner: decode.MakeDecoder(stdmap.Builder, notes.DiscardComments()),
 	}
-	return
-}
-
-// Encoder - follows the pattern of encoding/json
-type Encoder encode.Encoder
-
-// NewEncoder -
-func NewEncoder(w io.Writer) *Encoder {
-	enc := encode.MakeEncoder(w)
-	return (*Encoder)(&enc)
-}
-
-// Encode - serializes the passed document to the encoder's stream
-// followed by a newline character.
-// tell doesnt support multiple documents in the same file,
-// but this interface doesn't stop callers from trying
-func (enc *Encoder) Encode(v any) (err error) {
-	inner := (*encode.Encoder)(enc)
-	return inner.Encode(v)
+	return dec.Decode(pv)
 }

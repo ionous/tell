@@ -52,7 +52,8 @@ func test(t *testing.T, nameInputExpect ...any) {
 		} else {
 			var res any
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-			if val, e := decode.Decode(strings.NewReader(str), imap.Builder, notes.DiscardComments()); e != nil {
+			dec := decode.MakeDecoder(imap.Builder, notes.DiscardComments())
+			if val, e := dec.Decode(strings.NewReader(str)); e != nil {
 				res = e
 			} else {
 				res = val
@@ -62,7 +63,6 @@ func test(t *testing.T, nameInputExpect ...any) {
 			} else {
 				t.Log("ok:", name)
 			}
-
 		}
 	}
 }

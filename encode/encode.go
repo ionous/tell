@@ -29,24 +29,16 @@ func MakeEncoder(w io.Writer) Encoder {
 	var m MapTransform
 	var n SequenceTransform
 	return Encoder{
-		tabs:         TabWriter{Writer: w},
-		newMapper:    m.makeMapping,
-		newSequencer: n.makeSequence,
+		tabs:      TabWriter{Writer: w},
+		Mapper:    m.makeMapping,
+		Sequencer: n.makeSequence,
 	}
 }
 
 type Encoder struct {
-	tabs         TabWriter
-	newMapper    MappingFactory
-	newSequencer SequenceFactory
-}
-
-func (enc *Encoder) SetMapper(n MappingFactory) {
-	enc.newMapper = n
-}
-
-func (enc *Encoder) SetSequencer(n SequenceFactory) {
-	enc.newSequencer = n
+	tabs      TabWriter
+	Mapper    MappingFactory
+	Sequencer SequenceFactory
 }
 
 func (enc *Encoder) Encode(v any) (err error) {
@@ -113,7 +105,7 @@ func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 			if indent != indentNone {
 				enc.tabs.Indent(true, indent != indentWithoutLine)
 			}
-			if it, e := enc.newSequencer(v); e != nil {
+			if it, e := enc.Sequencer(v); e != nil {
 				err = e
 			} else if it != nil {
 				err = enc.WriteSequence(it)
@@ -128,7 +120,7 @@ func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 			if indent != indentNone {
 				enc.tabs.Indent(true, indent != indentWithoutLine)
 			}
-			if it, e := enc.newMapper(v); e != nil {
+			if it, e := enc.Mapper(v); e != nil {
 				err = e
 			} else if it != nil {
 				err = enc.WriteMapping(it)
