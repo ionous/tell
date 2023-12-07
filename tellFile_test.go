@@ -10,8 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ionous/tell/decode"
-	"github.com/ionous/tell/maps/stdmap"
+	"github.com/ionous/tell"
 	"github.com/ionous/tell/notes"
 )
 
@@ -27,7 +26,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	// focus = "smallCatalog"
+	// focus = "nilEntryComment"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -48,7 +47,6 @@ func TestFiles(t *testing.T) {
 			} else if want, e := readJson(jsonName); e != nil {
 				t.Log(stringify(got))
 				t.Fail()
-
 			} else {
 				if !reflect.DeepEqual(got, want) {
 					t.Log("ng: ", jsonName)
@@ -75,6 +73,7 @@ func readTell(filePath string) (ret any, err error) {
 	if fp, e := tellData.Open(filePath); e != nil {
 		err = e
 	} else {
+
 		// fix: might be cleaner to have a "BeginCollection" for document too
 		var buf strings.Builder // document level comment data
 		var comments notes.Commentator
@@ -86,7 +85,11 @@ func readTell(filePath string) (ret any, err error) {
 		if len(focus) > 0 {
 			comments = notes.NewPrinter(comments)
 		}
-		if res, e := decode.Decode(bufio.NewReader(fp), stdmap.Builder, comments); e != nil {
+		var res any
+		dec := tell.NewDecoder(bufio.NewReader(fp))
+		dec.UseFloats() // because json does
+		dec.UseNotes(comments)
+		if e := dec.Decode(&res); e != nil {
 			err = e
 		} else if str := buf.String(); len(str) > 0 {
 			ret = map[string]any{
@@ -111,5 +114,4 @@ func readJson(filePath string) (ret any, err error) {
 		err = e
 	}
 	return
-
 }
