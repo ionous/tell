@@ -1,9 +1,44 @@
 Notes 
 -----
-The notes package parses tell document comments.
-
+The `notes` package parses tell comments.
 
 Comments begin with the `#` hash, **followed by a space**, and continue to the end of a line. Comments cannot appear within a scalar _( **TBD**: comma separated arrays split across lines might be an exception. )_
+
+For instance:
+
+```yaml
+"i am a value" # i am a comment.
+```
+
+The decoder can be configured to discard those comments, or to keep them. 
+When comment are kept, they are stored in their most closely related collection as a string called a "comment block".
+The comment block lives in the zeroth element of its sequence, the blank key of its mapping, or the comment field of its document.
+
+For example, the following document has two comment blocks: one for the document, and one for the sequence.
+
+```yaml
+# header
+- "value" # inline
+# footer
+```
+
+If, after decoding, the document and its comments were written out in json, this would be the result:
+
+
+```json
+{
+    "comment": "# header\f# footer",
+    "content": [
+        "\r\r# inline",
+        "value"
+    ]
+}
+```
+
+Although this method means every sequence is one indexed, and every mapping has a blank key: it provides a simple way to read, write, and manipulate comments for user code.
+
+Associating comments with collections
+------------------
 
 The following rules reflect how i think most people comment yaml-like documents.
 This, of course, is based on absolutely no research whatsoever. Still, my hope is that no special knowledge is needed. 
@@ -20,43 +55,47 @@ This, of course, is based on absolutely no research whatsoever. Still, my hope i
 
 - "inline example"  # inline trailing comments follow a scalar value.
                     # they continue on following lines
-                    # if, and only if, they are all left aligned.
+                    # and ideally are left aligned.
 
 - "alternate trailing example"
     # alternatively, trailing comments comments can start on the next line 
     # still indented to the right of the value
-    # and all left-aligned, with no nesting.
+    # and, again, ideally left-aligned, with no additional nesting.
   
 - # comments can live after the key
     # between a signature ( or dash ) and its value.
     # they support nesting to continue the comment.
   "entry example"
-  
-- # comments for nil values
-  # are the same as any other collection entries.
-  
-# for entries that contain sub collections....
+   
+-
+# placing a comment aligned with the left edge of the 
+# collection keys generates an implicit nil for the preceding key
+# ( this comment is therefore treated like a header for the next element )
 
-- # without nesting, the first *line* describes the entry.
-  # subsequent lines act as a header for
-  # the first element of the sub-collection.
+- # without nesting, the entire block 
+  # gets stored with the parent container
+  # as a comment describing this key.
   sub:collection:with: "first element"
   
 - 
-  # this is on the second line, so it describes the element.
+  # introducing a fully blank line forces
+  # a blank key comment, and starts a header 
+  # for the first element of this next sub collection.
   sub:collection:with: "one element"
 
-- # for consistency, the entry
-    # can use nesting here.
-  # the header can also use nesting...
-    # just like this line does.
+- # when any comment nesting is used
+    # the leading comments go to the parent container
+    # as a key comment.
+  # while the final comment group 
+    # acts a a header for the sub collection.
   sub:collection:with: "one element"
 
 # closing comments are allowed for a document.
 # presumably matching the indentation at the start.
 ```
 
-#### Comment storage:
+Comment Block Generation
+------------------------
 
 Each comment block is a single string of text generated in the following manner:
 
@@ -73,14 +112,6 @@ Each comment block is a single string of text generated in the following manner:
 * Fully blank lines are ignored.
   
 The resulting block can then be trimmed of trailing whitespace. And, a program that wants to read ( or maintain ) comments can split or count by form feed to find the comments of particular entries. 
-
-For example, the following document generates two comment blocks: one for the document (`# header\f# footer`), and one for the collection containing the scalar "value" (`\r\r# inline`).
-
-```yaml
-# header
-- "value" # inline
-# footer
-```
 
 The pattern for a single scalar value in a collection looks like this:
 
