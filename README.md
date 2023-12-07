@@ -37,7 +37,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.1
+Version 0.3
 
 The go implementation successfully reads and writes some well-formed documents.
 
