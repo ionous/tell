@@ -23,7 +23,7 @@ This, of course, is based on absolutely no research whatsoever. Still, my hope i
                     # if, and only if, they are all left aligned.
 
 - "alternate trailing example"
-	  # alternatively, trailing comments comments can start on the next line 
+    # alternatively, trailing comments comments can start on the next line 
     # still indented to the right of the value
     # and all left-aligned, with no nesting.
   
