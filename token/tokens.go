@@ -10,6 +10,7 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// tbd: maybe a channel instead?
 type Notifier interface {
 	Decoded(Pos, Type, any) error
 }

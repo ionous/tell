@@ -9,6 +9,9 @@ func DiscardComments() Commentator {
 	return Nothing{}
 }
 
+// uses the passed writer to output document level comments
+// comments for maps get collected into a comment block, and assigned to the blank key.
+// comments for sequences get collected into a comment block, and assigned to the zeroth index.
 func NewCommentator(w RuneWriter) (ret Commentator) {
 	return newNotes(w)
 }
