@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ionous/tell/maps"
+	"github.com/ionous/tell/collect"
 )
 
 type pendingValue interface {
@@ -14,13 +14,13 @@ type pendingValue interface {
 	finalize() any // return the collection
 }
 
-func newMapping(key string, values maps.Builder, comments *strings.Builder) pendingValue {
+func newMapping(key string, values collect.Builder, comments *strings.Builder) pendingValue {
 	return &pendingMap{key: key, values: values, comments: comments}
 }
 
 type pendingMap struct {
 	key      string
-	values   maps.Builder
+	values   collect.Builder
 	comments *strings.Builder
 }
 

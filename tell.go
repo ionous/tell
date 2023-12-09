@@ -3,9 +3,9 @@ package tell
 import (
 	"bytes"
 
+	"github.com/ionous/tell/collect/stdmap"
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/encode"
-	"github.com/ionous/tell/maps/stdmap"
 	"github.com/ionous/tell/notes"
 )
 

@@ -9,8 +9,8 @@ import (
 	"unicode"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/collect/imap"
 	"github.com/ionous/tell/decode"
-	"github.com/ionous/tell/maps/imap"
 	"github.com/ionous/tell/notes"
 )
 

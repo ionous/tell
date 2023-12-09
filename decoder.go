@@ -7,9 +7,9 @@ import (
 	"io"
 	r "reflect"
 
+	"github.com/ionous/tell/collect"
+	"github.com/ionous/tell/collect/stdmap"
 	"github.com/ionous/tell/decode"
-	"github.com/ionous/tell/maps"
-	"github.com/ionous/tell/maps/stdmap"
 	"github.com/ionous/tell/notes"
 )
 
@@ -35,7 +35,7 @@ func NewDecoder(src io.Reader) *Decoder {
 
 // control the creation of mappings for the upcoming Decode.
 // the default is to create native maps ( via stdmap.Builder )
-func (d *Decoder) SetMapper(maps maps.BuilderFactory) {
+func (d *Decoder) SetMapper(maps collect.BuilderFactory) {
 	d.inner.SetMapper(maps)
 }
 

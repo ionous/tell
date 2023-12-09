@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/ionous/tell/maps"
+	"github.com/ionous/tell/collect"
 	"github.com/ionous/tell/token"
 )
 
@@ -68,7 +68,7 @@ func (out *output) uncheckedPop(at int) (ret int, err error) {
 }
 
 type mapMaker struct {
-	create maps.BuilderFactory
+	create collect.BuilderFactory
 }
 
 func (f *mapMaker) newCollection(key string, comments *strings.Builder) pendingValue {

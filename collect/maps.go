@@ -1,4 +1,4 @@
-package maps
+package collect
 
 // write to a map
 type Builder interface {

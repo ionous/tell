@@ -1,10 +1,10 @@
 package stdmap
 
-import "github.com/ionous/tell/maps"
+import "github.com/ionous/tell/collect"
 
 type StdMap map[string]any
 
-func Builder(reserve bool) (ret maps.Builder) {
+func Builder(reserve bool) (ret collect.Builder) {
 	if reserve {
 		ret = StdMap{"": nil}
 	} else {
@@ -13,7 +13,7 @@ func Builder(reserve bool) (ret maps.Builder) {
 	return
 }
 
-func (m StdMap) Add(key string, val any) maps.Builder {
+func (m StdMap) Add(key string, val any) collect.Builder {
 	if len(key) == 0 { // there should be only one blank key; at the start
 		if _, exists := m[key]; !exists {
 			// could adjust the slice. but the program should know better.

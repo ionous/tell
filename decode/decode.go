@@ -7,13 +7,13 @@ import (
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/charmed"
-	"github.com/ionous/tell/maps"
+	"github.com/ionous/tell/collect"
 	"github.com/ionous/tell/notes"
 	"github.com/ionous/tell/runes"
 	"github.com/ionous/tell/token"
 )
 
-func MakeDecoder(maps maps.BuilderFactory,
+func MakeDecoder(maps collect.BuilderFactory,
 	comments notes.Commentator) Decoder {
 	return Decoder{
 		mapMaker: mapMaker{maps},
@@ -22,7 +22,7 @@ func MakeDecoder(maps maps.BuilderFactory,
 }
 
 // configure the production of mappings
-func (d *Decoder) SetMapper(maps maps.BuilderFactory) {
+func (d *Decoder) SetMapper(maps collect.BuilderFactory) {
 	d.mapMaker.create = maps
 }
 

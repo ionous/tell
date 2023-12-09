@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ionous/tell/maps/imap"
+	"github.com/ionous/tell/collect/imap"
 )
 
 func TestMap(t *testing.T) {
