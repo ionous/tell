@@ -64,6 +64,11 @@ type Decoder struct {
 	UseFloats bool
 }
 
+func (d *Decoder) Position() (x int, y int) {
+	pos := d.out.pos
+	return pos.X, pos.Y
+}
+
 // implements token dispatch, hiding it from the public interface
 type dispatcher struct{ *Decoder }
 
