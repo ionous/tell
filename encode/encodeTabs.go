@@ -17,15 +17,17 @@ type TabWriter struct {
 func (tab *TabWriter) Space() {
 	tab.spaces++
 }
+func (tab *TabWriter) Tab() {
+	tab.spaces += 2
+}
 
 func (tab *TabWriter) Newline() {
 	tab.lines++
 	tab.spaces = 0
 }
 
-// todo: track the parent type [ a stack ]
-// to determine whether to write inline "- - -"
-// maybe also a line width
+// inc: increases the current indent
+// line: increases the current line
 func (tab *TabWriter) Indent(inc bool, line bool) {
 	if inc {
 		tab.depth++
@@ -38,15 +40,16 @@ func (tab *TabWriter) Indent(inc bool, line bool) {
 	}
 }
 
-func (tab *TabWriter) Flush() *TabWriter {
+// call before writing runes or strings
+// advances the line and pads the indent
+func (tab *TabWriter) pad() {
 	if tab.lines > 0 {
-		tab.WriteRune(runes.Newline)
+		runes.WriteRune(tab.Writer, runes.Newline)
 		writeSpaces(tab.Writer, tab.depth*2)
 		tab.lines = 0
 	}
 	//
 	tab.writeSpaces()
-	return tab
 }
 
 func (tab *TabWriter) writeSpaces() {
@@ -57,11 +60,12 @@ func (tab *TabWriter) writeSpaces() {
 }
 
 func (tab *TabWriter) WriteString(s string) (int, error) {
-	tab.writeSpaces()
+	tab.pad()
 	return io.WriteString(tab.Writer, s)
 }
 
 func (tab *TabWriter) WriteRune(q rune) (ret int, err error) {
+	tab.pad()
 	return runes.WriteRune(tab.Writer, q)
 }
 

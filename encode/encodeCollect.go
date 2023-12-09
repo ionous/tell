@@ -33,11 +33,13 @@ type MappingIter interface {
 	Next() bool // called before every element, false if there are no more elements
 	GetKey() string
 	GetValue() any // valid after next returns true
+	GetComment() Comment
 }
 
 type SequenceIter interface {
 	Next() bool    // called before every element, false if there are no more elements
 	GetValue() any // valid after next returns true
+	GetComment() Comment
 }
 
 // if implemented by the implementation of MappingIter or SequenceIter
@@ -47,12 +49,9 @@ type GetReflectedValue interface {
 }
 
 type Comment struct {
-	// doesnt distinguish between "sub header" and "nested header"
-	// rewriting should probably prefer "sub header"
-	Header       []string
-	OnKeyDecoded []string
-	Inline       []string
-	Footer       []string
+	Header []string // before the key
+	Prefix []string // the key comment, between the key and value
+	Suffix []string // trailing comment, the value
 }
 
 // comment access for collections

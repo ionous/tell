@@ -104,9 +104,9 @@ func (m *rseq) GetReflectedValue() r.Value {
 	return m.slice.Index(at)
 }
 
-func (m *rseq) GetComment() (ret Comment, okay bool) {
+func (m *rseq) GetComment() (ret Comment) {
 	if m.comments != nil {
-		ret, okay = m.comments.GetComment(), true
+		ret = m.comments.GetComment()
 	}
 	return
 }

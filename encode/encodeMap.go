@@ -32,7 +32,7 @@ func (m *MapTransform) KeyTransform(t func(keys r.Value) string) *MapTransform {
 	return m
 }
 
-// the factory is handed the whichever key return the blank string
+// the factory is handed the whichever value matches the blank string key.
 // the default handler assumes a tell standard comment block
 // and errors if the the value isn't an interface with an underlying string value.
 // ie. it matches map[string]any{"": "comment"}
@@ -77,7 +77,7 @@ func (m *MapTransform) makeMapping(src r.Value) (ret MappingIter, err error) {
 		mk = mapKeys{str: str, val: keys, keyLess: keyLess}
 		sort.Sort(&mk)
 		cmt := blank
-		// the sort forces the blank comment key to the first slot
+		// the sort should have forced the blank comment key to the first slot
 		if keyZero := mk.str[0]; keyZero == "" {
 			// grab the comment's value, and then chop it out of the iteration.
 			cmt = src.MapIndex(mk.val[0])
@@ -131,9 +131,9 @@ func (m *mapIter) GetReflectedValue() r.Value {
 	return m.src.MapIndex(key)
 }
 
-func (m *mapIter) GetComment() (ret Comment, okay bool) {
+func (m *mapIter) GetComment() (ret Comment) {
 	if m.comments != nil {
-		ret, okay = m.comments.GetComment(), true
+		ret = m.comments.GetComment()
 	}
 	return
 }

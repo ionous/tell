@@ -2,6 +2,7 @@ package encode
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -56,17 +57,22 @@ func testEncoding(t *testing.T, pairs ...any) (err error) {
 	if cnt&1 != 0 {
 		panic("mismatched tests")
 	}
+	var buf strings.Builder
+	enc := MakeEncoder(&buf)
 	for i := 0; i < cnt; i += 2 {
 		src, expect := pairs[i], pairs[i+1].(string)
-		if b, e := Encode(src); e != nil {
+		if e := enc.Encode(src); e != nil {
 			err = fmt.Errorf("failed to marshal test #%d because %v", i/2, e)
 			break
-		} else if got := string(b); got != expect {
-			t.Logf("have %q", got)
-			t.Logf("want %q", expect)
+		} else {
+			if got := buf.String(); got != expect {
+				t.Logf("have %q", got)
+				t.Logf("want %q", expect)
 
-			err = fmt.Errorf("failed test #%d", i/2)
-			break
+				err = fmt.Errorf("failed test #%d", i/2)
+				break
+			}
+			buf.Reset()
 		}
 	}
 	return

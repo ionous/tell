@@ -8,14 +8,21 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+// an implementation of CommentFactory that walks the passed comments
+func Comments(els []Comment) CommentIter {
+	return &comments{next: els}
+}
+
+// an implementation of CommentFactory which generates no comments.
 func DiscardComments(r.Value) (CommentIter, error) {
 	return nil, nil
 }
 
-// implement CommentFactory expecting an interface type with an underlying string
+// implement CommentFactory.
+// expects that the value  expecting an interface type with an underlying string
 // containing a standard tell comment block
 func CommentBlock(v r.Value) (ret CommentIter, err error) {
-	if str, e := extractString(v); e != nil {
+	if str, e := ExtractString(v); e != nil {
 		err = fmt.Errorf("comment factory %s", e)
 	} else {
 		ret = &cit{rest: str}
@@ -23,7 +30,9 @@ func CommentBlock(v r.Value) (ret CommentIter, err error) {
 	return
 }
 
-func extractString(v r.Value) (ret string, err error) {
+// a helper which, given a reflected value with an underlying string value
+// returns that string. ( for example, from `var comment any = "string"` )
+func ExtractString(v r.Value) (ret string, err error) {
 	if k := v.Kind(); k != r.Interface {
 		err = fmt.Errorf("expected an interface value; got %s(%s)", k, v.Type())
 	} else if el := v.Elem(); el.Kind() != r.String {
@@ -34,10 +43,23 @@ func extractString(v r.Value) (ret string, err error) {
 	return
 }
 
-type emptyComments struct{}
+type comments struct {
+	curr Comment
+	next []Comment
+}
 
-func (emptyComments) Next() (_ bool)          { return }
-func (emptyComments) GetComment() (_ Comment) { return }
+func (s *comments) Next() (okay bool) {
+	if okay = len(s.next) > 0; !okay {
+		s.curr = Comment{}
+	} else {
+		s.curr, s.next = s.next[0], s.next[1:]
+	}
+	return
+}
+
+func (s *comments) GetComment() Comment {
+	return s.curr
+}
 
 type cit struct {
 	curr, rest string
