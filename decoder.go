@@ -54,26 +54,23 @@ func (d *Decoder) UseFloats() {
 // read a tell document from the stream configured in NewDecoder,
 // and store the result at the value pointed by pv.
 func (dec *Decoder) Decode(pv any) (err error) {
-	if raw, e := dec.inner.Decode(dec.src); e != nil {
+	out := r.ValueOf(pv)
+	if out.Kind() != r.Pointer || out.IsNil() {
+		err = &InvalidUnmarshalError{r.TypeOf(pv)}
+	} else if out := out.Elem(); !out.CanSet() {
+		err = errors.New("expected a settable value")
+	} else if raw, e := dec.inner.Decode(dec.src); e != nil {
 		err = e
+	} else if raw == nil {
+		out.SetZero()
 	} else {
-		res, out := r.ValueOf(raw), r.ValueOf(pv)
-		if out.Kind() != r.Pointer || out.IsNil() {
-			err = &InvalidUnmarshalError{r.TypeOf(pv)}
-
-		} else if out := out.Elem(); !out.CanSet() {
-			err = errors.New("expected a settable value")
+		res := r.ValueOf(raw)
+		if rt, ot := res.Type(), out.Type(); rt.AssignableTo(ot) {
+			out.Set(res)
+		} else if res.CanConvert(ot) {
+			out.Set(res.Convert(ot))
 		} else {
-			// even explicitly returned nils become invalid reflected values ;/
-			if !res.IsValid() {
-				out.SetZero()
-			} else if rt, ot := res.Type(), out.Type(); rt.AssignableTo(ot) {
-				out.Set(res)
-			} else if res.CanConvert(ot) {
-				out.Set(res.Convert(ot))
-			} else {
-				err = fmt.Errorf("result of %q cant be written to a pointer of %q", rt, ot)
-			}
+			err = fmt.Errorf("result of %q cant be written to a pointer of %q", rt, ot)
 		}
 	}
 	return
