@@ -39,7 +39,14 @@ import (
 //
 // All documents end with a newline.
 func Marshal(v any) (ret []byte, err error) {
-	return encode.Encode(v)
+	var out bytes.Buffer
+	enc := encode.MakeEncoder(&out)
+	if e := enc.Encode(v); e != nil {
+		err = e
+	} else {
+		ret = out.Bytes()
+	}
+	return
 }
 
 // Unmarshal from a tell formatted document and store the result

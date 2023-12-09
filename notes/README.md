@@ -12,7 +12,7 @@ For instance:
 
 The decoder can be configured to discard those comments, or to keep them. 
 When comment are kept, they are stored in their most closely related collection as a string called a "comment block".
-The comment block lives in the zeroth element of its sequence, the blank key of its mapping, or the comment field of its document.
+The comment block lives in the zeroth term of its sequence, the blank key of its mapping, or the comment field of its document.
 
 For example, the following document has two comment blocks: one for the document, and one for the sequence.
 
@@ -44,74 +44,102 @@ The following rules reflect how i think most people comment yaml-like documents.
 This, of course, is based on absolutely no research whatsoever. Still, my hope is that no special knowledge is needed. 
 
 ```yaml
+# document header comments start at the first line.
+# a fully blank line can be used to separate document level comments
+# from the comments associated with the first term of a collection.
+
 # header comments start at the indentation of the following collection.
 # they can continue at the same level of indentation ( aka sub-headers. )
 - "header example"
 
-# for consistency with key comments ( described below )
-  # nested indentation is allowed starting on the second line.
-  # nested headers and sub-headers cannot co-exist.
+# comments also allow nesting...
+  # as that can sometimes help associate groups of ideas.
+  # fix? might remove this to simplify the decoder.
+  #   comments can always be indented to the right of the hash.
 - "nested header example"
 
-- "inline example"  # inline trailing comments follow a scalar value.
-                    # they continue on following lines
-                    # and ideally are left aligned.
+- "inline suffix example"  # a "suffix" can follow a scalar value.
+                           # they can continue on following lines:
+                           # left-aligned with no additional nesting.
 
-- "alternate trailing example"
-    # alternatively, trailing comments comments can start on the next line 
-    # still indented to the right of the value
-    # and, again, ideally left-aligned, with no additional nesting.
-  
-- # comments can live after the key
-    # between a signature ( or dash ) and its value.
-    # they support nesting to continue the comment.
-  "entry example"
-   
+- "trailing suffix example"
+    # alternatively, a suffix can start on the next line 
+    # slightly indented to the right of the value.
+    # and again, left-aligned, with no additional nesting.
+ 
 -
-# placing a comment aligned with the left edge of the 
-# collection keys generates an implicit nil for the preceding key
-# ( this comment is therefore treated like a header for the next element )
-
-- # without nesting, the entire block 
-  # gets stored with the parent container
-  # as a comment describing this key.
-  sub:collection:with: "first element"
+# comments aligned to the left edge of a collection
+# act as a header for the next term, not a suffix for the previous.
+# therefore this also generates an implicit nil for the preceding key.
+ 
+- # a "prefix" comment can live between 
+  # a key ( or dash ) and a scalar value.
+  "key comment example"
   
-- 
-  # introducing a fully blank line forces
-  # a blank key comment, and starts a header 
-  # for the first element of this next sub collection.
-  sub:collection:with: "one element"
+- # however, if the key has a sub-collection as its value,
+  # the prefix becomes a header for that collection's first term.
+  - "term header example"
 
-- # when any comment nesting is used
-    # the leading comments go to the parent container
-    # as a key comment.
-  # while the final comment group 
-    # acts a a header for the sub collection.
-  sub:collection:with: "one element"
-
-# closing comments are allowed for a document.
-# presumably matching the indentation at the start.
+# footer comments are allowed for a document
+# separated from the previous value by a blank line.
+# ( fix? the current decoder doesn't actually require the blank line. )
 ```
+
+Here's another way of visualizing the different comment types:
+
+```
++------------------+
+|                  |
+|   [Doc Header]   |
+|                  |
++------------------+
+|                  |
+|   [Key Header]   |
+|                  |
++-----------+------+
+| Key Name: |      |  ---> an inline prefix
+|    _______|      |
+|   |              |
+|   |  [ Prefix ]  |  }---> and/or, a continuing prefix.
+|   |              |
++---+--------+-----+
+|   "Scalar" |     |  ---> an inline suffix.
+|    ________+     |
+|   |              | 
+|   |  [ Suffix ]  |  }---> alternatively, a trailing suffix.
+|   |              |
++---+--------------+
+|                  |
+|   [Inter Key]    |  header for the next key
+|                  |
++------------------+
+|                  |  ( used for docs with scalar values;
+|   [Doc Footer]   |    for docs with a sequence or mapping, 
+|                  |    these are read by interkey )
++------------------+    
+```
+
 
 Comment Block Generation
 ------------------------
 
 Each comment block is a single string of text generated in the following manner:
 
-* Individual comments are stored as encountered. Hash marks are kept as part of the string, as is all whitespace. The latter is necessary to support commenting out heredoc lines; the former makes it easier to split individual comments out of their comment blocks.
+* Individual comments are stored in the order encountered. Hash marks are kept as part of the string, as is all whitespace. The former makes it easier to split individual comments out of their comment blocks; the latter is necessary to support commenting out heredoc raw strings. 
 
 * A carriage return (`\r`) replaces each key (or dash) and value within a comment block.
 
-* Line breaks between comments use line feed (`\n`), while nesting indentation gets normalized to a single horizontal tab (`\t`)<sup>\[1]</sup>. 
+* Line breaks between comments use line feed (`\n`), all nested indentation gets normalized to a horizontal tab (`\t`).
 
-* Inline trailing comments start directly after the value's carriage return. Any continuing comment lines are treated as nested comments. If, instead of starting inline, the trailing comment starts on the line following the value ( a trailing block comment ) -- a nested comment should directly follow the carriage.
+* Inline trailing comments start directly after the value's carriage return. Any continuing comment lines are treated as nested comments. A trailing block comment follows the carriage return with a line feed and nests all comments.
 
-* To separate comments for different collection entries, the end of each entry is indicated with a form feed (`\f`). _( Putting it at the end of each, rather than the start of each, keeps the first header comment with the first entry. )_
+* The end of each term in a collection is indicated with a form feed (`\f`).
 
 * Fully blank lines are ignored.
   
-The resulting block can then be trimmed of trailing whitespace. And, a program that wants to read ( or maintain ) comments can split or count by form feed to find the comments of particular entries. 
+* The resulting block can be trimmed of control characters. 
+
+A program that wants to read ( or maintain ) comments can split or count by form feed to find the comments of particular entries. 
 
 The pattern for a single scalar value in a collection looks like this:
 
@@ -123,7 +151,3 @@ The pattern for a single scalar value in a collection looks like this:
 ( \n \t # alternatively, trailing block comments start nesting directly after the carriage )
 \f 
 ```
-
-The tests have plenty of other examples.
-
-\[1] _the two rules mean that every nested comment starts with a \n\t combo. while i would have preferred using a single vertical tab... unfortunately, json excludes \v from its set of escaped control codes. :/ translating tell comments to json ( like tapestry does ) would have resulted in the ugly looking long format `\u000b`. the alternative, using backspace ( the only escape not already used ), seems even more problematic._

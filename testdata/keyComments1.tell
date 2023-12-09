@@ -1,4 +1,3 @@
-- # assuming no initial blank line
-  # all left aligned comments
-  # describe the key not the sub collection.
+- # all key comments are assigned
+  # to the sub collection.
   sub:collection:with: "one element"

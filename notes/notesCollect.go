@@ -16,28 +16,33 @@ func newCollection(ctx *context) charm.State {
 	return d.keyContents()
 }
 
+// reads comments in the area after the dash, and before the value.
+// if the value is a collection, the comments are treated as a header for it
+// if the value is a scalar, the comments are stored in the parent container.
 func (d *collectionDecoder) keyContents() charm.State {
-	k := makeKeyComments(d.context)
-	return charm.Step(&k, d.keyValue(&k))
+	key := awaitParagraph("keyContents", func() charm.State {
+		return handleAll(&d.buf)
+	})
+	return charm.Step(key, d.keyValue())
 }
 
 // just got a key, handle whatever's next
-func (d *collectionDecoder) keyValue(k *keyCommentDecoder) charm.State {
+func (d *collectionDecoder) keyValue() charm.State {
 	return charm.Statement("keyValue", func(q rune) (ret charm.State) {
 		switch q {
 		case runeKey: // a sub-collection
-			d.newBlock()
+			d.newBlock() // passes the buffer along as header
 			ret = d.keyContents()
 
 		case runeValue: // a scalar value
-			// flush the buffer (from keyComments) to the current collection
+			// flush any buffer collected from keyComments to the current collection
 			// because there is no new collection; trailing comments write directly to "out".
-			d.flush(runes.Newline)
-			ret = charm.Step(readTrailing(d.context, k.wroteKey), d.interElement())
+			wroteKey := d.flush(runes.KeyValue)
+			ret = charm.Step(readTrailing(d.context, wroteKey), d.interElement())
 
 		case runes.Eof:
-			// flush any buffer collected from keyComments
-			d.flush(runes.Newline) // to buffer, it had a comment, and wrote its mark.
+			// flush any buffer collected from keyComments to the current collection
+			d.flush(runes.KeyValue)
 			ret = charm.Error(nil) // there's only one buffer, so we're done.
 
 		default: // ex. cant pop before there's a value
@@ -80,7 +85,7 @@ func (d *collectionDecoder) interElement() charm.State {
 			if d.pop(); len(d.stack) > 0 {
 				ret = self
 			} else {
-				// ex. xTestDocCollection
+				// ex. TestDocCollection
 				ret = charm.Error(nil)
 			}
 

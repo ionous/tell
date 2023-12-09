@@ -1,8 +1,8 @@
 {
   "content": [
-     "\r# assuming no initial blank line\n# all left aligned comments\n# describe the key not the sub collection.",
+     "",
     {
-      "": "",
+      "": "# all key comments are assigned\n# to the sub collection.",
       "sub:collection:with:": "one element"
     }
   ]

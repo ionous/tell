@@ -32,7 +32,8 @@ func TestInlineCollection(t *testing.T) {
 }
 
 // from subComments1.tell
-// ( fixed: redefined left-alignment now means key comments )
+// ( fixed: redefined left-alignment now means key comments,
+// and key comments are headers for the sub collection's first element )
 //
 // - # one
 // ..# two
@@ -40,9 +41,9 @@ func TestInlineCollection(t *testing.T) {
 // ..- "sequence"
 func TestSubComments(t *testing.T) {
 	var expected = []string{
-		"",
-		"\r# one\n# two\n# three",
-		"",
+		"",                      // doc
+		"",                      // outer sequence
+		"# one\n# two\n# three", // inner sequence
 	}
 	var stack stringStack
 	b := newNotes(stack.new())

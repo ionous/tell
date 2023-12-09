@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-// test a sequence with two key comments and a scalar value
+// test a sequence with key comments and a scalar value
 //
 // - # key
 // ..# more key
 // .."value"
 //
-func TestCollection(t *testing.T) {
+func TestKeyScalar(t *testing.T) {
 	const expected = "\r# key\n# more key"
 	var str strings.Builder
 	ctx := newContext(&str)
@@ -33,110 +33,42 @@ func TestCollection(t *testing.T) {
 	}
 }
 
-// test a sequence with two key comments and a scalar value
-// ( see also: TestKyBlank which is the lower level version of this )
-// -
-// ..# header comment
-// ..- "sequence"
-//
-func TestEmptyKeyComment(t *testing.T) {
-	expected := []string{
-		"", // empty key comment
-		"# header comment",
-	}
-	var stack stringStack
-	ctx := newContext(stack.new())
-	b := newCommentBuilder(ctx, newCollection(ctx))
-	//
-	WriteLine(b, "") // empty key comment
-	WriteLine(b, "header comment")
-	b.BeginCollection(stack.new()).OnScalarValue()
-	//
-	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
-		for i, el := range got {
-			t.Logf("%d %q", i, el)
-			t.Logf("x %q", expected[i])
-		}
-		t.Fatal("mismatch")
-	}
-}
-
 // when there's a scalar value, the key should stick
 // with the parent container ( there is no sub collection )
 // - # key
-// ..# buffered key
 // ..# more key
 // .."scalar" # inline
-func TestKeyHeaderJoin(t *testing.T) {
-	var expected = []string{
-		// 1. the sequence has key
-		"\r# key" +
-			"\n# buffered key" +
-			"\n# more key" +
-			"\r# inline",
-	}
-	var stack stringStack
-	ctx := newContext(stack.new())
+func TestKeyScalarInline(t *testing.T) {
+	var expected = // the sequence gets the comments
+	"\r# key" +
+		"\n# more key" +
+		"\r# inline"
+
+	var str strings.Builder
+	ctx := newContext(&str)
 	b := newCommentBuilder(ctx, newCollection(ctx))
 
 	// documents only have one value, in this case a sequence
 	// - # key
 	WriteLine(b, "key")
-	// ..# buffered key
-	WriteLine(b, "buffered key")
 	// ..# more key
 	WriteLine(b, "more key")
 	// ..- "scalar" # inline
 	WriteLine(b.OnScalarValue(), "inline")
 	//
-	got := stack.Strings()
-	if slices.Compare(got, expected) != 0 {
-		for i, el := range got {
-			t.Logf("%d %q", i, el)
-		}
-		t.Fatal("mismatch")
-	}
-}
-
-// when there's a subcollection, the key should NOT split
-// between the parent container and the header of the first element.
-// - # key
-// ..# buffered key
-// ..- "subcollection"
-func TestKeyHeaderSplit(t *testing.T) {
-	var expected = []string{
-		"\r# key\n# buffered key", // the sub sequence has a header
-		"",
-	}
-	var stack stringStack
-	ctx := newContext(stack.new())
-	b := newCommentBuilder(ctx, newCollection(ctx))
-
-	// we just created the collection above, so write the key comment:
-	// - # key
-	WriteLine(b, "key")
-	// ..# buffered key
-	WriteLine(b, "buffered key")
-	// ..- "subcollection"
-	b.BeginCollection(stack.new()).OnScalarValue()
-	//
-	if got := stack.Strings(); slices.Compare(got, expected) != 0 {
-		for i, el := range got {
-			t.Logf("%d %q", i, el)
-		}
-		t.Fatal("mismatch")
+	if got := str.String(); got != expected {
+		t.Fatalf("got %q expected %q", got, expected)
 	}
 }
 
 // nesting the third key comment should cause an "opt in" to splitting.
 // - # key
-// ..# buffered header
-// ....# nest opt in
+// ..# more key
 // ..- "subcollection"
-func TestKeyHeaderNest(t *testing.T) {
+func TestKeyCollection(t *testing.T) {
 	var expected = []string{
-		"\r# key",
-		"# buffered header\n\t# nest opt in",
+		"", // doc
+		"# key\n# more key",
 	}
 	var stack stringStack
 	ctx := newContext(stack.new())
@@ -145,10 +77,8 @@ func TestKeyHeaderNest(t *testing.T) {
 	// we just created the collection above, so write the key comment:
 	// - # key
 	WriteLine(b, "key")
-	// ..# buffered header
-	WriteLine(b, "buffered header")
-	// ....# nest opt in
-	WriteLine(b.OnNestedComment(), "nest opt in")
+	// ..# more key
+	WriteLine(b, "more key")
 	// ..- "subcollection"
 	b.BeginCollection(stack.new()).OnScalarValue()
 	//
@@ -169,7 +99,7 @@ func TestKeyHeaderNest(t *testing.T) {
 // ..# third key
 // ....# third nesting
 // .."scalar"
-func TestKeyNest(t *testing.T) {
+func TestKeyNestScalar(t *testing.T) {
 	var expected = []string{
 		// 1. the sequence has key
 		"\r# key" +
@@ -187,10 +117,10 @@ func TestKeyNest(t *testing.T) {
 	// - # key & nesting
 	WriteLine(b, "key")
 	WriteLine(b.OnNestedComment(), "nested key")
-	// ..# buffered key & nesting
+	// ..# more key & nesting
 	WriteLine(b, "second key")
 	WriteLine(b.OnNestedComment(), "second nesting")
-	// ..# buffered key & nesting
+	// ..# more key & nesting
 	WriteLine(b, "third key")
 	WriteLine(b.OnNestedComment(), "third nesting")
 	b.OnScalarValue()
@@ -210,18 +140,17 @@ func TestKeyNest(t *testing.T) {
 // ....# nested key
 // ..# second key
 // ....# second nesting
-// ..# buffered header
+// ..# more key
 // ....# nested header
 // ..- "subcollection scalar"
 func TestKeyNestCollection(t *testing.T) {
 	var expected = []string{
-		// 1. the sequence has key
-		"\r# key" +
+		"", // doc
+		"# key" + // the sequence key comments
 			"\n\t# nested key" +
 			"\n# second key" +
-			"\n\t# second nesting",
-		// 2.
-		"# buffered header" +
+			"\n\t# second nesting" +
+			"\n# more key" +
 			"\n\t# nested header",
 	}
 
@@ -233,11 +162,11 @@ func TestKeyNestCollection(t *testing.T) {
 	// - # key & nesting
 	WriteLine(b, "key")
 	WriteLine(b.OnNestedComment(), "nested key")
-	// ..# buffered key & nesting
+	// ..# more key & nesting
 	WriteLine(b, "second key")
 	WriteLine(b.OnNestedComment(), "second nesting")
-	// ..# buffered key & nesting
-	WriteLine(b, "buffered header")
+	// ..# more key & nesting
+	WriteLine(b, "more key")
 	WriteLine(b.OnNestedComment(), "nested header")
 	//
 	// ..- "subcollection scalar"

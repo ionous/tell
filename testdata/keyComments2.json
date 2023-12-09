@@ -2,7 +2,7 @@
   "content": [
     "",
     {
-      "": "# this is on the second line, so it describes the element.",
+      "": "# test extra offsets from the collection marker\n\t# everything deeper than two spaces\n\t# becomes nested, normalized to\n\t# the same indent",
       "sub:collection:with:": "one element"
     }
   ]

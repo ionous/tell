@@ -44,13 +44,15 @@ func (p *context) resolveBuffer() (ret string) {
 	return
 }
 
-// write passed runes, and then the buffer, to out
-// ( ignores q < 0 )
-func (p *context) flush(q rune) {
+// write to out the passed rune ( if > 0), and then the buffer
+// returns true if there was anything written, false otherwise
+func (p *context) flush(q rune) (okay bool) {
 	if str := p.resolveBuffer(); len(str) > 0 {
 		p.out.writeTerms()
 		writeBuffer(&p.out, str, q)
+		okay = true
 	}
+	return
 }
 
 // called on end collection.

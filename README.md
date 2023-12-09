@@ -109,7 +109,7 @@ Tell consists of collections of values, along with optional comments. These type
 ### Documents
 Documents are most often text files. UTF8, no byte order marks. 
 
-Whitespace in documents is restricted to the ascii space and the ascii linefeed; r/lf is considered an error; tabs are disallowed everywhere except for in string values and comments. ( This differs from `yaml` where, for example, tabs can appear after single space indentation. )
+"Structural whitespace" in documents is restricted to the ascii space and the ascii linefeed. Quoted strings can have horizontal tabs; single line strings, for perhaps obvious reasons, can't contain linefeeds. All other Unicode control codes are disallowed ( and, so cr/lf is considered an error. )
 
 _( BUG: the implementation currently errors on tabs in comments. )_
 
@@ -123,7 +123,7 @@ Any **scalar**, **array**, **sequence**, **mapping**, or **heredoc**.
 * **interpreted string** ( double quotes ): `"backslashes indicate escaped characters."`<sup>\[1]</sup>
 * **number**: 64-bit int or float numbers optionally starting with `+`/`-`; floats can have exponents `[e|E][|+/-]...`; hex values can be specified with `0x`notation. Like json, but unlike yaml: Inf and NaN are not supported. _( may expand to support https://go.dev/ref/spec#Integer_literals, etc. as needed. )_  _( **TBD**: the implementation currently produces floats, and only floats. that's to match json, but what's best? )_ 
 
-A scalar value always appears on a single line. There is no null keyword, null is implicit where no explicit value was provided.
+A scalar value must always appears on a single line. There is no null keyword, null is implicit where no explicit value was provided. ( Heredocs support multiline strings. )
 
 _( It is sad that hex colors can't live as `#ffffff`. Maybe it would have been cool to use lua style comments ( -- ) instead of yaml hashes. For now, comments are defined as a hash followed by a space while i keep thinking about it. )_
 

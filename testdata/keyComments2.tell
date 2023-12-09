@@ -1,4 +1,6 @@
-- 
-  # this is on the second line, so it describes the element.
-  sub:collection:with: "one element"
- 
+
+-     # test extra offsets from the collection marker
+       # everything deeper than two spaces
+      # becomes nested, normalized to
+        # the same indent
+      sub:collection:with: "one element"
