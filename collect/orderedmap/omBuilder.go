@@ -6,7 +6,7 @@ package orderedmap
 import "github.com/ionous/tell/collect"
 
 // return a builder which generates a ItemMap
-func Builder(reserve bool) collect.Builder {
+func Make(reserve bool) collect.MapWriter {
 	var keys []string
 	if reserve {
 		keys = make([]string, 1)
@@ -25,7 +25,7 @@ type sliceBuilder struct {
 	values OrderedMap
 }
 
-func (b sliceBuilder) Add(key string, val any) collect.Builder {
+func (b sliceBuilder) MapValue(key string, val any) collect.MapWriter {
 	if len(key) == 0 { // there should be only one blank key; at the start
 		if _, exists := b.values.Get(key); !exists {
 			// could adjust the slice. but the program should know better.
@@ -37,7 +37,7 @@ func (b sliceBuilder) Add(key string, val any) collect.Builder {
 }
 
 // returns an OrderedMap
-func (b sliceBuilder) Map() any {
+func (b sliceBuilder) GetMap() any {
 	return b.values
 }
 

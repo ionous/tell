@@ -67,17 +67,18 @@ func (out *output) uncheckedPop(at int) (ret int, err error) {
 	return
 }
 
-type mapMaker struct {
-	create collect.BuilderFactory
+type collector struct {
+	maps collect.MapFactory
+	seqs collect.SequenceFactory
 }
 
-func (f *mapMaker) newCollection(key string, comments *strings.Builder) pendingValue {
+func (f *collector) newCollection(key string, comments *strings.Builder) pendingValue {
 	var p pendingValue
 	switch {
 	case len(key) == 0:
-		p = newSequence(comments)
+		p = newSequence(f.seqs(comments != nil), comments)
 	default:
-		p = newMapping(key, f.create(comments != nil), comments)
+		p = newMapping(key, f.maps(comments != nil), comments)
 	}
 	return p
 }

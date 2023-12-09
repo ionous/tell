@@ -85,7 +85,7 @@ func ExampleDocument() {
 	// maps/imap contains a slice based ordered map implementation.
 	// maps/stdmap generates standard (unordered) go maps.
 	// maps/orderedmap uses Ian Coleman's ordered map implementation.
-	doc := decode.NewDocument(imap.Builder, notes.DiscardComments())
+	doc := decode.NewDocument(imap.Make, notes.DiscardComments())
 	// ReadDoc takes a string reader
 	if res, e := doc.ReadDoc(strings.NewReader(str)); e != nil {
 		panic(e)

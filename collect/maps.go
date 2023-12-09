@@ -1,16 +1,29 @@
 package collect
 
 // write to a map
-type Builder interface {
+type MapWriter interface {
 	// add the passed pair to the in-progress map
-	// returns a new builder ( not guaranteed to be the original one )
-	// future: add uniqueness check and error
-	Add(key string, val any) Builder
-	// return the completed map
-	Map() any
+	// returns a new writer ( not guaranteed to be the original one )
+	MapValue(key string, val any) MapWriter
+	// return the implementation specific representation of a map
+	GetMap() any
 }
 
-// a function which returns a new builder
-// reserve indicates whether to keep space for an blank key
-// (ie. comments)
-type BuilderFactory func(reserve bool) Builder
+// a function which returns a new writer
+// reserve indicates whether to keep space for a comment key
+type MapFactory func(reserve bool) MapWriter
+
+// a function which returns a new writer
+// reserve indicates whether to keep space for comments
+type SequenceFactory func(reserve bool) SequenceWriter
+
+type SequenceWriter interface {
+	// add the passed value to the in-progress sequence
+	// returns a new writer ( not guaranteed to be the original one )
+	// indices are guaranteed to increase by one each time
+	// ( stating with 1 if reserve was true )
+	// except for comments, which are written last at index 0
+	IndexValue(idx int, val any) SequenceWriter
+	// return the implementation specific representation of a sequence
+	GetSequence() any
+}

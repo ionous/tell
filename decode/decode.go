@@ -13,17 +13,14 @@ import (
 	"github.com/ionous/tell/token"
 )
 
-func MakeDecoder(maps collect.BuilderFactory,
-	comments notes.Commentator) Decoder {
-	return Decoder{
-		mapMaker: mapMaker{maps},
-		memo:     makeMemo(comments),
-	}
+// configure the production of sequences
+func (d *Decoder) SetSequencer(seq collect.SequenceFactory) {
+	d.collector.seqs = seq
 }
 
 // configure the production of mappings
-func (d *Decoder) SetMapper(maps collect.BuilderFactory) {
-	d.mapMaker.create = maps
+func (d *Decoder) SetMapper(maps collect.MapFactory) {
+	d.collector.maps = maps
 }
 
 // configure the production of comment blocks
@@ -55,11 +52,13 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 	return
 }
 
+// the decoder is *not* ready to use by default
+// the mapper, sequencer, and notes need to be set.
 type Decoder struct {
-	out      output
-	mapMaker mapMaker
-	memo     memo
-	state    func(token.Pos, token.Type, any) error
+	out       output
+	collector collector
+	memo      memo
+	state     func(token.Pos, token.Type, any) error
 	// configure the tokenizer for the next decode
 	UseFloats bool
 }
@@ -95,7 +94,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 
 	case token.Key:
 		key := val.(string)
-		d.out.setPending(at, d.mapMaker.newCollection(key, d.memo.newComments()))
+		d.out.setPending(at, d.collector.newCollection(key, d.memo.newComments()))
 		d.state = d.waitForValue
 
 	case token.Bool, token.Number, token.InterpretedString, token.RawString:
@@ -172,7 +171,7 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 	case token.Key:
 		if key := val.(string); at.X > d.out.pos.X {
 			// a new collection
-			p := d.mapMaker.newCollection(key, d.memo.newComments())
+			p := d.collector.newCollection(key, d.memo.newComments())
 			d.out.push(at, p)
 		} else {
 			// the key is for the same or an earlier collection

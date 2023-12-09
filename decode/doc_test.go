@@ -10,6 +10,7 @@ import (
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/collect/imap"
+	"github.com/ionous/tell/collect/stdseq"
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/notes"
 )
@@ -52,7 +53,11 @@ func test(t *testing.T, nameInputExpect ...any) {
 		} else {
 			var res any
 			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-			dec := decode.MakeDecoder(imap.Builder, notes.DiscardComments())
+
+			var dec decode.Decoder
+			dec.SetMapper(imap.Make)
+			dec.SetSequencer(stdseq.Make)
+			dec.UseNotes(notes.DiscardComments())
 			if val, e := dec.Decode(strings.NewReader(str)); e != nil {
 				res = e
 			} else {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ionous/tell/collect"
 	"github.com/ionous/tell/collect/stdmap"
+	"github.com/ionous/tell/collect/stdseq"
 	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/notes"
 )
@@ -27,16 +28,27 @@ func NewDecoder(src io.Reader) *Decoder {
 	} else {
 		rr = bufio.NewReader(src)
 	}
-	return &Decoder{src: rr, inner: decode.MakeDecoder(
-		stdmap.Builder,
-		notes.DiscardComments(),
-	)}
+	return &Decoder{src: rr, inner: makeDefaultDecoder()}
+}
+
+func makeDefaultDecoder() decode.Decoder {
+	var dec decode.Decoder
+	dec.SetMapper(stdmap.Make)
+	dec.SetSequencer(stdseq.Make)
+	dec.UseNotes(notes.DiscardComments())
+	return dec
 }
 
 // control the creation of mappings for the upcoming Decode.
-// the default is to create native maps ( via stdmap.Builder )
-func (d *Decoder) SetMapper(maps collect.BuilderFactory) {
+// the default is to create native maps ( via stdmap.Make )
+func (d *Decoder) SetMapper(maps collect.MapFactory) {
 	d.inner.SetMapper(maps)
+}
+
+// control the creation of sequences for the upcoming Decode.
+// the default is to create native slices ( via stdseq.Make )
+func (d *Decoder) SetSequencer(seq collect.SequenceFactory) {
+	d.inner.SetSequencer(seq)
 }
 
 // control the creation of comment blocks for the upcoming Decode.

@@ -4,7 +4,7 @@ import "github.com/ionous/tell/collect"
 
 type StdMap map[string]any
 
-func Builder(reserve bool) (ret collect.Builder) {
+func Make(reserve bool) (ret collect.MapWriter) {
 	if reserve {
 		ret = StdMap{"": nil}
 	} else {
@@ -13,7 +13,7 @@ func Builder(reserve bool) (ret collect.Builder) {
 	return
 }
 
-func (m StdMap) Add(key string, val any) collect.Builder {
+func (m StdMap) MapValue(key string, val any) collect.MapWriter {
 	if len(key) == 0 { // there should be only one blank key; at the start
 		if _, exists := m[key]; !exists {
 			// could adjust the slice. but the program should know better.
@@ -24,6 +24,7 @@ func (m StdMap) Add(key string, val any) collect.Builder {
 	return m
 }
 
-func (m StdMap) Map() any {
+// returns map[string]any
+func (m StdMap) GetMap() any {
 	return (map[string]any)(m)
 }

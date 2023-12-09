@@ -3,10 +3,7 @@ package tell
 import (
 	"bytes"
 
-	"github.com/ionous/tell/collect/stdmap"
-	"github.com/ionous/tell/decode"
 	"github.com/ionous/tell/encode"
-	"github.com/ionous/tell/notes"
 )
 
 // Marshal returns a tell document representing the passed value.
@@ -59,7 +56,7 @@ func Marshal(v any) (ret []byte, err error) {
 func Unmarshal(in []byte, pv any) (err error) {
 	dec := Decoder{
 		src:   bytes.NewReader(in),
-		inner: decode.MakeDecoder(stdmap.Builder, notes.DiscardComments()),
+		inner: makeDefaultDecoder(),
 	}
 	return dec.Decode(pv)
 }

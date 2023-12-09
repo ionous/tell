@@ -14,13 +14,13 @@ type pendingValue interface {
 	finalize() any // return the collection
 }
 
-func newMapping(key string, values collect.Builder, comments *strings.Builder) pendingValue {
-	return &pendingMap{key: key, values: values, comments: comments}
+func newMapping(key string, values collect.MapWriter, comments *strings.Builder) pendingValue {
+	return &pendingMap{key: key, maps: values, comments: comments}
 }
 
 type pendingMap struct {
 	key      string
-	values   collect.Builder
+	maps     collect.MapWriter
 	comments *strings.Builder
 }
 
@@ -30,9 +30,9 @@ func (p *pendingMap) finalize() (ret any) {
 	}
 	if p.comments != nil {
 		str := clearComments(&p.comments)
-		p.values.Add("", str)
+		p.maps.MapValue("", str)
 	}
-	return p.values.Map()
+	return p.maps.GetMap()
 }
 
 func (p *pendingMap) setKey(key string) (err error) {
@@ -50,24 +50,25 @@ func (p *pendingMap) setValue(val any) (err error) {
 	if len(p.key) == 0 {
 		err = errors.New("missing key")
 	} else {
-		p.values = p.values.Add(p.key, val)
+		p.maps = p.maps.MapValue(p.key, val)
 		p.key = ""
 	}
 	return
 }
 
-func newSequence(comments *strings.Builder) pendingValue {
-	var values []any
+func newSequence(values collect.SequenceWriter, comments *strings.Builder) pendingValue {
+	var index int
 	if comments != nil {
-		values = make([]any, 1)
+		index++
 	}
-	return &pendingSeq{dashed: true, values: values, comments: comments}
+	return &pendingSeq{dashed: true, index: index, values: values, comments: comments}
 }
 
 type pendingSeq struct {
 	dashed   bool
-	values   []any
+	values   collect.SequenceWriter
 	comments *strings.Builder
+	index    int
 }
 
 func (p *pendingSeq) finalize() (ret any) {
@@ -76,9 +77,9 @@ func (p *pendingSeq) finalize() (ret any) {
 	}
 	if p.comments != nil {
 		str := clearComments(&p.comments)
-		p.values[0] = str
+		p.values = p.values.IndexValue(0, str)
 	}
-	return p.values
+	return p.values.GetSequence()
 }
 
 func (p *pendingSeq) setKey(key string) (err error) {
@@ -96,8 +97,9 @@ func (p *pendingSeq) setValue(val any) (err error) {
 	if !p.dashed {
 		err = errors.New("expected a dash before adding values to a sequence")
 	} else {
-		p.values = append(p.values, val)
+		p.values = p.values.IndexValue(p.index, val)
 		p.dashed = false
+		p.index++
 	}
 	return
 }
