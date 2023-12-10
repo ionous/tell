@@ -46,25 +46,23 @@ func (n *SequenceTransform) CommentLocation(where CommentLocation) *SequenceTran
 func (n *SequenceTransform) makeSequence(src r.Value) (ret SequenceIter, err error) {
 	if e := validateSeq(src); e != nil {
 		err = e
-	} else {
+	} else if cnt := src.Len(); cnt > 0 {
 		newComments := n.commentFactory
 		if newComments == nil {
 			newComments = DiscardComments
 		}
-		var cit CommentIter
-		if cnt := src.Len(); cnt > 0 {
-			var cmt r.Value
-			switch n.loc {
-			case CommentsAtFront:
-				cmt, src = src.Index(0), src.Slice(1, cnt)
-			case CommentsAtBack:
-				cmt, src = src.Index(cnt-1), src.Slice(0, cnt-1)
-			default:
-				cmt = blank
-			}
-			cit, err = newComments(cmt)
+		var cmt r.Value
+		switch n.loc {
+		case CommentsAtFront:
+			cmt, src = src.Index(0), src.Slice(1, cnt)
+		case CommentsAtBack:
+			cmt, src = src.Index(cnt-1), src.Slice(0, cnt-1)
+		default:
+			cmt = blank
 		}
-		if err == nil {
+		if cit, e := newComments(cmt); e != nil {
+			err = e
+		} else {
 			ret = &rseq{slice: src, comments: cit}
 		}
 	}
