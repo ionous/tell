@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 	r "reflect"
-	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/ionous/tell/runes"
@@ -47,6 +47,24 @@ const (
 	indentWithoutLine
 )
 
+// true if written as a heredoc
+func (enc *Encoder) writeHere(str string) (okay bool) {
+	if okay = len(str) > 23 && strings.ContainsRune(str, runes.Newline); okay {
+		lines := strings.FieldsFunc(str, func(q rune) bool {
+			return q == runes.Newline
+		})
+		enc.WriteString(`"""`)
+		enc.Indent(true, true)
+		for _, el := range lines {
+			enc.Escape(el)
+			enc.Newline()
+		}
+		enc.WriteString(`"""`)
+		enc.Indent(false, false)
+	}
+	return
+}
+
 // writes a single value to the stream wrapped by tab writer
 func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 	switch v.Kind() {
@@ -54,6 +72,9 @@ func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 	// should struct names be used as part of the signature?
 	// how about package?
 	// case r.Struct;
+
+	case r.Invalid:
+		break // a nil value
 
 	case r.Bool:
 		str := formatBool(v)
@@ -77,28 +98,29 @@ func (enc *Encoder) WriteValue(v r.Value, indent indentation) (err error) {
 		}
 
 	case r.String:
-		// fix: determine wrapping based on settings
-		// and write long strings as heredocs?
+		// fix: determine wrapping based on settings?
 		// select raw strings based on the presence of escapes?
-		str := strconv.Quote(v.String())
-		enc.WriteString(str)
+		if str := v.String(); !enc.writeHere(str) {
+			enc.Quote(str)
+		}
 
 	case r.Pointer:
 		err = enc.WriteValue(v.Elem(), indent)
 
 	case r.Array, r.Slice:
 		// tbd: look at tag for "want array"?
-		if v.Len() > 0 {
+		if it, e := enc.Sequencer(v); e != nil {
+			err = e
+		} else if it == nil {
+			enc.WriteRune(runes.ArrayOpen)
+			enc.WriteRune(runes.ArrayClose)
+		} else {
 			if indent != indentNone {
 				enc.Indent(true, indent != indentWithoutLine)
 			}
-			if it, e := enc.Sequencer(v); e != nil {
-				err = e
-			} else if it != nil {
-				err = enc.WriteSequence(it)
-				if indent != indentNone {
-					enc.Indent(false, true)
-				}
+			err = enc.WriteSequence(it)
+			if indent != indentNone {
+				enc.Indent(false, true)
 			}
 		}
 

@@ -3,8 +3,9 @@ package runes
 import "strconv"
 
 const (
-	ArraySeparator = ','
-	ArrayStop      = '.'
+	ArrayClose     = ']'
+	ArrayOpen      = '['
+	Colon          = ':' // keywords in a signature are separated by a colon
 	Dash           = '-' // values in a sequence are prefixed by a dash ( and whitespace )
 	Eof            = -1
 	Hash           = '#'  // comment marker
@@ -16,16 +17,7 @@ const (
 	RawQuote       = '`'
 	Space          = ' '
 	Underscore     = '_' // valid in words between colons
-	Colon          = ':' // keywords in a signature are separated by a colon
 )
-
-func IsWhitespace(q rune) (ret bool) {
-	switch q {
-	case Space, Newline, Eof:
-		ret = true
-	}
-	return
-}
 
 // https://golang.org/ref/spec#decimal_digit
 func IsNumber(r rune) bool {
@@ -35,6 +27,14 @@ func IsNumber(r rune) bool {
 // https://golang.org/ref/spec#hex_digit
 func IsHex(r rune) bool {
 	return (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') || IsNumber(r)
+}
+
+func IsWhitespace(q rune) (ret bool) {
+	switch q {
+	case Space, Newline, Eof:
+		ret = true
+	}
+	return
 }
 
 func RuneName(q rune) (ret string) {

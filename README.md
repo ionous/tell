@@ -17,13 +17,13 @@ What It Is: """
 What It Is Not: "A subset of yaml."
 	
 Related Projects:
-  - "YAML" # Official YAML Website: https://yaml.org/
-  - "JSON" # Official JSON Website: http://json.org/
+  - "YAML"       # https://yaml.org/
+  - "JSON"       # http://json.org/
+  - "NestedText" # https://nestedtext.org/
 ```
 
-Some major differences:
+Some differences from yaml:
 
-* Comments are important.
 * String literals must be quoted ( as in json. )
 * Multiline strings use a custom heredoc syntax.
 * Except for string literals and comments, tabs are always invalid whitespace.
@@ -31,6 +31,7 @@ Some major differences:
 * The order of maps matters.
 * No anchors or references.
 * Documents hold a single value.
+* Comments can be captured during decoding, and returned as part of the data.
 
 It isn't intended to be a subset of yaml, but it tries to be close enough to leverage some syntax highlighting in markdown, editors, etc.
 
@@ -47,7 +48,6 @@ The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
-* encoding needs improvement.
 * heredocs are defined but not yet supported.
 * arrays would be nice, but aren't implemented.
 * error reporting needs improvement.
@@ -127,7 +127,8 @@ A scalar value must always appears on a single line. There is no null keyword, n
 
 _( It is sad that hex colors can't live as `#ffffff`. Maybe it would have been cool to use lua style comments ( -- ) instead of yaml hashes. For now, comments are defined as a hash followed by a space while i keep thinking about it. )_
 
-\[1]: _the set of escaped character is: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`. backticks are not escaped, you can use a single line raw heredoc when that's needed._
+\[1]: _the set of escaped characters includes: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`.
+rather than try to invent robust unicode handling, tell uses the same rules as go: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest._
 
 ### Arrays
 An array is a list of comma separated scalars, ending with an optional fullstop: `1, 2, 3.` 
@@ -172,7 +173,7 @@ There are two types, one for each string type:
 
 Whitespace in both string types is influenced by the position of the closing heredoc marker. Therefore, any text to the left of the closing marker is an error. Both string types can define an custom tag to end the heredoc ( even if, unfortunately, that breaks `yaml` syntax highlighting. )
 
-```
+```yaml
   - """
     i am a heredoc interpreted string.
     these lines are run together
@@ -213,3 +214,14 @@ This implementation stores the comments for a collection in a string called a "c
 **This means all collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _( **TBD**: arrays will probably need to be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_
 
 The readme in package notes gets into all the specifics.
+
+
+Changes
+-----
+
+0.3 - 0.4: 
+	- adopted the golang (package stringconv) rules for escaping strings.
+  - simplified the attribution of comments in the space between a key (or dash) and its value.
+  - changes the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
+  - encoder writes empty sequences as empty arrays
+  - encoder writes heredocs for multiline strings

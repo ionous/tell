@@ -1,10 +1,14 @@
 package encode
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 	"testing"
 )
+
+//go:embed encodedTest.tell
+var encodedTest []byte
 
 func TestEncoding(t *testing.T) {
 	if e := testEncoding(t,
@@ -16,10 +20,13 @@ func TestEncoding(t *testing.T) {
 		/* 5 */ uint16(12), line(`0xc`),
 		/* 6 */ int64(4294967296), line(`4294967296`),
 		/* 7 */ 0.1, line(`0.1`),
-		/* 8 */ map[string]any{
+		/* 8 */ []any{}, line(`[]`),
+		/* 9 */ map[string]any{
 			"hello": "there",
+			"empty": []any{},
 			"value": 23,
 			"bool":  true,
+			"nil":   nil,
 			"map": map[string]any{
 				"bool":  true,
 				"hello": "world",
@@ -30,19 +37,12 @@ func TestEncoding(t *testing.T) {
 				5,
 				false,
 			},
-		},
-		`bool: true
-hello: "there"
-map:
-  bool: true
-  hello: "world"
-  value: 11
-slice:
-  - "5"
-  - 5
-  - false
-value: 23
+			"heredoc": `a string
+with several lines
+becomes a heredoc.
 `,
+		},
+		string(encodedTest),
 	); e != nil {
 		t.Fatal(e)
 	}
@@ -66,8 +66,8 @@ func testEncoding(t *testing.T, pairs ...any) (err error) {
 			break
 		} else {
 			if got := buf.String(); got != expect {
-				t.Logf("have %q", got)
-				t.Logf("want %q", expect)
+				t.Logf("have %s", got)
+				t.Logf("want %s", expect)
 
 				err = fmt.Errorf("failed test #%d", i/2)
 				break

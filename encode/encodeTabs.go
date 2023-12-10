@@ -2,6 +2,7 @@ package encode
 
 import (
 	"io"
+	"strconv"
 
 	"github.com/ionous/tell/runes"
 )
@@ -57,6 +58,20 @@ func (tab *TabWriter) writeSpaces() {
 		writeSpaces(tab.Writer, tab.spaces)
 		tab.spaces = 0
 	}
+}
+
+// quotes and escapes the passed string.
+// fix? uses strconv, and strconv produces \x, \u, and \U escapes
+// ( plus it requires multiple traversals over the string )
+func (tab *TabWriter) Quote(s string) {
+	str := strconv.Quote(s)
+	tab.WriteString(str)
+}
+
+// write a non-quoted escaped string
+func (tab *TabWriter) Escape(s string) {
+	str := strconv.Quote(s) // fix? strconv doesnt have a writer api
+	tab.WriteString(str[1 : len(str)-1])
 }
 
 func (tab *TabWriter) WriteString(s string) (int, error) {

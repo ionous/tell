@@ -1,7 +1,6 @@
 package runes
 
 import (
-	"fmt"
 	"io"
 	"unicode/utf8"
 )
@@ -10,17 +9,27 @@ type RuneWriter interface {
 	WriteRune(q rune) (n int, err error)
 }
 
-// write the passed rune to the passed writer
-// checks for a RuneWriter interface, and if that fails, writes the rune as bytes.
-func WriteRune(w io.Writer, q rune) (ret int, err error) {
+// turn a writer into a rune writer
+// first attempts to cast, otherwise builds an adapter for the output
+func WriterToRunes(w io.Writer) (ret RuneWriter) {
 	if rw, ok := w.(RuneWriter); ok {
-		ret, err = rw.WriteRune(q)
-	} else if !utf8.ValidRune(q) {
-		err = fmt.Errorf("rune %d out of range", q)
+		ret = rw
 	} else {
-		var scratch [utf8.UTFMax]byte
-		cnt := utf8.EncodeRune(scratch[:], q)
-		ret, err = w.Write(scratch[:cnt])
+		ret = runeWrapper{w}
 	}
 	return
+}
+
+type runeWrapper struct {
+	io.Writer
+}
+
+func (rw runeWrapper) WriteRune(q rune) (n int, err error) {
+	return WriteRune(rw.Writer, q)
+}
+
+func WriteRune(w io.Writer, q rune) (n int, err error) {
+	var scratch [utf8.UTFMax]byte
+	cnt := utf8.EncodeRune(scratch[:], q)
+	return w.Write(scratch[:cnt])
 }
