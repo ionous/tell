@@ -32,7 +32,7 @@ func (d *Decoder) UseNotes(comments notes.Commentator) {
 func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 	var x, y int
 	run := charm.Parallel("parallel",
-		charmed.FilterControlCodes(),
+		charmed.FilterInvalidRunes(),
 		d.decodeDoc(), // tbd: wrap with charmed.UnhandledError()? why/why not.
 		charmed.DecodePos(&y, &x),
 	)
