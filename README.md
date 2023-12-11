@@ -127,7 +127,7 @@ A scalar value must always appears on a single line. There is no null keyword, n
 
 _( It is sad that hex colors can't live as `#ffffff`. Maybe it would have been cool to use lua style comments ( -- ) instead of yaml hashes. For now, comments are defined as a hash followed by a space while i keep thinking about it. )_
 
-\[1]: _the set of escaped characters includes: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`.
+\[1]: _the set of escaped characters includes: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`. 
 rather than try to invent robust unicode handling, tell uses the same rules as go: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest._
 
 ### Arrays
@@ -169,7 +169,7 @@ Heredocs provide multi-line strings wherever a scalar string is permitted ( but 
 There are two types, one for each string type:
 
 1. **raw**, triple backticks: newlines are structure; backslashes are backslashes.
-2. **interpreted**, triple quotes: newlines are presentation; backslashes are special; double newlines provide structure.
+2. **interpreted**, triple quotes: newlines are presentation; backslashes are special; double newlines provide structure; single quotes don't need to be escaped ( but can be. )
 
 Whitespace in both string types is influenced by the position of the closing heredoc marker. Therefore, any text to the left of the closing marker is an error. Both string types can define an custom tag to end the heredoc ( even if, unfortunately, that breaks `yaml` syntax highlighting. )
 

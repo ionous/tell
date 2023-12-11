@@ -8,6 +8,7 @@ const (
 	Colon          = ':' // keywords in a signature are separated by a colon
 	Dash           = '-' // values in a sequence are prefixed by a dash ( and whitespace )
 	Eof            = -1
+	Escape         = '\\'
 	Hash           = '#'  // comment marker
 	HTab           = '\t' // in documents invalid outside of strings or comments, used for nesting in comment blocks.
 	InterpretQuote = '"'  // interpreted strings are bookended with double quotes

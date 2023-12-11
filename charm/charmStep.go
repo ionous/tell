@@ -16,9 +16,11 @@ func Step(child, parent State) State {
 }
 
 // For use in Step() to run an action after the first step completes.
-func OnExit(name string, onExit func()) State {
-	return Statement("on exit", func(rune) (none State) {
-		onExit()
+func OnExit(name string, onExit func() error) State {
+	return Statement("on exit", func(rune) (ret State) {
+		if e := onExit(); e != nil {
+			ret = Error(e)
+		}
 		return
 	})
 }

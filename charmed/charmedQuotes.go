@@ -1,52 +1,60 @@
 package charmed
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
 
-// wraps a string builder to read a quoted string
+// scans until the matching quote marker is found
+func ScanQuote(match rune, useEscapes bool, onDone func(string)) (ret charm.State) {
+	d := QuoteDecoder{indent: -1}
+	return charm.Step(d.ScanQuote(match, useEscapes),
+		charm.OnExit("recite", func() (err error) {
+			onDone(d.String())
+			return
+		}))
+}
+
+//
+
+// wraps a string builder to read a quoted string or heredoc.
 type QuoteDecoder struct {
 	strings.Builder
+	indent int
 }
 
 // read until an InterpretedString (") end marker is found
+// for heredocs: pass the indentation of the starting quote
 func (d *QuoteDecoder) Interpret() charm.State {
 	return d.ScanQuote(runes.InterpretQuote, true)
 }
 
 // read until an RawString (`) end marker is found
+// for heredocs: pass the indentation of the starting quote
 func (d *QuoteDecoder) Record() charm.State {
 	return d.ScanQuote(runes.RawQuote, false)
 }
 
 // return a state which reads until the end of string, returns error if finished incorrectly
 func (d *QuoteDecoder) ScanQuote(match rune, useEscapes bool) charm.State {
-	const escape = '\\'
 	return charm.Self("scanQuote", func(self charm.State, q rune) (ret charm.State) {
 		switch {
-		case q == match:
-			// returns unhandled for the net rune:
-			ret = charm.Statement("quoted",
-				func(rune) charm.State { return nil })
-
-		case q == escape && useEscapes: // alt: could use Step and keep.
-			ret = charm.Statement("escaping", func(q rune) (ret charm.State) {
-				if x, ok := escapes[q]; !ok {
-					e := fmt.Errorf("unknown escape %s", runes.RuneName(q))
-					ret = charm.Error(e)
-				} else {
-					d.WriteRune(x)
-					ret = self // loop...
+		case q == match: // the second quote
+			ret = charm.Statement("quoted", func(third rune) (ret charm.State) {
+				// when heredocs are disabled; return unhandled on the rune after the closing quote.
+				if d.indent >= 0 && third == match {
+					ret = decodeHere(&d.Builder, d.indent, match, useEscapes)
 				}
 				return
 			})
 
+		case q == runes.Escape && useEscapes:
+			ret = decodeEscape(d, self)
+
 		case q == runes.Newline || q == runes.Eof:
-			e := fmt.Errorf("unexpected %s", runes.RuneName(q))
+			e := InvalidRune(q)
 			ret = charm.Error(e)
 
 		default:
@@ -55,24 +63,4 @@ func (d *QuoteDecoder) ScanQuote(match rune, useEscapes bool) charm.State {
 		}
 		return
 	})
-}
-
-// scans until the matching quote marker is found
-func ScanQuote(match rune, useEscapes bool, onDone func(string)) (ret charm.State) {
-	var d QuoteDecoder
-	return charm.Step(d.ScanQuote(match, useEscapes), charm.OnExit("recite", func() {
-		onDone(d.String())
-	}))
-}
-
-var escapes = map[rune]rune{
-	'a':  '\a',
-	'b':  '\b',
-	'f':  '\f',
-	'n':  '\n',
-	'r':  '\r',
-	't':  '\t',
-	'v':  '\v',
-	'\\': '\\',
-	'"':  '"',
 }
