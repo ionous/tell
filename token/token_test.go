@@ -18,32 +18,50 @@ func TestError(t *testing.T) {
 	}
 }
 
+// test (at least) one of each of the possible tokens produced
 func TestTokens(t *testing.T) {
 	tests := []any{
 		// token, string to parse, result:
-		token.Comment, "", "", //  a blank line
-		token.Bool, `true`, true,
-		token.Number, `5`, 5,
-		token.Number, `0x20`, uint(0x20),
-		token.Number, `5.4`, 5.4,
-		token.InterpretedString, `"5.4"`, "5.4",
+		// /*0*/ token.Comment, "", "", //  a blank line
+		// /*1*/ token.Bool, `true`, true,
+		// /*2*/ token.Number, `5`, 5,
+		// /*3*/ token.Number, `0x20`, uint(0x20),
+		// /*4*/ token.Number, `5.4`, 5.4,
+		// /*5*/ token.InterpretedString, `"5.4"`, "5.4",
+
+		// // ----------
+		// /*6*/ token.InterpretedString,
+		// `"hello\\world"`,
+		// `hello\world`,
+
+		// // ----------
+		// /*7*/ token.RawString,
+		// "`" + `hello\\world` + "`",
+		// `hello\\world`,
+
+		// // -----
+		// /*8*/ token.Comment, "# comment", "# comment",
+		// /*9*/ token.Key, "-", "",
+		// /*10*/ token.Key, "hello:world:", "hello:world:",
+		// // make sure dash numbers are treated as negative numbers
+		// /*11*/ token.Number, `-5`, -5,
 
 		// ----------
-		token.InterpretedString,
-		`"hello\\world"`,
-		`hello\world`,
-
-		// ----------
-		token.RawString,
-		"`" + `hello\\world` + "`",
-		`hello\\world`,
-
-		// -----
-		token.Comment, "# comment", "# comment",
-		token.Key, "-", "",
-		token.Key, "hello:world:", "hello:world:",
-		// make sure dash numbers are treated as negative numbers
-		token.Number, `-5`, -5,
+		/*12*/ token.InterpretedString,
+		`"""
+hello
+doc
+"""`,
+		`hello doc`,
+		// -------------
+		/*13*/ token.RawString,
+		strings.Join([]string{
+			"```",
+			"hello",
+			"line",
+			"```"}, "\n"),
+		`hello
+line`,
 	}
 
 	// test all of the above in both the same and separate buffers

@@ -9,8 +9,8 @@ import (
 
 // scans until the matching quote marker is found
 func ScanQuote(match rune, escape bool, onDone func(string)) (ret charm.State) {
-	d := QuoteDecoder{indent: -1}
-	return charm.Step(d.ScanQuote(match, escape),
+	var d QuoteDecoder
+	return charm.Step(d.ScanQuote(match, escape, false),
 		charm.OnExit("recite", func() (err error) {
 			onDone(d.String())
 			return
@@ -22,29 +22,28 @@ func ScanQuote(match rune, escape bool, onDone func(string)) (ret charm.State) {
 // wraps a string builder to read a quoted string or heredoc.
 type QuoteDecoder struct {
 	strings.Builder
-	indent int
 }
 
 // read until an InterpretedString (") end marker is found
 // for heredocs: pass the indentation of the starting quote
 func (d *QuoteDecoder) Interpret() charm.State {
-	return d.ScanQuote(runes.InterpretQuote, true)
+	return d.ScanQuote(runes.InterpretQuote, true, true)
 }
 
 // read until an RawString (`) end marker is found
 // for heredocs: pass the indentation of the starting quote
 func (d *QuoteDecoder) Record() charm.State {
-	return d.ScanQuote(runes.RawQuote, false)
+	return d.ScanQuote(runes.RawQuote, false, true)
 }
 
 // return a state which reads until the end of string, returns error if finished incorrectly
-func (d *QuoteDecoder) ScanQuote(match rune, escape bool) charm.State {
+func (d *QuoteDecoder) ScanQuote(match rune, escape, allowHere bool) charm.State {
 	return charm.Self("scanQuote", func(self charm.State, q rune) (ret charm.State) {
 		switch {
 		case q == match: // the second quote
 			ret = charm.Statement("quoted", func(third rune) (ret charm.State) {
 				// when heredocs are disabled; return unhandled on the rune after the closing quote.
-				if d.indent >= 0 && third == match {
+				if allowHere && third == match {
 					ret = decodeHereAfter(&d.Builder, match, escape)
 				}
 				return

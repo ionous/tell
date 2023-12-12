@@ -38,7 +38,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.3
+Version ~0.3.5
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -111,8 +111,6 @@ Documents are most often text files. UTF8, no byte order marks.
 
 "Structural whitespace" in documents is restricted to the ascii space and the ascii linefeed. Quoted strings can have horizontal tabs; single line strings, for perhaps obvious reasons, can't contain linefeeds. All other Unicode control codes are disallowed ( and, so cr/lf is considered an error. )
 
-_( BUG: the implementation currently errors on tabs in comments. )_
-
 ### Values
 Any **scalar**, **array**, **sequence**, **mapping**, or **heredoc**.
 
@@ -120,15 +118,13 @@ Any **scalar**, **array**, **sequence**, **mapping**, or **heredoc**.
 
 * **bool**: `true`, or `false`.
 * **raw string** ( backtick ): `` `backslashes are backslashes.` ``
-* **interpreted string** ( double quotes ): `"backslashes indicate escaped characters."`<sup>\[1]</sup>
-* **number**: 64-bit int or float numbers optionally starting with `+`/`-`; floats can have exponents `[e|E][|+/-]...`; hex values can be specified with `0x`notation. Like json, but unlike yaml: Inf and NaN are not supported. _( may expand to support https://go.dev/ref/spec#Integer_literals, etc. as needed. )_  _( **TBD**: the implementation currently produces floats, and only floats. that's to match json, but what's best? )_ 
+* **interpreted string** ( double quotes ): `"backslashes indicate escaped characters."`
+* **number**: 64-bit int or float numbers optionally starting with `+`/`-`; floats can have exponents `[e|E][|+/-]...`; hex values can be specified with `0x`notation. Like json, but unlike yaml: Inf and NaN are not supported. _( may expand to support https://go.dev/ref/spec#Integer_literals, etc. as needed. )_ 
 
-A scalar value must always appears on a single line. There is no null keyword, null is implicit where no explicit value was provided. ( Heredocs support multiline strings. )
+A scalar value always appears on a single line. There is no null keyword, null is implicit where no explicit value was provided. Only heredocs support multi-line strings. _( Comments are defined as a hash followed by a space in order to maybe support css style hex colors, ie. `#ffffff`. Still thinking about this one. )_
 
-_( It is sad that hex colors can't live as `#ffffff`. Maybe it would have been cool to use lua style comments ( -- ) instead of yaml hashes. For now, comments are defined as a hash followed by a space while i keep thinking about it. )_
-
-\[1]: _the set of escaped characters includes: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`. 
-rather than try to invent robust unicode handling, tell uses the same rules as go: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest._
+**Escaping**: The individually escaped characters are: `a` ,`b` ,`f` ,`n` ,`r` ,`t` ,`v` ,`\` ,`"`. 
+And, for describing explicit unicode points, `tell` uses the same rules as Go, namely: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest.
 
 ### Arrays
 An array is a list of comma separated scalars, ending with an optional fullstop: `1, 2, 3.` 
@@ -227,7 +223,13 @@ hello
 line
 ```
 
-_re: the redirect marker. i'm quite taken with the way some markdown tools provide syntax coloring of triple quoted strings when there's a filetype after the quotes. ( for example: ` ```C++ ... ` ) many implementations ( ex. github ) ignore text after the filetype, and so those can display something like ` ```C++  END ... ` with the correct coloring. however, since that wouldn't play well with end markers, tell requires redirection markers so it can support both filetypes and custom heredoc tags. ie. ` ```C++  <<<END` that way, maybe in some far off distant age, tell-aware syntax coloring could display the heredoc with fancy colors._
+***Custom end tags***
+
+I quite like the way some markdown implementations provide syntax coloring of triple quoted strings when there's a filetype after the quotes. ( for example: ` ```C++` ) Many of them, also nicely ignore any text after the filetype, and so lines like ` ```C++  something something`, even if maybe not technically *legal*, still provide good syntax highlighting.
+
+With that in mind, Tell uses a triple less-than redirection marker (`<<<`) to define a custom end tag.  ( Triple to match the quotes. ) The redirection marker allows an author to have a filetype, or not. For example: ` ```C++ <<<END`, or if no filetype is desired:` ```<<<END`.
+
+Maybe in some far off distant age, tell-aware syntax coloring could display the heredoc with fancy colors.
 
 ### Comments
 Hate me forever, comments are preserved, are significant, and introduce their own indentation rules. 
@@ -238,7 +240,7 @@ As in yaml, tell comments begin with the `#` hash, **followed by a space**, and 
 
 This implementation stores the comments for a collection in a string called a "comment block". Each collection has its own comment block stored in the zeroth element of its sequence, the blank key of its mappings, or the comment field of its document.
 
-**This means all collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _( **TBD**: arrays will probably need to be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_
+**When comments are preserved, collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _( **TBD**: arrays will probably need to be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_
 
 The readme in package notes gets into all the specifics.
 
@@ -246,9 +248,10 @@ The readme in package notes gets into all the specifics.
 Changes
 -----
 
-0.3 - 0.4: 
-	- adopted the golang (package stringconv) rules for escaping strings.
-  - simplified the attribution of comments in the space between a key (or dash) and its value.
-  - changes the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
-  - encoder writes empty sequences as empty arrays
-  - encoder writes heredocs for multiline strings
+0.3 -> 0.4: 
+	- adopt the golang (package stringconv) rules for escaping strings.
+  - simplify the attribution of comments in the space between a key (or dash) and its value.
+  - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
+  - encoding/decoding heredocs for multiline strings
+  - encoding/decoding of simple sequences as arrays
+  
