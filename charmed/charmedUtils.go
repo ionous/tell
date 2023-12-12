@@ -8,13 +8,6 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// implements error
-type InvalidRune rune
-
-func (e InvalidRune) Error() string {
-	return fmt.Sprintf("invalid %s", runes.RuneName(rune(e)))
-}
-
 // turns any unhandled states returned by the watched state into errors
 func UnhandledError(watch charm.State) charm.State {
 	return charm.Self("unhandled error", func(self charm.State, q rune) (ret charm.State) {
@@ -32,7 +25,7 @@ func UnhandledError(watch charm.State) charm.State {
 func FilterInvalidRunes() charm.State {
 	return charm.Self("filter control codes", func(next charm.State, q rune) charm.State {
 		if isInvalidRune(q) {
-			e := InvalidRune(q)
+			e := charm.InvalidRune(q)
 			next = charm.Error(e)
 		}
 		return next

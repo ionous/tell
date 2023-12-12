@@ -11,10 +11,18 @@ import (
 // three opening quotes have been found:
 // 1. read the custom closing tag ( if any )
 // 2. read here doc lines until the closing tag
-//
-func decodeHere(out *strings.Builder, quote rune, escape bool) charm.State {
+func decodeHereAfter(out *strings.Builder, quote rune, escape bool) charm.State {
 	var endTag = []rune{quote, quote, quote}
-	return charm.Step(decoodeTag(&endTag), decodeBody(out, escape, endTag))
+	return charm.Step(decoodeTag(&endTag), charm.Statement("capture", func(q rune) (ret charm.State) {
+		// can't call directly, or it wont see the (possibly new) slice from decode tag
+		// and anyway, need to ensure the last rune was a newline
+		if q != runes.Newline {
+			ret = charm.Error(charm.InvalidRune(q))
+		} else {
+			ret = decodeBody(out, escape, endTag)
+		}
+		return
+	}))
 }
 
 func decodeBody(out *strings.Builder, escape bool, endTag []rune) charm.State {
@@ -50,9 +58,11 @@ func (ls *indentedLines) addLine(lhs, rhs int, str string) {
 // a literalLine means every newline ( except the last ) is a newline.
 // otherwise, it takes a fully blank line to write a newline
 func (ls indentedLines) writeLines(out *strings.Builder, leftEdge int, literalLines bool) (err error) {
+	var afterNewLine bool // when writing interpreted lines, we want only a space OR a newline.
 	for i, el := range ls {
 		if str := el.str; len(str) == 0 {
 			out.WriteRune(runes.Newline)
+			afterNewLine = true
 		} else if newLhs := el.lhs - leftEdge; newLhs < 0 {
 			err = underIndentAt(i)
 			break
@@ -60,7 +70,7 @@ func (ls indentedLines) writeLines(out *strings.Builder, leftEdge int, literalLi
 			if i > 0 {
 				if literalLines {
 					out.WriteRune(runes.Newline)
-				} else {
+				} else if !afterNewLine {
 					out.WriteRune(runes.Space)
 				}
 			}
@@ -68,6 +78,10 @@ func (ls indentedLines) writeLines(out *strings.Builder, leftEdge int, literalLi
 			out.WriteString(str)
 			if literalLines {
 				dupe(out, runes.Space, el.rhs)
+			} else if cnt := len(str); cnt > 0 {
+				// obscure: if the author ends the line with a manual \n
+				// then absorb the space on the next line.
+				afterNewLine = str[cnt-1] == runes.Newline
 			}
 		}
 	}

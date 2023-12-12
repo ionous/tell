@@ -26,7 +26,7 @@ func decodeEscape(w runes.RuneWriter) charm.State {
 						ret = self // not done, keep going.
 					} else {
 						if !utf8.ValidRune(v) {
-							ret = charm.Error(InvalidRune(v))
+							ret = charm.Error(charm.InvalidRune(v))
 						} else {
 							w.WriteRune(v)
 							ret = charm.UnhandledNext()
@@ -38,7 +38,7 @@ func decodeEscape(w runes.RuneWriter) charm.State {
 		} else {
 			// single replacement escapes:
 			if v, ok := escapes[q]; !ok {
-				e := fmt.Errorf("%q is not recognized after a backslash", q)
+				e := fmt.Errorf("%w is not recognized after a backslash", charm.InvalidRune(q))
 				ret = charm.Error(e)
 			} else {
 				w.WriteRune(v)

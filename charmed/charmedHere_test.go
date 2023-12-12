@@ -1,11 +1,36 @@
 package charmed
 
 import (
+	_ "embed"
 	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 )
+
+//go:embed hereDoc.test
+var hereDoc string
+
+//go:embed hereDocRaw.test
+var hereDocRaw string
+
+//go:embed hereExpected.test
+var hereExpected string
+
+// test reading a full heredoc
+func TestHereNow(t *testing.T) {
+	if got, e := testHere(hereDocRaw); e != nil {
+		t.Fatal("failed hereDocRaw", e)
+	} else if got != hereExpected {
+		t.Fatalf("hereDocRaw: \nhave: %q\nwant: %q", got, hereExpected)
+	}
+	if got, e := testHere(hereDoc); e != nil {
+		t.Fatal("failed hereDoc", e)
+	} else if got != hereExpected {
+		t.Fatalf("hereDoc: \nhave: %q\nwant: %q", got, hereExpected)
+	}
+}
 
 // test for tokenization of heredoc headers
 // ( not every series of tokens form a legal header; this doesn't test for that.
@@ -77,6 +102,18 @@ func TestBody(t *testing.T) {
 	}
 }
 
+func testHere(str string) (ret string, err error) {
+	var buf strings.Builder
+	quote, str := rune(str[0]), str[3:] // decodeHereAfter starts after the opening
+	escape := quote == runes.InterpretQuote
+	if e := charm.ParseEof(str, decodeHereAfter(&buf, quote, escape)); e != nil {
+		err = e
+	} else {
+		ret = buf.String()
+	}
+	return
+}
+
 func testBody(str string) (ret string, err error) {
 	var escape bool
 	var buf strings.Builder
@@ -94,17 +131,14 @@ func testBody(str string) (ret string, err error) {
 	return
 }
 
-func resolve(buf *strings.Builder) (ret string) {
-	ret = buf.String()
-	buf.Reset()
-	return
-}
-
-// have to do this manually to avoid issues with eof
-// ( probably the set of testHeader functions exposed by charm are less than ideal )
 func testHeader(str string) (ret string, err error) {
 	var buf strings.Builder
-	if e := parse(str, decodeHeaderHere(&buf, note(&buf))); e != nil {
+	if e := parse(str, decodeHeaderHere(&buf, func(t headerToken) (_ error) {
+		buf.WriteRune('[')
+		buf.WriteString(t.String())
+		buf.WriteRune(']')
+		return
+	})); e != nil {
 		err = e
 	} else {
 		ret = buf.String()
@@ -112,6 +146,8 @@ func testHeader(str string) (ret string, err error) {
 	return
 }
 
+// have to do this manually to avoid issues with eof
+// ( probably the set of testHeader functions exposed by charm are less than ideal )
 func parse(str string, next charm.State) (err error) {
 	for _, q := range str + "\n" {
 		if next = next.NewRune(q); next == nil {
@@ -124,11 +160,8 @@ func parse(str string, next charm.State) (err error) {
 	return
 }
 
-func note(out *strings.Builder) headerNotifier {
-	return func(t headerToken) (_ error) {
-		out.WriteRune('[')
-		out.WriteString(t.String())
-		out.WriteRune(']')
-		return
-	}
+func resolve(buf *strings.Builder) (ret string) {
+	ret = buf.String()
+	buf.Reset()
+	return
 }

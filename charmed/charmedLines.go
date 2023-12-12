@@ -49,7 +49,7 @@ func (d *hereLines) decodeLines(out *strings.Builder) charm.State {
 			indent = 0
 			ret = self
 		case runes.Eof: // expects a closing tag
-			e := InvalidRune(q)
+			e := charm.InvalidRune(q)
 			ret = charm.Error(e)
 		default:
 			ret = charm.RunState(q, d.decodeLeft(out, indent))
@@ -64,7 +64,7 @@ func (d *hereLines) decodeLeft(out *strings.Builder, depth int) charm.State {
 		if cnt := len(d.endTag); idx < cnt && d.endTag[idx] == q {
 			// still matching; advance.
 			ret, idx = self, idx+1
-		} else if idx < cnt || q != runes.Newline {
+		} else if idx < cnt || !runes.IsWhitespace(q) {
 			// mismatched: write out all the runes that did match
 			// ( since those are part of the lines )
 			for i := 0; i < idx; i++ {
@@ -72,7 +72,6 @@ func (d *hereLines) decodeLeft(out *strings.Builder, depth int) charm.State {
 			}
 			ret = charm.RunState(q, d.decodeRight(out, depth))
 		} else {
-			// otherwise: we have fully matched, and received a newline
 			d.report(lineClose, depth, 0)
 			ret = charm.UnhandledNext()
 		}
@@ -87,11 +86,12 @@ func (d *hereLines) decodeRight(out *strings.Builder, depth int) charm.State {
 		switch q {
 		case runes.Space:
 			trailingSpaces++
+			ret = self
 		case runes.Newline:
 			d.report(lineText, depth, trailingSpaces)
 			ret = d.decodeLines(out) // done with this line; read more lines!
 		case runes.Eof:
-			e := InvalidRune(q) // closing tag required before eof
+			e := charm.InvalidRune(q) // closing tag required before eof
 			ret = charm.Error(e)
 		default:
 			if trailingSpaces > 0 {

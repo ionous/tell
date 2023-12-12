@@ -1,0 +1,7 @@
+"""
+  here are a couple of lines\n
+  that should appear exactly as written.\n
+  
+  backslashes "\\" aren't special,\n
+  and neither are quotes.
+  """

@@ -45,7 +45,7 @@ func (d *QuoteDecoder) ScanQuote(match rune, escape bool) charm.State {
 			ret = charm.Statement("quoted", func(third rune) (ret charm.State) {
 				// when heredocs are disabled; return unhandled on the rune after the closing quote.
 				if d.indent >= 0 && third == match {
-					ret = decodeHere(&d.Builder, match, escape)
+					ret = decodeHereAfter(&d.Builder, match, escape)
 				}
 				return
 			})
@@ -54,7 +54,7 @@ func (d *QuoteDecoder) ScanQuote(match rune, escape bool) charm.State {
 			ret = charm.Step(decodeEscape(d), self)
 
 		case q == runes.Newline || q == runes.Eof:
-			e := InvalidRune(q)
+			e := charm.InvalidRune(q)
 			ret = charm.Error(e)
 
 		default:

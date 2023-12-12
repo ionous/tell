@@ -1,7 +1,5 @@
 package runes
 
-import "strconv"
-
 const (
 	ArrayClose     = ']'
 	ArrayOpen      = '['
@@ -35,22 +33,6 @@ func IsWhitespace(q rune) (ret bool) {
 	switch q {
 	case Space, Newline, Eof:
 		ret = true
-	}
-	return
-}
-
-func RuneName(q rune) (ret string) {
-	switch q {
-	case Newline:
-		ret = "newline"
-	case Space:
-		ret = "space"
-	case Eof:
-		ret = "end of file"
-	case HTab:
-		ret = "tab"
-	default:
-		ret = "rune 0x" + strconv.FormatInt(int64(q), 16)
 	}
 	return
 }

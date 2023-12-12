@@ -54,7 +54,7 @@ type headCount struct {
 // if not, report the end of that token, and start a new one.
 func (h *headCount) update(q rune, report headerNotifier) (err error) {
 	if t, ok := classify(q); !ok {
-		err = InvalidRune(q)
+		err = charm.InvalidRune(q)
 	} else if prev, width := h.token, h.width; t == prev {
 		h.width++
 	} else if prev == headerRedirect && width != 3 {

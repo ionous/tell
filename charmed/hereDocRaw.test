@@ -1,0 +1,7 @@
+```yaml <<< END
+  here are a couple of lines
+  that should appear exactly as written.
+  
+  backslashes "\" aren't special,
+  and neither are quotes.
+  END

@@ -27,12 +27,12 @@ func TestEscape(t *testing.T) {
 		"uFFFD", "\uFFFD",
 		"U00000026", "\U00000026",
 		//
-
-		// octal not supported... fix?
-		"000", "error: '0' is not recognized after a backslash",
-		"007", "error: '0' is not recognized after a backslash",
+		"", "error: invalid rune: <end of file>",
+		// tbd:octal not supported...
+		"000", "error: invalid rune: '0' is not recognized after a backslash",
+		"007", "error: invalid rune: '0' is not recognized after a backslash",
 		// from go's ref spec https://go.dev/ref/spec
-		"k", "error: 'k' is not recognized after a backslash",
+		"k", "error: invalid rune: 'k' is not recognized after a backslash",
 		"xa", "error: expected 2 hex values", // illegal: too few hexadecimal digits
 		"uDFFF", "error: invalid rune", // illegal: surrogate half
 		"U00110000", "error: invalid rune", // illegal: invalid Unicode code point
@@ -47,13 +47,13 @@ func TestEscape(t *testing.T) {
 			} else {
 				got := "error: " + e.Error()
 				if !strings.HasPrefix(got, expect) {
-					t.Logf("failed test %d (%q), unexpected error %q", i, test, e)
+					t.Logf("failed test %d (%q), unexpected error %q", i/2, test, e)
 					t.Fail()
 				}
 			}
 		} else {
 			if got := buf.String(); got != expect {
-				t.Logf("failed test %d  (%q) because got %q", i, test, got)
+				t.Logf("failed test %d  (%q) because got %q", i/2, test, got)
 				t.Fail()
 			}
 		}
