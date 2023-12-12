@@ -9,17 +9,18 @@ import (
 
 // test for tokenization of heredoc headers
 // ( not every series of tokens form a legal header; this doesn't test for that.
-//   ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
+//
+//	ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
 func TestHeader(t *testing.T) {
-	if got, e := parse("yaml<<<END"); e != nil {
+	if got, e := testHeader("yaml<<<END"); e != nil {
 		t.Fatal(e)
 	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
-	} else if got, e := parse("yaml  <<<  END"); e != nil {
+	} else if got, e := testHeader("yaml  <<<  END"); e != nil {
 		t.Fatal(e)
 	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
-	} else if got, e := parse("<<<"); e != nil {
+	} else if got, e := testHeader("<<<"); e != nil {
 		t.Fatal(e)
 	} else if expect := "[headerRedirect]"; got != expect {
 		t.Fatal("got:", got)
@@ -30,7 +31,7 @@ func TestHeader(t *testing.T) {
 func TestRedirectCount(t *testing.T) {
 	for i := 1; i < 5; i++ {
 		str := strings.Repeat("<", i)
-		_, e := parse(str)
+		_, e := testHeader(str)
 		expectError := i != 3
 		ok := (e != nil) == expectError
 		if !ok {
@@ -39,8 +40,6 @@ func TestRedirectCount(t *testing.T) {
 	}
 }
 
-// fix: eat trailing space for escaped lines
-// how?! ( probably by tracking that in the state and reporting it )
 func TestLiteralLines(t *testing.T) {
 	var ls indentedLines
 	// left side spaces, trailing spaces, and the text.
@@ -60,6 +59,41 @@ func TestLiteralLines(t *testing.T) {
 	}
 }
 
+func TestBody(t *testing.T) {
+	if got, e := testBody("!!"); e != nil {
+		t.Fatal(e)
+	} else if expect := "[lineClose]"; got != expect {
+		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	}
+	if got, e := testBody("boop\nbop\nbeep\n!!"); e != nil {
+		t.Fatal(e)
+	} else if expect := "boop[lineText]bop[lineText]beep[lineText][lineClose]"; got != expect {
+		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	}
+	if got, e := testBody("!partial!\n!!"); e != nil {
+		t.Fatal(e)
+	} else if expect := "!partial![lineText][lineClose]"; got != expect {
+		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	}
+}
+
+func testBody(str string) (ret string, err error) {
+	var escape bool
+	var buf strings.Builder
+	var endTag = []rune{'!', '!'}
+	if e := parse(str, decodeLines(&buf, escape, endTag, func(cat lineType, lhs, rhs int) (_ error) {
+		buf.WriteRune('[')
+		buf.WriteString(cat.String())
+		buf.WriteRune(']')
+		return
+	})); e != nil {
+		err = e
+	} else {
+		ret = buf.String()
+	}
+	return
+}
+
 func resolve(buf *strings.Builder) (ret string) {
 	ret = buf.String()
 	buf.Reset()
@@ -67,13 +101,20 @@ func resolve(buf *strings.Builder) (ret string) {
 }
 
 // have to do this manually to avoid issues with eof
-// ( probably the set of parse functions exposed by charm are less than ideal )
-func parse(str string) (ret string, err error) {
+// ( probably the set of testHeader functions exposed by charm are less than ideal )
+func testHeader(str string) (ret string, err error) {
 	var buf strings.Builder
-	next := decodeHeaderHere(&buf, note(&buf))
+	if e := parse(str, decodeHeaderHere(&buf, note(&buf))); e != nil {
+		err = e
+	} else {
+		ret = buf.String()
+	}
+	return
+}
+
+func parse(str string, next charm.State) (err error) {
 	for _, q := range str + "\n" {
 		if next = next.NewRune(q); next == nil {
-			ret = buf.String()
 			break
 		} else if es, ok := next.(charm.Terminal); ok {
 			err = es

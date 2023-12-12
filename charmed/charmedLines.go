@@ -9,6 +9,7 @@ import (
 
 type lineType int
 
+//go:generate stringer -type=lineType
 const (
 	lineText lineType = iota
 	lineClose
@@ -66,8 +67,8 @@ func (d *hereLines) decodeLeft(out *strings.Builder, depth int) charm.State {
 		} else if idx < cnt || q != runes.Newline {
 			// mismatched: write out all the runes that did match
 			// ( since those are part of the lines )
-			for depth := 0; depth < cnt; depth++ {
-				out.WriteRune(d.endTag[depth])
+			for i := 0; i < idx; i++ {
+				out.WriteRune(d.endTag[i])
 			}
 			ret = charm.RunState(q, d.decodeRight(out, depth))
 		} else {
