@@ -1,38 +1,49 @@
 package charmed
 
 import (
-	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
 
-func decodeEscape(w runes.RuneWriter, decoded charm.State) charm.State {
+// starting after a backslash, read an escape encoded rune.
+// the subsequent rune will return unhandled.
+// \xFF, \uFFFF, \UffffFFFF
+func decodeEscape(w runes.RuneWriter) charm.State {
 	return charm.Statement("decodeEscape", func(q rune) (ret charm.State) {
-		if width := hexEncodings[q]; width > 0 {
-			var v rune
+		if totalWidth := hexEncodings[q]; totalWidth > 0 {
+			var v rune // build this up over multiple steps
+			width := totalWidth
 			ret = charm.Self("captureEscape", func(self charm.State, q rune) (ret charm.State) {
 				if x, ok := unhex(q); !ok {
-					e := errors.New("syntax error")
+					e := fmt.Errorf("expected %d hex values", totalWidth)
 					ret = charm.Error(e)
 				} else {
 					v = v<<4 | x
-					if width = width - 1; width == 0 {
-						w.WriteRune(v)
-						ret = decoded
+					if width = width - 1; width > 0 {
+						ret = self // not done, keep going.
 					} else {
-						ret = self
+						if !utf8.ValidRune(v) {
+							ret = charm.Error(InvalidRune(v))
+						} else {
+							w.WriteRune(v)
+							ret = charm.UnhandledNext()
+						}
 					}
 				}
 				return
 			})
-		} else if x, ok := escapes[q]; !ok {
-			e := fmt.Errorf("unknown escape %s", runes.RuneName(q))
-			ret = charm.Error(e)
 		} else {
-			w.WriteRune(x)
-			ret = decoded // loop...
+			// single replacement escapes:
+			if v, ok := escapes[q]; !ok {
+				e := fmt.Errorf("%q is not recognized after a backslash", q)
+				ret = charm.Error(e)
+			} else {
+				w.WriteRune(v)
+				ret = charm.UnhandledNext()
+			}
 		}
 		return
 	})

@@ -40,7 +40,7 @@ func testQ(t *testing.T, str, want string) (ret interface{}, err error) {
 		}
 		return
 	})
-	if e := charm.ParseEof(p, str); e != nil {
+	if e := charm.ParseEof(str, p); e != nil {
 		err = e
 	} else if want != ignoreResult {
 		if got != want {

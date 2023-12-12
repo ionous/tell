@@ -99,7 +99,7 @@ func (d *hereLines) decodeRight(out *strings.Builder, depth int) charm.State {
 				trailingSpaces = 0
 			}
 			if q == runes.Escape && d.escape {
-				ret = decodeEscape(out, self)
+				ret = charm.Step(decodeEscape(out), self)
 			} else {
 				out.WriteRune(q)
 				ret = self // keep reading the rest of the line...

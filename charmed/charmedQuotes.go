@@ -51,7 +51,7 @@ func (d *QuoteDecoder) ScanQuote(match rune, escape bool) charm.State {
 			})
 
 		case q == runes.Escape && escape:
-			ret = decodeEscape(d, self)
+			ret = charm.Step(decodeEscape(d), self)
 
 		case q == runes.Newline || q == runes.Eof:
 			e := InvalidRune(q)
