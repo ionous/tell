@@ -97,7 +97,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 		d.out.setPending(at, d.collector.newCollection(key, d.memo.newComments()))
 		d.state = d.waitForValue
 
-	case token.Bool, token.Number, token.InterpretedString, token.RawString:
+	case token.Bool, token.Number, token.String:
 		d.out.setPending(at, newScalar(val))
 		d.memo.OnDocScalar()
 		d.state = d.docValue
@@ -137,7 +137,7 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 				d.state = d.waitForValue
 			}
 		}
-	case token.Bool, token.Number, token.InterpretedString, token.RawString:
+	case token.Bool, token.Number, token.String:
 		err = fmt.Errorf("unexpected %s", tokenType)
 	case token.Comment:
 		err = d.onComment(at, tokenType, val.(string))
@@ -189,7 +189,7 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 			}
 		}
 
-	case token.Bool, token.Number, token.InterpretedString, token.RawString:
+	case token.Bool, token.Number, token.String:
 		// the value detected is for this collection
 		if at.X >= d.out.pos.X {
 			if e := d.out.setValue(val); e != nil {

@@ -9,17 +9,17 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[Invalid-0]
-	_ = x[Bool-1]
-	_ = x[Number-2]
-	_ = x[InterpretedString-3]
-	_ = x[RawString-4]
-	_ = x[Comment-5]
-	_ = x[Key-6]
+	_ = x[Array-1]
+	_ = x[Bool-2]
+	_ = x[Comment-3]
+	_ = x[Key-4]
+	_ = x[Number-5]
+	_ = x[String-6]
 }
 
-const _Type_name = "InvalidBoolNumberInterpretedStringRawStringCommentKey"
+const _Type_name = "InvalidArrayBoolCommentKeyNumberString"
 
-var _Type_index = [...]uint8{0, 7, 11, 17, 34, 43, 50, 53}
+var _Type_index = [...]uint8{0, 7, 12, 16, 23, 26, 32, 38}
 
 func (i Type) String() string {
 	if i < 0 || i >= Type(len(_Type_index)-1) {

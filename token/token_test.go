@@ -27,15 +27,15 @@ func TestTokens(t *testing.T) {
 		// /*2*/ token.Number, `5`, 5,
 		// /*3*/ token.Number, `0x20`, uint(0x20),
 		// /*4*/ token.Number, `5.4`, 5.4,
-		// /*5*/ token.InterpretedString, `"5.4"`, "5.4",
+		// /*5*/ token.String, `"5.4"`, "5.4",
 
 		// // ----------
-		// /*6*/ token.InterpretedString,
+		// /*6*/ token.String,
 		// `"hello\\world"`,
 		// `hello\world`,
 
 		// // ----------
-		// /*7*/ token.RawString,
+		// /*7*/ token.String,
 		// "`" + `hello\\world` + "`",
 		// `hello\\world`,
 
@@ -47,14 +47,14 @@ func TestTokens(t *testing.T) {
 		// /*11*/ token.Number, `-5`, -5,
 
 		// ----------
-		/*12*/ token.InterpretedString,
+		/*12*/ token.String,
 		`"""
 hello
 doc
 """`,
 		`hello doc`,
 		// -------------
-		/*13*/ token.RawString,
+		/*13*/ token.String,
 		strings.Join([]string{
 			"```",
 			"hello",

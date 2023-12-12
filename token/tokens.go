@@ -202,14 +202,14 @@ func (n *tokenizer) commentDecoder() charm.State {
 func (n *tokenizer) interpretDecoding() charm.State {
 	var d charmed.QuoteDecoder
 	return charm.Step(d.Interpret(), charm.Statement("interpreted", func(q rune) charm.State {
-		return n.notifyRune(q, InterpretedString, d.String())
+		return n.notifyRune(q, String, d.String())
 	}))
 }
 
 func (n *tokenizer) rawDecoding() charm.State {
 	var d charmed.QuoteDecoder
 	return charm.Step(d.Record(), charm.Statement("recorded", func(q rune) charm.State {
-		return n.notifyRune(q, RawString, d.String())
+		return n.notifyRune(q, String, d.String())
 	}))
 }
 
