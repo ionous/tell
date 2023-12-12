@@ -73,7 +73,8 @@ func (d *hereLines) decodeLeft(out *strings.Builder, depth int) charm.State {
 			ret = charm.RunState(q, d.decodeRight(out, depth))
 		} else {
 			d.report(lineClose, depth, 0)
-			ret = charm.UnhandledNext()
+			// returns unhandled rune on the separator
+			// ( this is how the other tokenized elements work )
 		}
 		return
 	})
