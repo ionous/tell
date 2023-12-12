@@ -169,9 +169,10 @@ Heredocs provide multi-line strings wherever a scalar string is permitted ( but 
 There are two types, one for each string type:
 
 1. **raw**, triple backticks: newlines are structure; backslashes are backslashes.
-2. **interpreted**, triple quotes: newlines are presentation; backslashes are special; double newlines provide structure; single quotes don't need to be escaped ( but can be. )
+2. **interpreted**, triple quotes: newlines act as word separators; backslashes are special; double newlines provide structure; single quotes don't need to be escaped ( but can be. )
 
 Whitespace in both string types is influenced by the position of the closing heredoc marker. Therefore, any text to the left of the closing marker is an error. Both string types can define an custom tag to end the heredoc ( even if, unfortunately, that breaks `yaml` syntax highlighting. )
+
 
 ```yaml
   - """
@@ -200,7 +201,33 @@ Whitespace in both string types is influenced by the position of the closing her
     END
 ```
 
-_i'm quite taken with the way some markdown tools provide syntax coloring of triple quoted string blocks if the author specifies a filetype after the quotes. ( for example: ` ```C++ ... ` ) since github's version ignores text after the filetype, something like ` ```C++  END ... ` can still display correct coloring in some cases. however, since that wouldn't play well with end markers, tell requires redirection markers so it can support both filetypes and custom heredoc tags. ie. ` ```C++  <<<END` that way, maybe in some far off distant age, tell-aware syntax coloring could display the heredoc with fancy colors._
+
+Note that the interpreted heredoc is different from some more common implementations. The newline here exists for formatting the tell document, not the string.
+```yaml
+"""
+hello
+doc
+"""
+```
+yields:
+```hello doc```
+
+while:
+```yaml
+"""
+hello
+
+line
+"""
+```
+yields:
+
+```
+hello 
+line
+```
+
+_re: the redirect marker. i'm quite taken with the way some markdown tools provide syntax coloring of triple quoted strings when there's a filetype after the quotes. ( for example: ` ```C++ ... ` ) many implementations ( ex. github ) ignore text after the filetype, and so those can display something like ` ```C++  END ... ` with the correct coloring. however, since that wouldn't play well with end markers, tell requires redirection markers so it can support both filetypes and custom heredoc tags. ie. ` ```C++  <<<END` that way, maybe in some far off distant age, tell-aware syntax coloring could display the heredoc with fancy colors._
 
 ### Comments
 Hate me forever, comments are preserved, are significant, and introduce their own indentation rules. 

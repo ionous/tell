@@ -3,7 +3,6 @@ package charmed
 import (
 	"errors"
 	"strconv"
-	"strings"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
@@ -11,7 +10,7 @@ import (
 
 // heredoc headers can produce two kinds of tokens:
 // a word composed of one or more printable characters, or
-// a stream token equal to the string `<<<`.
+// a redirect token equal to the string `<<<`.
 // it also recognizes ( but does not report ) any spaces between them.
 type headerToken int
 
@@ -19,16 +18,16 @@ type headerToken int
 const (
 	headerSpaces headerToken = iota
 	headerWord
-	headerStream
+	headerRedirect
 )
-const ostream rune = '<'
 
 type headerNotifier func(headerToken) error
 
-// report the end of every word and stream marker
+// report the end of every word and redirect triplet
 // writing each word into the passed builder.
+// it finishes after seeing a newline.
 // ( the caller can reset the builder whenever it wants, this never does. )
-func decodeHeaderHere(out *strings.Builder, report headerNotifier) charm.State {
+func decodeHeaderHere(out runes.RuneWriter, report headerNotifier) charm.State {
 	var curr headCount
 	return charm.Self("decodeHeaderHere", func(self charm.State, q rune) (ret charm.State) {
 		if e := curr.update(q, report); e != nil {
@@ -58,7 +57,7 @@ func (h *headCount) update(q rune, report headerNotifier) (err error) {
 		err = InvalidRune(q)
 	} else if prev, width := h.token, h.width; t == prev {
 		h.width++
-	} else if prev == headerStream && width != 3 {
+	} else if prev == headerRedirect && width != 3 {
 		err = customTagError
 	} else {
 		h.token, h.width = t, 1
@@ -71,7 +70,7 @@ func (h *headCount) update(q rune, report headerNotifier) (err error) {
 	return
 }
 
-var customTagError = errors.New("custom closing tags require exactly three stream markers ('<<<')")
+var customTagError = errors.New("custom closing tags require exactly three redirect markers ('<<<')")
 
 // determine which header type, if any, the passed rune belongs to
 // ( false if its some classifiable rune )
@@ -79,10 +78,10 @@ func classify(q rune) (ret headerToken, okay bool) {
 	switch q {
 	case runes.Space, runes.Newline:
 		ret, okay = headerSpaces, true
-	case ostream:
-		ret, okay = headerStream, true
+	case runes.Redirect:
+		ret, okay = headerRedirect, true
 	default:
-		if strconv.IsPrint(q) {
+		if strconv.IsPrint(q) && q != runes.Escape {
 			ret, okay = headerWord, true
 		}
 	}

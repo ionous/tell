@@ -16,6 +16,7 @@ const (
 	Newline        = '\n'
 	NextRecord     = '\f' // form feed is used to separate comment entries
 	RawQuote       = '`'
+	Redirect       = '<' // for closing tags
 	Space          = ' '
 	Underscore     = '_' // valid in words between colons
 )

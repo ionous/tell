@@ -9,25 +9,25 @@ import (
 
 // test for tokenization of heredoc headers
 // ( not every series of tokens form a legal header; this doesn't test for that.
-//   ex. legal headers allow at most one stream, and it should always be followed by exactly one word.)
+//   ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
 func TestHeader(t *testing.T) {
 	if got, e := parse("yaml<<<END"); e != nil {
 		t.Fatal(e)
-	} else if expect := "yaml[headerWord][headerStream]END[headerWord]"; got != expect {
+	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
 	} else if got, e := parse("yaml  <<<  END"); e != nil {
 		t.Fatal(e)
-	} else if expect := "yaml[headerWord][headerStream]END[headerWord]"; got != expect {
+	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
 	} else if got, e := parse("<<<"); e != nil {
 		t.Fatal(e)
-	} else if expect := "[headerStream]"; got != expect {
+	} else if expect := "[headerRedirect]"; got != expect {
 		t.Fatal("got:", got)
 	}
 }
 
-// expect three stream markers; no more, no less.
-func TestStreamCount(t *testing.T) {
+// expect three redirect markers; no more, no less.
+func TestRedirectCount(t *testing.T) {
 	for i := 1; i < 5; i++ {
 		str := strings.Repeat("<", i)
 		_, e := parse(str)
@@ -37,6 +37,33 @@ func TestStreamCount(t *testing.T) {
 			t.Fatalf("expected error %v, have %q", expectError, e)
 		}
 	}
+}
+
+// fix: eat trailing space for escaped lines
+// how?! ( probably by tracking that in the state and reporting it )
+func TestLiteralLines(t *testing.T) {
+	var ls indentedLines
+	// left side spaces, trailing spaces, and the text.
+	ls.addLine(3, 0, "a")
+	ls.addLine(4, 2, "b")
+	ls.addLine(2, 0, "c")
+	var buf strings.Builder
+	ls.writeLines(&buf, 2, false /*literalLine*/)
+	if got, expect := resolve(&buf),
+		" a   b c"; got != expect {
+		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	}
+	ls.writeLines(&buf, 2, true /*literalLine*/)
+	if got, expect := resolve(&buf),
+		" a\n  b  \nc"; got != expect {
+		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	}
+}
+
+func resolve(buf *strings.Builder) (ret string) {
+	ret = buf.String()
+	buf.Reset()
+	return
 }
 
 // have to do this manually to avoid issues with eof
