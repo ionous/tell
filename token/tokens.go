@@ -76,7 +76,7 @@ func (n *tokenizer) whitespace() charm.State {
 }
 
 func (n *tokenizer) tokenize() charm.State {
-	return charm.Statement("tokenize", func(q rune) (ret charm.State) {
+	return charm.Self("tokenize", func(self charm.State, q rune) (ret charm.State) {
 		if n.afterIndent && n.spaces == 0 {
 			e := errors.New("expected whitespace between tokens")
 			ret = charm.Error(e)
@@ -85,27 +85,37 @@ func (n *tokenizer) tokenize() charm.State {
 			n.afterIndent = true
 			n.start = n.curr
 			//
-			switch {
-			case q == runes.Hash:
+			switch q {
+			case runes.Hash:
 				next := n.commentDecoder()
 				ret = send(next, q)
 
-			case q == runes.InterpretQuote:
+			case runes.InterpretQuote:
 				ret = n.interpretDecoding()
 
-			case q == runes.RawQuote:
+			case runes.RawQuote:
 				ret = n.rawDecoding()
 
-			case q == runes.Dash: // negative numbers or sequences
+			case runes.Dash: // negative numbers or sequences
 				ret = n.dashDecoding()
 
-			case runes.IsNumber(q) || q == '+':
-				next := n.numDecoder()
-				ret = send(next, q)
+			case runes.ArrayOpen, runes.ArrayClose, runes.ArraySeparator:
+				if e := n.Notifier.Decoded(n.start, Array, q); e != nil {
+					ret = charm.Error(e)
+				} else {
+					ret = self
+				}
 
-			case unicode.IsLetter(q): // maps and bools
-				next := n.wordDecoder()
-				ret = send(next, q)
+			default:
+				switch {
+				case runes.IsNumber(q) || q == '+': // a leading negative gets handled by dashDecoding.
+					next := n.numDecoder()
+					ret = send(next, q)
+
+				case unicode.IsLetter(q): // maps and bools
+					next := n.wordDecoder()
+					ret = send(next, q)
+				}
 			}
 		}
 		return

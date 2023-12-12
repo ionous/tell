@@ -3,6 +3,7 @@ package runes
 const (
 	ArrayClose     = ']'
 	ArrayOpen      = '['
+	ArraySeparator = ','
 	Colon          = ':' // keywords in a signature are separated by a colon
 	Dash           = '-' // values in a sequence are prefixed by a dash ( and whitespace )
 	Eof            = -1
