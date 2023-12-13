@@ -332,7 +332,7 @@ func (d *Decoder) onComment(at token.Pos, tokenType token.Type, str string) (err
 	// see? you can have ternaries in go.... O_o
 	if ends, e := func() (ret int, err error) {
 		if len(str) > 0 {
-			ret, err = d.out.uncheckedPop(at.X)
+			ret, err = d.out.popToIndent(at.X)
 		}
 		return
 	}(); e != nil {
