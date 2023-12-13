@@ -9,6 +9,7 @@ type pendingAt struct {
 
 type pendingStack []pendingAt
 
+// return the former top
 func (s *pendingStack) pop() (ret pendingAt) {
 	end := len(*s) - 1
 	(*s), ret = (*s)[:end], (*s)[end]
