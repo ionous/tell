@@ -3,11 +3,13 @@ package token_test
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
+	"github.com/ionous/tell/runes"
 	"github.com/ionous/tell/token"
 )
 
@@ -19,42 +21,82 @@ func TestError(t *testing.T) {
 }
 
 // test (at least) one of each of the possible tokens produced
+func TestArray(t *testing.T) {
+	var tests = []struct {
+		str    string
+		expect []result
+	}{{
+		`[]`, []result{{
+			tokenType: token.Array, tokenValue: runes.ArrayOpen,
+		}, {
+			tokenType: token.Array, tokenValue: runes.ArrayClose,
+		}},
+	}, {
+		`[1,,2, "hello"]`, []result{{
+			tokenType: token.Array, tokenValue: runes.ArrayOpen,
+		}, {
+			tokenType: token.Number, tokenValue: 1,
+		}, {
+			tokenType: token.Array, tokenValue: runes.ArraySeparator,
+		}, {
+			tokenType: token.Array, tokenValue: runes.ArraySeparator,
+		}, {
+			tokenType: token.Number, tokenValue: 2,
+		}, {
+			tokenType: token.Array, tokenValue: runes.ArraySeparator,
+		}, {
+			tokenType: token.String, tokenValue: "hello",
+		}, {
+			tokenType: token.Array, tokenValue: runes.ArrayClose,
+		}},
+	}}
+	for i, test := range tests {
+		var pairs results
+		run := token.NewTokenizer(&pairs)
+		if _, e := charm.Parse(test.str, run); e != nil {
+			t.Fatal("failed test", i, e)
+		} else if e := pairs.compare(test.expect); e != nil {
+			t.Fatal("failed test", i, e)
+		}
+	}
+}
+
+// test (at least) one of each of the possible tokens produced
 func TestTokens(t *testing.T) {
 	tests := []any{
 		// token, string to parse, result:
-		// /*0*/ token.Comment, "", "", //  a blank line
-		// /*1*/ token.Bool, `true`, true,
-		// /*2*/ token.Number, `5`, 5,
-		// /*3*/ token.Number, `0x20`, uint(0x20),
-		// /*4*/ token.Number, `5.4`, 5.4,
-		// /*5*/ token.String, `"5.4"`, "5.4",
-
-		// // ----------
-		// /*6*/ token.String,
-		// `"hello\\world"`,
-		// `hello\world`,
-
-		// // ----------
-		// /*7*/ token.String,
-		// "`" + `hello\\world` + "`",
-		// `hello\\world`,
-
-		// // -----
-		// /*8*/ token.Comment, "# comment", "# comment",
-		// /*9*/ token.Key, "-", "",
-		// /*10*/ token.Key, "hello:world:", "hello:world:",
-		// // make sure dash numbers are treated as negative numbers
-		// /*11*/ token.Number, `-5`, -5,
+		/*0*/ token.Comment, "", "", //  a blank line
+		/*1*/ token.Bool, `true`, true,
+		/*2*/ token.Number, `5`, 5,
+		/*3*/ token.Number, `0x20`, uint(0x20),
+		/*4*/ token.Number, `5.4`, 5.4,
+		/*5*/ token.String, `"5.4"`, "5.4",
 
 		// ----------
-		/*12*/ token.String,
+		/*6*/ token.String,
+		`"hello\\world"`,
+		`hello\world`,
+
+		// ----------
+		/*7*/ token.String,
+		"`" + `hello\\world` + "`",
+		`hello\\world`,
+
+		// -----
+		/*8*/ token.Comment, "# comment", "# comment",
+		/*9*/ token.Key, "-", "",
+		/*10*/ token.Key, "hello:world:", "hello:world:",
+		// make sure dash numbers are treated as negative numbers
+		/*11*/ token.Number, `-5`, -5,
+		// ----------
+		token.String,
 		`"""
 hello
 doc
 """`,
 		`hello doc`,
 		// -------------
-		/*13*/ token.String,
+		token.String,
 		strings.Join([]string{
 			"```",
 			"hello",
@@ -123,8 +165,25 @@ type result struct {
 	tokenValue any
 }
 
-func (s *results) Decoded(pos token.Pos, tokenType token.Type, tokenValue any) (_ error) {
-	(*s) = append((*s), result{pos, tokenType, tokenValue})
+func (res *results) Decoded(pos token.Pos, tokenType token.Type, tokenValue any) (_ error) {
+	(*res) = append((*res), result{pos, tokenType, tokenValue})
+	return
+}
+
+// compare everything except pos
+func (res results) compare(expects results) (err error) {
+	if have, want := len(res), len(expects); have != want {
+		log.Println(res)
+		err = fmt.Errorf("failed test have %d != want %d", have, want)
+	} else {
+		for k, el := range res {
+			want := expects[k]
+			if e := el.compare(want.tokenType, want.tokenValue); e != nil {
+				err = e
+				break
+			}
+		}
+	}
 	return
 }
 
