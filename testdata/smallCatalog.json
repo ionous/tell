@@ -2,17 +2,24 @@
   "content": {
     "catalog:": [
       {
+
+        "attributes:": [],
         "name:": "First item",
         "options:": [
           "Round",
           "Square"
         ]
       },
-      {
+      { "attributes:": [
+          1,
+          2,
+          null,
+          null
+        ],
         "name:": "Second item",
         "options:": [
           "Big",
-          "Small"
+          "Big description for a big entry."
         ]
       }
     ]

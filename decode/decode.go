@@ -1,6 +1,7 @@
 package decode
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -86,7 +87,6 @@ func (d *Decoder) decodeDoc() charm.State {
 }
 
 func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err error) {
-	// tbd: change these into functions?
 	switch tokenType {
 	case token.Comment:
 		var zeroPos token.Pos
@@ -97,10 +97,18 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 		d.out.setPending(at, d.collector.newCollection(key, d.memo.newComments()))
 		d.state = d.waitForValue
 
+	case token.Array:
+		if q := val.(rune); q != runes.ArrayOpen {
+			err = charm.InvalidRune(q)
+		} else {
+			d.out.setPending(at, d.collector.newArray(d.memo.newComments()))
+			d.state = d.waitForFirstEl
+		}
+
 	case token.Bool, token.Number, token.String:
 		d.out.setPending(at, newScalar(val))
 		d.memo.OnDocScalar()
-		d.state = d.docValue
+		d.state = d.docFooter
 
 	default:
 		panic("unknown token")
@@ -109,7 +117,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 }
 
 // the document value was written:
-func (d *Decoder) docValue(at token.Pos, tokenType token.Type, val any) (err error) {
+func (d *Decoder) docFooter(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
 		d.memo.noteAt(d.out.pos, at, val.(string))
@@ -137,7 +145,7 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 				d.state = d.waitForValue
 			}
 		}
-	case token.Bool, token.Number, token.String:
+	case token.Array, token.Bool, token.Number, token.String:
 		err = fmt.Errorf("unexpected %s", tokenType)
 	case token.Comment:
 		err = d.onComment(at, tokenType, val.(string))
@@ -169,6 +177,7 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 		}
 
 	case token.Key:
+		// a new collection, or a key for some earlier one:
 		if key := val.(string); at.X > d.out.pos.X {
 			// a new collection
 			p := d.collector.newCollection(key, d.memo.newComments())
@@ -189,30 +198,131 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 			}
 		}
 
-	case token.Bool, token.Number, token.String:
-		// the value detected is for this collection
-		if at.X >= d.out.pos.X {
-			if e := d.out.setValue(val); e != nil {
-				err = e
-			} else {
-				d.memo.OnScalarValue()
-				d.state = d.waitForKey
-			}
+	case token.Array:
+		// a new array for this, or some earlier collection.
+		if q := val.(rune); q != runes.ArrayOpen {
+			err = charm.InvalidRune(q)
 		} else {
-			// the value is for an earlier collection
-			// mod: popToIndent sets nil, when it needs to.
 			if ends, e := d.out.popToIndent(at.X); e != nil {
-				err = e
-			} else if e := d.out.setValue(val); e != nil {
 				err = e
 			} else {
 				d.memo.popped(ends)
-				d.memo.OnScalarValue()
-				d.state = d.waitForKey
+				p := d.collector.newArray(d.memo.newComments())
+				d.out.push(at, p)
+				d.state = d.waitForFirstEl
 			}
 		}
+
+	case token.Bool, token.Number, token.String:
+		// a value for this, or some earlier collection.
+		// the value detected is for this collection
+		if ends, e := d.out.popToIndent(at.X); e != nil {
+			err = e
+		} else if e := d.out.setValue(val); e != nil {
+			err = e
+		} else {
+			d.memo.popped(ends)
+			d.memo.OnScalarValue()
+			d.state = d.waitForKey
+		}
+
 	default:
 		panic("unknown token")
+	}
+	return
+}
+
+// waiting for an array separator, or close.
+// [ 1, 2 .... <-ex. here ]
+func (d *Decoder) waitForSep(at token.Pos, tokenType token.Type, val any) (err error) {
+	if q, ok := val.(rune); !ok {
+		err = fmt.Errorf("%s unexpected", tokenType)
+	} else {
+		switch q {
+		case runes.ArrayClose:
+			d.onArrayClose()
+		case runes.ArraySeparator:
+			if e := d.out.setKey(at.Y, ""); e != nil {
+				err = e
+			} else {
+				d.state = d.waitForEl
+			}
+		default:
+			err = errors.New("expected an array separator, or array close.")
+		}
+	}
+	return
+}
+
+func (d *Decoder) waitForFirstEl(at token.Pos, tokenType token.Type, val any) (err error) {
+	if tokenType == token.Array && val.(rune) == runes.ArrayClose {
+		err = d.onArrayClose()
+	} else {
+		err = d.waitForEl(at, tokenType, val)
+	}
+	return
+}
+
+// wait for the next array element.
+// a separator here, or close, generates an implicit nil.
+// [ 1, 2, .... <- ex. here ]
+func (d *Decoder) waitForEl(at token.Pos, tokenType token.Type, val any) (err error) {
+	switch tokenType {
+	case token.Comment, token.Key:
+		// fix: after cleaning up package notes, then revisit comments in arrays.
+		err = fmt.Errorf("%s not allowed inside arrays", tokenType)
+
+	case token.Bool, token.Number, token.String:
+		err = d.onArrayValue(val)
+
+	case token.Array:
+		switch q := val.(rune); q {
+		case runes.ArraySeparator:
+			if e := d.onArrayValue(nil); e != nil {
+				err = e
+			} else {
+				err = d.out.setKey(at.Y, "")
+			}
+
+		case runes.ArrayClose:
+			if e := d.onArrayValue(nil); e != nil {
+				err = e
+			} else if e := d.onArrayClose(); e != nil {
+				err = e
+			}
+		case runes.ArrayOpen:
+			// this wouldnt really be too terrible to support...
+			// would have to sus out the kind of the top item on the stack
+			// during close to determine what the next state should be.
+			err = errors.New("nested arrays not allowed")
+
+		default:
+			panic("unknown array type")
+		}
+
+	default:
+		panic("unknown token")
+	}
+	return
+}
+
+func (d *Decoder) onArrayValue(val any) (err error) {
+	if e := d.out.setValue(val); e != nil {
+		err = e
+	} else {
+		d.state = d.waitForSep
+	}
+	return
+}
+
+func (d *Decoder) onArrayClose() (err error) {
+	if e := d.out.popTop(); e != nil {
+		err = e
+	} else if len(d.out.stack) == 0 {
+		d.state = d.docFooter
+	} else {
+		d.memo.OnScalarValue() // report the completed array.
+		d.state = d.waitForKey
 	}
 	return
 }

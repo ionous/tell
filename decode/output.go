@@ -44,7 +44,7 @@ func (out *output) setPending(at token.Pos, p pendingValue) {
 func (out *output) popToIndent(at int) (ret int, err error) {
 	if cnt, e := out.uncheckedPop(at); e != nil {
 		err = e
-	} else if at != out.pos.X {
+	} else if cnt > 0 && at != out.pos.X {
 		err = errors.New("mismatched indent")
 	} else {
 		ret = cnt
@@ -52,17 +52,24 @@ func (out *output) popToIndent(at int) (ret int, err error) {
 	return
 }
 
-// returns number of pops
+// returns number of pops; doesnt check that the resulting indent is valid.
 func (out *output) uncheckedPop(at int) (ret int, err error) {
 	for ; at < out.pos.X && len(out.stack) > 0; ret++ {
-		prev := out.finalize()
-		next := out.stack.pop()
-		if e := next.setValue(prev); e != nil {
+		if e := out.popTop(); e != nil {
 			err = e
 			break
-		} else {
-			out.pendingAt = next
 		}
+	}
+	return
+}
+
+func (out *output) popTop() (err error) {
+	prev := out.finalize()  // finalize the current pending value
+	next := out.stack.pop() // move this to pending
+	if e := next.setValue(prev); e != nil {
+		err = e
+	} else {
+		out.pendingAt = next
 	}
 	return
 }
@@ -81,4 +88,10 @@ func (f *collector) newCollection(key string, comments *strings.Builder) pending
 		p = newMapping(key, f.maps(comments != nil), comments)
 	}
 	return p
+}
+
+func (f *collector) newArray(comments *strings.Builder) pendingValue {
+	seq := newSequence(f.seqs(comments != nil), comments)
+	seq.blockNil = true
+	return seq
 }

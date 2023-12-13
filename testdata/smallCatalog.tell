@@ -3,8 +3,13 @@ catalog:
     options:
       - "Round"
       - "Square"
+    attributes: []
   - name: "Second item"
     options: 
       - "Big"
-      - "Small"
+      - """
+      Big description for a big
+      entry.
+      """
+    attributes: [1,2,,]
       

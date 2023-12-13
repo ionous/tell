@@ -14,7 +14,7 @@ type pendingValue interface {
 	finalize() any // return the collection
 }
 
-func newMapping(key string, values collect.MapWriter, comments *strings.Builder) pendingValue {
+func newMapping(key string, values collect.MapWriter, comments *strings.Builder) *pendingMap {
 	return &pendingMap{key: key, maps: values, comments: comments}
 }
 
@@ -56,7 +56,7 @@ func (p *pendingMap) setValue(val any) (err error) {
 	return
 }
 
-func newSequence(values collect.SequenceWriter, comments *strings.Builder) pendingValue {
+func newSequence(values collect.SequenceWriter, comments *strings.Builder) *pendingSeq {
 	var index int
 	if comments != nil {
 		index++
@@ -66,13 +66,17 @@ func newSequence(values collect.SequenceWriter, comments *strings.Builder) pendi
 
 type pendingSeq struct {
 	dashed   bool
+	blockNil bool
 	values   collect.SequenceWriter
 	comments *strings.Builder
 	index    int
 }
 
 func (p *pendingSeq) finalize() (ret any) {
-	if p.dashed {
+	// fix: the auto nil is for eof finalization
+	// but shouldnt that, like everything else,
+	// add the implicit nil from the statemachine?
+	if p.dashed && !p.blockNil {
 		p.setValue(nil)
 	}
 	if p.comments != nil {
@@ -89,6 +93,7 @@ func (p *pendingSeq) setKey(key string) (err error) {
 		err = errors.New("cant add keyed elements to a sequence")
 	} else {
 		p.dashed = true
+		p.blockNil = false
 	}
 	return
 }
