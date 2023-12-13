@@ -15,7 +15,12 @@ What It Is: """
    """
 
 What It Is Not: "A subset of yaml."
-	
+
+Can Contain: 
+    - ["Some javascript-ish values"]
+    - [ 5, 2.3, 1e-3, 0x20, "\n", "🐈", "\U0001f408" ]
+      # supports c,go,python,etc. style escape codes
+
 Related Projects:
   - "YAML"       # https://yaml.org/
   - "JSON"       # http://json.org/
@@ -38,7 +43,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version ~0.3.5
+Version ~0.3.9
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -48,8 +53,7 @@ The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
-* heredocs are defined but not yet supported.
-* arrays would be nice, but aren't implemented.
+* arrays should support nested arrays; arrays should support comments.
 * error reporting needs improvement.
 * no serialization of structs ( only maps, slices, and primitives. )
 
@@ -127,8 +131,7 @@ A scalar value always appears on a single line. There is no null keyword, null i
 And, for describing explicit unicode points, `tell` uses the same rules as Go, namely: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest.
 
 ### Arrays
-An array is a list of comma separated scalars, ending with an optional fullstop: `1, 2, 3.` 
-_( **TBD**: all on one line?  )_  The fullstop is necessary when indicating an empty array. Nested arrays are not a thing; use sequences.
+Arrays use a syntax similar to javascript  (ex. `[1, 2, , 3]` ) except that a comma with no explicit value indicates a null value. Arrays cannot contain collections; heredocs in arrays are discouraged. _( fix: Currently, arrays cannot contain other arrays, nor can they contain comments. )_ 
 
 #### Sequences
 Sequences define an ordered list of values. 
@@ -240,7 +243,7 @@ As in yaml, tell comments begin with the `#` hash, **followed by a space**, and 
 
 This implementation stores the comments for a collection in a string called a "comment block". Each collection has its own comment block stored in the zeroth element of its sequence, the blank key of its mappings, or the comment field of its document.
 
-**When comments are preserved, collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. _( **TBD**: arrays will probably need to be one-indexed for consistency's sake, and to allow space for comments in future expansion.)_
+**When comments are preserved, collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. 
 
 The readme in package notes gets into all the specifics.
 
@@ -253,5 +256,5 @@ Changes
   - simplify the attribution of comments in the space between a key (or dash) and its value.
   - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
   - encoding/decoding heredocs for multiline strings
-  - encoding/decoding of simple sequences as arrays
+  - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
   
