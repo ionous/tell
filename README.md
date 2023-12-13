@@ -43,7 +43,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version ~0.3.9
+Version 0.4
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -54,8 +54,8 @@ The go implementation successfully reads and writes some well-formed documents.
 ### Missing features
 
 * arrays should support nested arrays; arrays should support comments.
-* error reporting needs improvement.
 * no serialization of structs ( only maps, slices, and primitives. )
+* error reporting needs improvement.
 
 see also the [issues page](https://github.com/ionous/tell/issues).
 
@@ -257,4 +257,5 @@ Changes
   - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
   - encoding/decoding heredocs for multiline strings
   - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
+  - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
   
