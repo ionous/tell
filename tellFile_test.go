@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/ionous/tell"
-	"github.com/ionous/tell/notes"
 )
 
 //go:embed testdata/*.tell
@@ -26,7 +25,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	// focus = "smallCatalog"
+	focus = "docScalarComments"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -73,25 +72,16 @@ func readTell(filePath string) (ret any, err error) {
 	if fp, e := tellData.Open(filePath); e != nil {
 		err = e
 	} else {
-
-		// fix: might be cleaner to have a "BeginCollection" for document too
-		var buf strings.Builder // document level comment data
-		var comments notes.Commentator
-		if !strings.Contains(strings.ToLower(filePath), "comment") {
-			comments = notes.DiscardComments()
-		} else {
-			comments = notes.NewCommentator(&buf)
-		}
-		if len(focus) > 0 {
-			comments = notes.NewPrinter(comments)
-		}
 		var res any
+		var docComments strings.Builder // document level comment data
 		dec := tell.NewDecoder(bufio.NewReader(fp))
 		dec.UseFloats() // because json does
-		dec.UseNotes(comments)
+		if keepComments := strings.Contains(strings.ToLower(filePath), "comment"); keepComments {
+			dec.UseNotes(&docComments)
+		}
 		if e := dec.Decode(&res); e != nil {
 			err = e
-		} else if str := buf.String(); len(str) > 0 {
+		} else if str := docComments.String(); len(str) > 0 {
 			ret = map[string]any{
 				"content": res,
 				"comment": str,

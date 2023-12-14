@@ -1,0 +1,6 @@
+- - "first element of second sequence"
+    # comments nested under the first of second
+  # header of second
+  - "second of second"
+  # footer of second
+- "second of first"

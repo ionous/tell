@@ -39,7 +39,6 @@ func (d *trailingDecoder) writeValue() {
 }
 
 // trailing block comments start on a newline in the document
-// and write their first comment as nested
 func (d *trailingDecoder) awaitComment() charm.State {
 	return charm.Statement("awaitComment", func(q rune) (ret charm.State) {
 		switch q {

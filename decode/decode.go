@@ -9,7 +9,6 @@ import (
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/charmed"
 	"github.com/ionous/tell/collect"
-	"github.com/ionous/tell/notes"
 	"github.com/ionous/tell/runes"
 	"github.com/ionous/tell/token"
 )
@@ -25,8 +24,8 @@ func (d *Decoder) SetMapper(maps collect.MapFactory) {
 }
 
 // configure the production of comment blocks
-func (d *Decoder) UseNotes(comments notes.Commentator) {
-	d.memo = makeMemo(comments)
+func (d *Decoder) UseNotes(w runes.RuneWriter) {
+	d.collector.memo.doc = w // hrm.
 }
 
 // read a tell document from the passed stream
@@ -45,7 +44,6 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 			log.Println("error at", y, x)
 			err = es
 		}
-		d.memo.OnEof() // fix; can this be removed?
 		if err == nil {
 			ret, err = d.out.finalizeAll()
 		}
@@ -58,11 +56,13 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 type Decoder struct {
 	out       output
 	collector collector
-	memo      memo
-	state     func(token.Pos, token.Type, any) error
+	memoBlock memoBlock
+	state     decoderState
 	// configure the tokenizer for the next decode
 	UseFloats bool
 }
+
+type decoderState func(token.Pos, token.Type, any) error
 
 func (d *Decoder) Position() (x int, y int) {
 	pos := d.out.pos
@@ -86,28 +86,31 @@ func (d *Decoder) decodeDoc() charm.State {
 	return t.Decode()
 }
 
+func (d *Decoder) writeComment(noteType noteType, str string) {
+	d.collector.memo.Comment(d.out.comments(), noteType, str)
+}
+
 func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
-		var zeroPos token.Pos
-		d.memo.noteAt(zeroPos, at, val.(string))
+		str := val.(string)
+		d.writeComment(NoteHeader, str)
 
 	case token.Key:
 		key := val.(string)
-		d.out.setPending(at, d.collector.newCollection(key, d.memo.newComments()))
+		d.out.setPending(at, d.collector.newCollection(key))
 		d.state = d.waitForValue
 
 	case token.Array:
 		if q := val.(rune); q != runes.ArrayOpen {
 			err = charm.InvalidRune(q)
 		} else {
-			d.out.setPending(at, d.collector.newArray(d.memo.newComments()))
+			d.out.setPending(at, d.collector.newArray())
 			d.state = d.waitForFirstEl
 		}
 
 	case token.Bool, token.Number, token.String:
-		d.out.setPending(at, newScalar(val))
-		d.memo.OnDocScalar()
+		d.out.setPending(at, makeDocScalar(val)) // sets doc scalar for "finalizeAll"
 		d.state = d.docFooter
 
 	default:
@@ -120,114 +123,106 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 func (d *Decoder) docFooter(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
-		d.memo.noteAt(d.out.pos, at, val.(string))
+		d.writeComment(NoteFooter, val.(string))
 	default:
 		err = fmt.Errorf("unexpected %s", tokenType)
 	}
 	return
 }
 
-// a value has just been decoded:
+// a value had just been decoded, now we need a new key.
 func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
-	case token.Key:
-		if at.X > d.out.pos.X {
-			err = fmt.Errorf("unexpected %s", tokenType)
-		} else {
-			key := val.(string) // find the collection this key is for:
-			if ends, e := d.out.popToIndent(at.X); e != nil {
-				err = e
-			} else if e := d.out.setKey(at.Y, key); e != nil {
-				err = e
-			} else {
-				d.memo.popped(ends)
-				d.memo.OnKeyDecoded()
-				d.state = d.waitForValue
-			}
-		}
 	case token.Array, token.Bool, token.Number, token.String:
 		err = fmt.Errorf("unexpected %s", tokenType)
+
+	case token.Key:
+		if key := val.(string); at.X > d.out.pos.X {
+			err = fmt.Errorf("unexpected %s", tokenType)
+		} else {
+			err = d.newKey(at, key)
+		}
+
 	case token.Comment:
-		err = d.onComment(at, tokenType, val.(string))
+		if str := val.(string); len(str) > 0 {
+			err = d.newComment(NoteSuffix, at, str)
+		}
 	default:
 		panic("unknown token")
 	}
 	return
 }
 
-// a key has just been decoded:
+// a key has just been decoded, now we need a value.
 func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
-	case token.Comment:
-		// greater will be a a comment ( maybe nested )
-		// less will be a pop to an earlier collection.
-		str := val.(string)
-		if at.X != d.out.pos.X || len(str) == 0 {
-			err = d.onComment(at, tokenType, str)
+	case token.Array:
+		if at.X < d.out.pos.X {
+			err = InvalidIndent(d.out.pos, at)
 		} else {
-			// a valid comment aligned with the key, indicates an implicit nil.
-			if e := d.out.setValue(nil); e != nil {
-				err = e
-			} else {
-				d.memo.OnScalarValue()
-				d.memo.noteAt = d.memo.memoInterKey()
-				d.memo.noteAt(d.out.pos, at, str)
-				d.state = d.waitForKey
-			}
+			p := d.collector.newArray()
+			d.out.push(at, p)
+			d.state = d.waitForFirstEl
+		}
+
+	case token.Bool, token.Number, token.String:
+		if at.X < d.out.pos.X {
+			err = InvalidIndent(d.out.pos, at)
+		} else if e := d.out.setValue(val); e != nil {
+			err = e
+		} else {
+			d.state = d.waitForKey
 		}
 
 	case token.Key:
 		// a new collection, or a key for some earlier one:
 		if key := val.(string); at.X > d.out.pos.X {
-			// a new collection
-			p := d.collector.newCollection(key, d.memo.newComments())
+			p := d.collector.newCollection(key)
 			d.out.push(at, p)
 		} else {
-			// the key is for the same or an earlier collection
-			// write a nil value, and go find the right collection
-			if e := d.out.setValue(nil); e != nil {
-				err = e
-			} else if ends, e := d.out.popToIndent(at.X); e != nil {
-				err = e
-			} else if e := d.out.setKey(at.Y, key); e != nil {
-				err = e
-			} else {
-				d.memo.OnScalarValue()
-				d.memo.popped(ends)
-				d.memo.OnKeyDecoded()
-			}
+			err = d.newKey(at, key)
 		}
 
-	case token.Array:
-		// a new array for this, or some earlier collection.
-		if q := val.(rune); q != runes.ArrayOpen {
-			err = charm.InvalidRune(q)
-		} else {
-			if ends, e := d.out.popToIndent(at.X); e != nil {
-				err = e
-			} else {
-				d.memo.popped(ends)
-				p := d.collector.newArray(d.memo.newComments())
-				d.out.push(at, p)
-				d.state = d.waitForFirstEl
-			}
-		}
-
-	case token.Bool, token.Number, token.String:
-		// a value for this, or some earlier collection.
-		// the value detected is for this collection
-		if ends, e := d.out.popToIndent(at.X); e != nil {
-			err = e
-		} else if e := d.out.setValue(val); e != nil {
-			err = e
-		} else {
-			d.memo.popped(ends)
-			d.memo.OnScalarValue()
-			d.state = d.waitForKey
+	case token.Comment:
+		if str := val.(string); len(str) > 0 {
+			err = d.newComment(NotePrefix, at, str)
 		}
 
 	default:
 		panic("unknown token")
+	}
+	return
+}
+
+func (d *Decoder) newKey(at token.Pos, key string) (err error) {
+	// the key is for the same or an earlier collection
+	// write a nil value, and go find the right collection
+	if e := d.out.popToIndent(at.X); e != nil {
+		err = e
+	} else if e := d.out.setKey(at.Y, key); e != nil {
+		err = e
+	} else {
+		d.state = d.waitForValue // same as current state.
+	}
+	return
+}
+
+func (d *Decoder) newComment(defaultType noteType, at token.Pos, str string) (err error) {
+	// eat blank lines: they don't change the interpretation here.
+	if at.X > d.out.pos.X {
+		noteType := defaultType
+		if at.Y == d.out.pos.Y {
+			noteType++
+		}
+		d.writeComment(noteType, str)
+	} else {
+		if e := d.out.popToIndent(at.X); e != nil {
+			err = e
+		} else {
+			// interkey whether for this collection (ends==0) or a parent
+			d.writeComment(NoteInterKey, str)
+			d.state = d.waitForKey
+		}
 	}
 	return
 }
@@ -240,7 +235,7 @@ func (d *Decoder) waitForSep(at token.Pos, tokenType token.Type, val any) (err e
 	} else {
 		switch q {
 		case runes.ArrayClose:
-			d.onArrayClose()
+			d.endArray()
 		case runes.ArraySeparator:
 			if e := d.out.setKey(at.Y, ""); e != nil {
 				err = e
@@ -256,7 +251,7 @@ func (d *Decoder) waitForSep(at token.Pos, tokenType token.Type, val any) (err e
 
 func (d *Decoder) waitForFirstEl(at token.Pos, tokenType token.Type, val any) (err error) {
 	if tokenType == token.Array && val.(rune) == runes.ArrayClose {
-		err = d.onArrayClose()
+		err = d.endArray()
 	} else {
 		err = d.waitForEl(at, tokenType, val)
 	}
@@ -273,21 +268,20 @@ func (d *Decoder) waitForEl(at token.Pos, tokenType token.Type, val any) (err er
 		err = fmt.Errorf("%s not allowed inside arrays", tokenType)
 
 	case token.Bool, token.Number, token.String:
-		err = d.onArrayValue(val)
+		err = d.newArrayValue(val)
 
 	case token.Array:
 		switch q := val.(rune); q {
 		case runes.ArraySeparator:
-			if e := d.onArrayValue(nil); e != nil {
+			if e := d.newArrayValue(nil); e != nil {
 				err = e
 			} else {
 				err = d.out.setKey(at.Y, "")
 			}
-
 		case runes.ArrayClose:
-			if e := d.onArrayValue(nil); e != nil {
+			if e := d.newArrayValue(nil); e != nil {
 				err = e
-			} else if e := d.onArrayClose(); e != nil {
+			} else if e := d.endArray(); e != nil {
 				err = e
 			}
 		case runes.ArrayOpen:
@@ -306,7 +300,7 @@ func (d *Decoder) waitForEl(at token.Pos, tokenType token.Type, val any) (err er
 	return
 }
 
-func (d *Decoder) onArrayValue(val any) (err error) {
+func (d *Decoder) newArrayValue(val any) (err error) {
 	if e := d.out.setValue(val); e != nil {
 		err = e
 	} else {
@@ -315,31 +309,15 @@ func (d *Decoder) onArrayValue(val any) (err error) {
 	return
 }
 
-func (d *Decoder) onArrayClose() (err error) {
+func (d *Decoder) endArray() (err error) {
 	if e := d.out.popTop(); e != nil {
 		err = e
-	} else if len(d.out.stack) == 0 {
-		d.state = d.docFooter
 	} else {
-		d.memo.OnScalarValue() // report the completed array.
-		d.state = d.waitForKey
-	}
-	return
-}
-
-func (d *Decoder) onComment(at token.Pos, tokenType token.Type, str string) (err error) {
-	// is the (valid) comment for an earlier collection:
-	// see? you can have ternaries in go.... O_o
-	if ends, e := func() (ret int, err error) {
-		if len(str) > 0 {
-			ret, err = d.out.popToIndent(at.X)
+		if len(d.out.stack) == 0 {
+			d.state = d.docFooter
+		} else {
+			d.state = d.waitForKey
 		}
-		return
-	}(); e != nil {
-		err = e
-	} else {
-		d.memo.popped(ends)
-		d.memo.noteAt(d.out.pos, at, str)
 	}
 	return
 }

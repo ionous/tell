@@ -3,7 +3,6 @@ package decode
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ionous/tell/collect"
 )
@@ -12,24 +11,28 @@ type pendingValue interface {
 	setKey(string) error
 	setValue(any) error
 	finalize() any // return the collection
+	comments() *memoBlock
 }
 
-func newMapping(key string, values collect.MapWriter, comments *strings.Builder) *pendingMap {
-	return &pendingMap{key: key, maps: values, comments: comments}
+func newMapping(key string, values collect.MapWriter) *pendingMap {
+	return &pendingMap{key: key, maps: values}
 }
 
 type pendingMap struct {
-	key      string
-	maps     collect.MapWriter
-	comments *strings.Builder
+	key  string
+	maps collect.MapWriter
+	memo memoBlock
+}
+
+func (p *pendingMap) comments() *memoBlock {
+	return &p.memo
 }
 
 func (p *pendingMap) finalize() (ret any) {
 	if len(p.key) > 0 {
 		p.setValue(nil)
 	}
-	if p.comments != nil {
-		str := clearComments(&p.comments)
+	if str := p.memo.String(); len(str) > 0 {
 		p.maps.MapValue("", str)
 	}
 	return p.maps.GetMap()
@@ -39,7 +42,7 @@ func (p *pendingMap) setKey(key string) (err error) {
 	if len(p.key) > 0 {
 		err = fmt.Errorf("unused key %s", p.key)
 	} else if len(key) == 0 {
-		err = errors.New("cant add indexed elements to mapping")
+		err = errors.New("cant add indexed elements to map ping")
 	} else {
 		p.key = key
 	}
@@ -56,31 +59,32 @@ func (p *pendingMap) setValue(val any) (err error) {
 	return
 }
 
-func newSequence(values collect.SequenceWriter, comments *strings.Builder) *pendingSeq {
+func newSequence(values collect.SequenceWriter, reserve bool) *pendingSeq {
 	var index int
-	if comments != nil {
+	if reserve {
 		index++
 	}
-	return &pendingSeq{dashed: true, index: index, values: values, comments: comments}
+	return &pendingSeq{dashed: true, index: index, values: values}
 }
 
 type pendingSeq struct {
 	dashed   bool
-	blockNil bool
+	blockNil bool /// fix: subcase this for arrays?
 	values   collect.SequenceWriter
-	comments *strings.Builder
+	memo     memoBlock
 	index    int
 }
 
+func (p *pendingSeq) comments() *memoBlock {
+	return &p.memo
+}
+
 func (p *pendingSeq) finalize() (ret any) {
-	// fix: the auto nil is for eof finalization
-	// but shouldnt that, like everything else,
-	// add the implicit nil from the statemachine?
+	// fix: pops to indent; but if its handling it -- maybe it should just handle the key too
 	if p.dashed && !p.blockNil {
 		p.setValue(nil)
 	}
-	if p.comments != nil {
-		str := clearComments(&p.comments)
+	if str := p.memo.String(); len(str) > 0 {
 		p.values = p.values.IndexValue(0, str)
 	}
 	return p.values.GetSequence()
@@ -109,8 +113,8 @@ func (p *pendingSeq) setValue(val any) (err error) {
 	return
 }
 
-func newScalar(val any) pendingValue {
-	return &pendingScalar{val}
+func makeDocScalar(val any) pendingValue {
+	return pendingScalar{value: val}
 }
 
 // for document scalars
@@ -118,21 +122,18 @@ type pendingScalar struct {
 	value any
 }
 
-func (p *pendingScalar) finalize() any {
+func (p pendingScalar) finalize() any {
 	return p.value
 }
 
-func (p *pendingScalar) setKey(key string) error {
+func (pendingScalar) comments() *memoBlock {
+	return nil
+}
+
+func (pendingScalar) setKey(key string) error {
 	return fmt.Errorf("unexpected key for document scalar %s", key)
 }
 
-func (p *pendingScalar) setValue(val any) (err error) {
+func (pendingScalar) setValue(val any) (err error) {
 	return fmt.Errorf("unexpected value for document scalar %v(%T)", val, val)
-}
-
-func clearComments(a **strings.Builder) (ret string) {
-	ret = (*a).String()
-	(*a).Reset()
-	(*a) = nil
-	return
 }

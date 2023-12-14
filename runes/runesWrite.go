@@ -33,3 +33,21 @@ func WriteRune(w io.Writer, q rune) (n int, err error) {
 	cnt := utf8.EncodeRune(scratch[:], q)
 	return w.Write(scratch[:cnt])
 }
+
+func WriteRunes(w RuneWriter, qs ...rune) {
+	for _, q := range qs {
+		w.WriteRune(q)
+	}
+}
+
+func WriteString(w RuneWriter, str string) (ret int, _ error) {
+	if out, ok := w.(io.StringWriter); ok {
+		ret, _ = out.WriteString(str)
+	} else {
+		for _, q := range str {
+			n, _ := w.WriteRune(q)
+			ret += n
+		}
+	}
+	return
+}
