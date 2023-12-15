@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/ionous/tell/collect"
+	"github.com/ionous/tell/note"
 )
 
 type pendingValue interface {
 	setKey(string) error
 	setValue(any) error
 	finalize() any // return the collection
-	comments() *CommentBlock
+	note.Taker
 }
 
 func newMapping(key string, values collect.MapWriter) *pendingMap {
@@ -21,18 +22,14 @@ func newMapping(key string, values collect.MapWriter) *pendingMap {
 type pendingMap struct {
 	key  string
 	maps collect.MapWriter
-	memo CommentBlock
-}
-
-func (p *pendingMap) comments() *CommentBlock {
-	return &p.memo
+	note.Book
 }
 
 func (p *pendingMap) finalize() (ret any) {
 	if len(p.key) > 0 {
 		p.setValue(nil)
 	}
-	if str, ok := p.memo.Resolve(); ok {
+	if str, ok := p.Resolve(); ok {
 		p.maps.MapValue("", str)
 	}
 	return p.maps.GetMap()
@@ -71,12 +68,8 @@ type pendingSeq struct {
 	dashed   bool
 	blockNil bool /// fix: subcase this for arrays?
 	values   collect.SequenceWriter
-	memo     CommentBlock
-	index    int
-}
-
-func (p *pendingSeq) comments() *CommentBlock {
-	return &p.memo
+	note.Book
+	index int
 }
 
 func (p *pendingSeq) finalize() (ret any) {
@@ -86,7 +79,7 @@ func (p *pendingSeq) finalize() (ret any) {
 	if p.dashed && !p.blockNil {
 		p.setValue(nil)
 	}
-	if str, ok := p.memo.Resolve(); ok {
+	if str, ok := p.Resolve(); ok {
 		p.values = p.values.IndexValue(0, str)
 	}
 	return p.values.GetSequence()
@@ -118,15 +111,11 @@ func (p *pendingSeq) setValue(val any) (err error) {
 // for document scalars
 type pendingScalar struct {
 	value any
-	block *CommentBlock
+	note.Taker
 }
 
 func (p pendingScalar) finalize() any {
 	return p.value
-}
-
-func (p pendingScalar) comments() *CommentBlock {
-	return p.block
 }
 
 func (pendingScalar) setKey(key string) error {

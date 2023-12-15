@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/ionous/tell"
-	"github.com/ionous/tell/decode"
+	"github.com/ionous/tell/note"
 )
 
 //go:embed testdata/*.tell
@@ -74,7 +74,7 @@ func readTell(filePath string) (ret any, err error) {
 		err = e
 	} else {
 		var res any
-		var docComments decode.CommentBlock
+		var docComments note.Book
 		dec := tell.NewDecoder(bufio.NewReader(fp))
 		dec.UseFloats() // because json does
 		if keepComments := strings.Contains(strings.ToLower(filePath), "comment"); keepComments {

@@ -11,6 +11,7 @@ import (
 	"github.com/ionous/tell/collect/stdmap"
 	"github.com/ionous/tell/collect/stdseq"
 	"github.com/ionous/tell/decode"
+	"github.com/ionous/tell/note"
 )
 
 // Decoder - follows the pattern of encoding/json
@@ -51,7 +52,7 @@ func (d *Decoder) SetSequencer(seq collect.SequenceFactory) {
 
 // control the creation of comment blocks for the upcoming Decode.
 // the default is to discard comments.
-func (d *Decoder) UseNotes(b *decode.CommentBlock) {
+func (d *Decoder) UseNotes(b *note.Book) {
 	d.inner.UseNotes(b)
 }
 

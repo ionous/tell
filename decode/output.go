@@ -2,6 +2,7 @@ package decode
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/ionous/tell/collect"
 	"github.com/ionous/tell/token"
@@ -18,10 +19,6 @@ func (out *output) finalizeAll() (ret any, err error) {
 		err = e
 	} else {
 		if out.pendingValue != nil { // tbd: error on empty document?
-			// fix a wrapper around pendingAt to avoid this redudency
-			if n := out.comments(); n != nil {
-				n.End()
-			}
 			ret = out.finalize()
 		}
 	}
@@ -77,9 +74,7 @@ func (out *output) uncheckedPop(at int) (ret int, err error) {
 }
 
 func (out *output) popTop() (err error) {
-	if n := out.comments(); n != nil {
-		n.End()
-	}
+	out.EndCollection()
 	prev := out.finalize()  // finalize the current pending value
 	next := out.stack.pop() // move this to pending
 	if e := next.setValue(prev); e != nil {
@@ -91,28 +86,32 @@ func (out *output) popTop() (err error) {
 }
 
 type collector struct {
-	maps collect.MapFactory
-	seqs collect.SequenceFactory
-	memo memo
+	maps         collect.MapFactory
+	seqs         collect.SequenceFactory
+	keepComments bool
+
+	buffer strings.Builder
 }
 
 func (f *collector) newCollection(key string) pendingValue {
 	var p pendingValue
-	keepComments := f.memo.Keep()
 	switch {
 	case len(key) == 0:
-		p = newSequence(f.seqs(keepComments), keepComments)
+		p = newSequence(f.seqs(f.keepComments), f.keepComments)
 	default:
-		p = newMapping(key, f.maps(keepComments))
+		p = newMapping(key, f.maps(f.keepComments))
 	}
-	f.memo.Begin(p.comments())
+	if f.keepComments {
+		p.BeginCollection(&f.buffer)
+	}
 	return p
 }
 
 func (f *collector) newArray() pendingValue {
-	keepComments := f.memo.Keep()
-	seq := newSequence(f.seqs(keepComments), keepComments)
-	f.memo.Begin(seq.comments())
+	seq := newSequence(f.seqs(f.keepComments), f.keepComments)
 	seq.blockNil = true
+	if f.keepComments {
+		seq.BeginCollection(&f.buffer)
+	}
 	return seq
 }

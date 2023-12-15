@@ -1,6 +1,8 @@
 package decode
 
-import "github.com/ionous/tell/token"
+import (
+	"github.com/ionous/tell/token"
+)
 
 type pendingAt struct {
 	pos token.Pos

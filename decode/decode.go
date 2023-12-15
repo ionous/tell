@@ -7,6 +7,7 @@ import (
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/charmed"
 	"github.com/ionous/tell/collect"
+	"github.com/ionous/tell/note"
 	"github.com/ionous/tell/runes"
 	"github.com/ionous/tell/token"
 )
@@ -21,14 +22,17 @@ func (d *Decoder) SetMapper(maps collect.MapFactory) {
 	d.collector.maps = maps
 }
 
-// configure the production of comment blocks
-func (d *Decoder) UseNotes(b *CommentBlock) {
+// record comment blocks
+func (d *Decoder) UseNotes(b *note.Book) {
 	d.docBlock = b
-	d.collector.memo.keepComments = b != nil
+	d.collector.keepComments = b != nil
 }
 
 // read a tell document from the passed stream
 func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
+	if d.docBlock == nil {
+		d.docBlock = note.Nothing{}
+	}
 	var x, y int
 	run := charm.Parallel("parallel",
 		charmed.FilterInvalidRunes(),
@@ -42,17 +46,7 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 			err = ErrorAt(y, x, es)
 		}
 		if err == nil {
-			if res, e := d.out.finalizeAll(); e != nil {
-				err = e
-			} else {
-				// a completely empty document wont have a value
-				// tbd: can it produce this ( and nil ) more cleanly?
-				// ex. actually push a block up front, and setValue instead of setPending
-				if d.out.pendingValue == nil && d.docBlock != nil {
-					d.docBlock.End()
-				}
-				ret = res
-			}
+			ret, err = d.out.finalizeAll()
 		}
 	}
 	return
@@ -63,7 +57,7 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 type Decoder struct {
 	out       output
 	collector collector
-	docBlock  *CommentBlock
+	docBlock  note.Taker
 	state     decoderState
 	// configure the tokenizer for the next decode
 	UseFloats bool
@@ -86,7 +80,9 @@ func (dispatch dispatcher) Decoded(at token.Pos, tokenType token.Type, val any) 
 
 func (d *Decoder) decodeDoc() charm.State {
 	d.state = d.docStart
-	d.collector.memo.Begin(d.docBlock)
+	if d.docBlock != nil {
+		d.docBlock.BeginCollection(&d.collector.buffer)
+	}
 	t := token.Tokenizer{
 		Notifier:  dispatcher{d},
 		UseFloats: d.UseFloats,
@@ -98,7 +94,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 	switch tokenType {
 	case token.Comment:
 		if str := val.(string); len(str) > 0 {
-			d.docBlock.Comment(NoteHeader, str)
+			d.docBlock.Comment(note.Header, str)
 		}
 
 	case token.Key:
@@ -117,7 +113,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 		}
 
 	case token.Bool, token.Number, token.String:
-		scalar := pendingScalar{value: val, block: d.docBlock}
+		scalar := pendingScalar{value: val, Taker: d.docBlock}
 		d.out.setPending(at, scalar) // sets doc scalar for "finalizeAll"
 		d.state = d.waitForFooter
 
@@ -132,7 +128,7 @@ func (d *Decoder) docFooter(at token.Pos, tokenType token.Type, val any) (err er
 	switch tokenType {
 	case token.Comment:
 		if str := val.(string); len(str) > 0 {
-			d.docBlock.Comment(NoteFooter, str)
+			d.docBlock.Comment(note.Footer, str)
 		}
 	default:
 		err = fmt.Errorf("unexpected %s", tokenType)
@@ -145,7 +141,7 @@ func (d *Decoder) waitForFooter(at token.Pos, tokenType token.Type, val any) (er
 	switch tokenType {
 	case token.Comment:
 		if str := val.(string); len(str) > 0 {
-			err = d.newComment(NoteSuffix, at, str)
+			err = d.newComment(note.Suffix, at, str)
 		}
 	default:
 		err = fmt.Errorf("unexpected %s", tokenType)
@@ -168,7 +164,7 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 
 	case token.Comment:
 		if str := val.(string); len(str) > 0 {
-			err = d.newComment(NoteSuffix, at, str)
+			err = d.newComment(note.Suffix, at, str)
 		}
 	}
 	return
@@ -207,7 +203,7 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 
 	case token.Comment:
 		if str := val.(string); len(str) > 0 {
-			err = d.newComment(NotePrefix, at, str)
+			err = d.newComment(note.Prefix, at, str)
 		}
 
 	default:
@@ -224,38 +220,37 @@ func (d *Decoder) newKey(at token.Pos, key string) (err error) {
 	} else if e := d.out.setKey(at.Y, key); e != nil {
 		err = e
 	} else {
-		if n := d.out.comments(); n != nil {
-			n.NextKey()
-		}
+		d.out.NextKey()
 		d.state = d.waitForValue // same as current state.
 	}
 	return
 }
 
-func (d *Decoder) newComment(defaultType noteType, at token.Pos, str string) (err error) {
+func (d *Decoder) newComment(defaultType note.Type, at token.Pos, str string) (err error) {
 	// eat blank lines: they don't change the interpretation here.
-	if n := d.out.comments(); n != nil {
+	if d.collector.keepComments {
 		if at.X > d.out.pos.X {
 			noteType := defaultType
 			if at.Y == d.out.pos.Y {
 				noteType++
 			}
-			n.Comment(noteType, str)
+			d.out.Comment(noteType, str)
 		} else {
 			if e := d.out.popToIndent(at.X); e != nil {
 				err = e
 			} else {
-				var noteType noteType
+				var noteType note.Type
 				if len(d.out.stack) == 0 {
 					d.state = d.docFooter
-					noteType = NoteFooter
+					noteType = note.Footer
 				} else {
 					d.state = d.waitForKey
-					noteType = NoteHeader
+					noteType = note.Header
 				}
-				n.Comment(noteType, str)
+				d.out.Comment(noteType, str)
 			}
 		}
+
 	}
 	return
 }
