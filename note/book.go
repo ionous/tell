@@ -2,7 +2,8 @@ package note
 
 import "strings"
 
-// record comment block
+// collects comments to generate a comment block
+// ( during document decoding )
 type Book struct {
 	book content
 }
@@ -17,9 +18,9 @@ func (p *Book) EndCollection() {
 		p.book.EndCollection()
 	}
 }
-func (p *Book) NextKey() {
+func (p *Book) NextTerm() {
 	if p.book.buf != nil {
-		p.book.NextKey()
+		p.book.NextTerm()
 	}
 }
 func (p *Book) Comment(kind Type, str string) {

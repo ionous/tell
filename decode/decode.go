@@ -22,7 +22,9 @@ func (d *Decoder) SetMapper(maps collect.MapFactory) {
 	d.collector.maps = maps
 }
 
-// record comment blocks
+// pass a valid target for document level comments
+// a nil disables comment collection
+// ( comments are disabled by default )
 func (d *Decoder) UseNotes(b *note.Book) {
 	d.docBlock = b
 	d.collector.keepComments = b != nil
@@ -218,7 +220,7 @@ func (d *Decoder) newKey(at token.Pos, key string) (err error) {
 	} else if e := d.out.setKey(at.Y, key); e != nil {
 		err = e
 	} else {
-		d.out.NextKey()
+		d.out.NextTerm()
 		d.state = d.waitForValue // same as current state.
 	}
 	return
@@ -248,7 +250,6 @@ func (d *Decoder) newComment(defaultType note.Type, at token.Pos, str string) (e
 				d.out.Comment(noteType, str)
 			}
 		}
-
 	}
 	return
 }

@@ -1,5 +1,7 @@
 package note
 
+// differentiates different comment types
+// as described in the package README.
 type Type int
 
 const (
@@ -16,6 +18,7 @@ const (
 	Footer
 )
 
+// is this one of the two prefix types?
 func (n Type) Prefix() (okay bool) {
 	switch n {
 	case Prefix, PrefixInline:
@@ -24,6 +27,7 @@ func (n Type) Prefix() (okay bool) {
 	return
 }
 
+// is this one of the two suffix types?
 func (n Type) Suffix() (okay bool) {
 	switch n {
 	case Suffix, SuffixInline:

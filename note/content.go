@@ -34,6 +34,9 @@ type bookState struct {
 
 func (b *content) BeginCollection(buf *strings.Builder) {
 	b.buf = buf
+	// if there is a (footer or prefix) comment pending
+	// steal it from the shared buffer, and use it as
+	// the header of the first element.
 	if buf.Len() > 0 {
 		appendLine(&b.out, buf.String())
 		buf.Reset()
@@ -57,7 +60,7 @@ func (b *content) EndCollection() {
 }
 
 // new key in this block
-func (b *content) NextKey() {
+func (b *content) NextTerm() {
 	// note: if there's a sub-collection
 	// its begin() will have stolen our buffer away
 	b.nextKeys++
@@ -110,7 +113,7 @@ func (b *content) flushTerm() {
 	//
 	// FirstKey: # inline prefix
 	// # header for next key
-	// NextKey:
+	// NextTerm:
 	//
 	if b.buf.Len() > 0 {
 		b.writeKeys()

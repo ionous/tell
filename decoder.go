@@ -50,8 +50,10 @@ func (d *Decoder) SetSequencer(seq collect.SequenceFactory) {
 	d.inner.SetSequencer(seq)
 }
 
-// control the creation of comment blocks for the upcoming Decode.
-// the default is to discard comments.
+// pass a valid target for collecting document level comments
+// during an upcoming call to Decode.
+// the default behavior is to discard comments.
+// ( passing nil will also discard them. )
 func (d *Decoder) UseNotes(b *note.Book) {
 	d.inner.UseNotes(b)
 }
