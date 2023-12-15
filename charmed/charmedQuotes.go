@@ -11,13 +11,10 @@ import (
 func ScanQuote(match rune, escape bool, onDone func(string)) (ret charm.State) {
 	var d QuoteDecoder
 	return charm.Step(d.ScanQuote(match, escape, false),
-		charm.OnExit("recite", func() (err error) {
+		charm.OnExit("recite", func() {
 			onDone(d.String())
-			return
 		}))
 }
-
-//
 
 // wraps a string builder to read a quoted string or heredoc.
 type QuoteDecoder struct {
