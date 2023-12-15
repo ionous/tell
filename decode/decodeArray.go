@@ -91,11 +91,14 @@ func (d *Decoder) newArrayValue(val any) (err error) {
 }
 
 func (d *Decoder) endArray() (err error) {
-	if e := d.out.popTop(); e != nil {
-		err = e
+	// hrm: collections at the doc level
+	// technically never end ( a new key could be coming
+	// right up to the end of the document;
+	if len(d.out.stack) == 0 {
+		d.state = d.docFooter
 	} else {
-		if len(d.out.stack) == 0 {
-			d.state = d.docFooter
+		if e := d.out.popTop(); e != nil {
+			err = e
 		} else {
 			d.state = d.waitForKey
 		}

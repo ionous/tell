@@ -18,12 +18,15 @@ import (
 // the token parser has more exhaustive tests
 func TestDocScalar(t *testing.T) {
 	test(t,
+		// testName, docValue, result:
 		"bool", `false`, false,
 		"bool", `true`, true,
 		"int", `23`, 23,
 		"string", `"hello"`, "hello",
 		// a document shouldn't allow multiple scalar values
 		"multi", "true\n5", errors.New("unexpected"),
+		"empty array", `[]`, []any{},
+		"array of one", `[1]`, []any{1},
 	)
 }
 
