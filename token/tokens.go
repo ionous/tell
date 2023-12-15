@@ -196,7 +196,6 @@ func (n *tokenizer) commentDecoder() charm.State {
 			b.WriteRune(q)
 			ret = self
 		case runes.Newline, runes.Eof:
-			// tbd: using indenting could send "trailing" vs. "full line comment"
 			ret = n.notifyRune(q, Comment, b.String())
 		}
 		return

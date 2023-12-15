@@ -86,11 +86,10 @@ func (out *output) popTop() (err error) {
 }
 
 type collector struct {
-	maps         collect.MapFactory
-	seqs         collect.SequenceFactory
-	keepComments bool
-
-	buffer strings.Builder
+	maps          collect.MapFactory
+	seqs          collect.SequenceFactory
+	keepComments  bool
+	commentBuffer strings.Builder
 }
 
 func (f *collector) newCollection(key string) pendingValue {
@@ -102,7 +101,7 @@ func (f *collector) newCollection(key string) pendingValue {
 		p = newMapping(key, f.maps(f.keepComments))
 	}
 	if f.keepComments {
-		p.BeginCollection(&f.buffer)
+		p.BeginCollection(&f.commentBuffer)
 	}
 	return p
 }
@@ -111,7 +110,7 @@ func (f *collector) newArray() pendingValue {
 	seq := newSequence(f.seqs(f.keepComments), f.keepComments)
 	seq.blockNil = true
 	if f.keepComments {
-		seq.BeginCollection(&f.buffer)
+		seq.BeginCollection(&f.commentBuffer)
 	}
 	return seq
 }

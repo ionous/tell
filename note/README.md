@@ -44,19 +44,10 @@ The following rules reflect how i think most people comment yaml-like documents.
 This, of course, is based on absolutely no research whatsoever. Still, my hope is that no special knowledge is needed. 
 
 ```yaml
-# document header comments start at the first line.
-# a fully blank line can be used to separate document level comments
-# from the comments associated with the first term of a collection.
-
-# header comments start at the indentation of the following collection.
-# they can continue at the same level of indentation ( aka sub-headers. )
+# header comments start at the first line.
+# if the document contains a collection,
+# the comment becomes part of that collection.
 - "header example"
-
-# comments also allow nesting...
-  # as that can sometimes help associate groups of ideas.
-  # fix? might remove this to simplify the decoder.
-  #   comments can always be indented to the right of the hash.
-- "nested header example"
 
 - "inline suffix example"  # a "suffix" can follow a scalar value.
                            # they can continue on following lines:
@@ -80,43 +71,35 @@ This, of course, is based on absolutely no research whatsoever. Still, my hope i
   # the prefix becomes a header for that collection's first term.
   - "term header example"
 
-# footer comments are allowed for a document
-# separated from the previous value by a blank line.
-# ( fix? the current decoder doesn't actually require the blank line. )
+# footer comments are allowed for a document.
+# if the document contains a collection
+# the footer becomes part of that collection.
 ```
 
 Here's another way of visualizing the different comment types:
 
 ```
 +------------------+
-|                  |
-|   [Doc Header]   |
-|                  |
-+------------------+
-|                  |
-|   [Key Header]   |
+|                  | a document header exists for document scalar values
+|     [Header]     | ( otherwise, the first comment becomes the first key header. )
 |                  |
 +-----------+------+
-| Key Name: |      |  ---> an inline prefix
-|    _______|      |
-|   |              |
-|   |  [ Prefix ]  |  }---> and/or, a continuing prefix.
-|   |              |
+| Key Name: |      |  prefix comments annotate scalar values;
+|    _______|      |  if there is a a sub-collection:
+|   |              |  the prefix becomes a header for 
+|   |  [ Prefix ]  |  the first element of that collection.
+|   |              |  
 +---+--------+-----+
-|   "Scalar" |     |  ---> an inline suffix.
-|    ________+     |
-|   |              | 
-|   |  [ Suffix ]  |  }---> alternatively, a trailing suffix.
+|   "Scalar" |     |  suffix comments follow scalar values.
+|    ________+     |  in the generated comment block,
+|   |              |  these are distinguished from other comments
+|   |  [ Suffix ]  |  by the inclusion of a horizontal tab.
 |   |              |
 +---+--------------+
-|                  |
-|   [Inter Key]    |  header for the next key
-|                  |
+|                  |  a footer becomes the header for the next key
+|     [Footer]     |  ( if there is any such key )
+|                  |  a document footer exists for document scalar values.
 +------------------+
-|                  |  ( used for docs with scalar values;
-|   [Doc Footer]   |    for docs with a sequence or mapping, 
-|                  |    these are read by interkey )
-+------------------+    
 ```
 
 
