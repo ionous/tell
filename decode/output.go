@@ -16,8 +16,14 @@ type output struct {
 func (out *output) finalizeAll() (ret any, err error) {
 	if _, e := out.uncheckedPop(-1); e != nil {
 		err = e
-	} else if out.pendingValue != nil { // tbd: error on empty document?
-		ret = out.finalize()
+	} else {
+		if out.pendingValue != nil { // tbd: error on empty document?
+			// fix a wrapper around pendingAt to avoid this redudency
+			if n := out.comments(); n != nil {
+				n.End()
+			}
+			ret = out.finalize()
+		}
 	}
 	return
 }
@@ -71,6 +77,9 @@ func (out *output) uncheckedPop(at int) (ret int, err error) {
 }
 
 func (out *output) popTop() (err error) {
+	if n := out.comments(); n != nil {
+		n.End()
+	}
 	prev := out.finalize()  // finalize the current pending value
 	next := out.stack.pop() // move this to pending
 	if e := next.setValue(prev); e != nil {

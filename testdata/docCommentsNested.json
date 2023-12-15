@@ -1,7 +1,6 @@
 {
-    "comment": "# header",
-    "content": [
-         "\r\r\n\t# nested",
-        "sequence"
-       ]
+  "content": [
+    "# header\r\r\n\t# nested",
+    "sequence"
+  ]
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/ionous/tell"
+	"github.com/ionous/tell/decode"
 )
 
 //go:embed testdata/*.tell
@@ -25,7 +26,7 @@ const testFolder = "testdata"
 var focus string
 
 func TestFiles(t *testing.T) {
-	focus = "docScalarComments"
+	// focus = "trailingComments2"
 	if files, e := tellData.ReadDir(testFolder); e != nil {
 		t.Fatal(e)
 	} else {
@@ -73,7 +74,7 @@ func readTell(filePath string) (ret any, err error) {
 		err = e
 	} else {
 		var res any
-		var docComments strings.Builder // document level comment data
+		var docComments decode.CommentBlock
 		dec := tell.NewDecoder(bufio.NewReader(fp))
 		dec.UseFloats() // because json does
 		if keepComments := strings.Contains(strings.ToLower(filePath), "comment"); keepComments {
@@ -81,7 +82,7 @@ func readTell(filePath string) (ret any, err error) {
 		}
 		if e := dec.Decode(&res); e != nil {
 			err = e
-		} else if str := docComments.String(); len(str) > 0 {
+		} else if str, _ := docComments.Resolve(); len(str) > 0 {
 			ret = map[string]any{
 				"content": res,
 				"comment": str,

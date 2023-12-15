@@ -67,7 +67,7 @@ type cit struct {
 
 func (c *cit) Next() (okay bool) {
 	if okay = len(c.rest) > 0; okay {
-		if i := strings.IndexRune(c.rest, runes.NextRecord); i < 0 {
+		if i := strings.IndexRune(c.rest, runes.NextTerm); i < 0 {
 			c.curr = c.rest
 			c.rest = ""
 		} else {

@@ -11,7 +11,6 @@ import (
 	"github.com/ionous/tell/collect/stdmap"
 	"github.com/ionous/tell/collect/stdseq"
 	"github.com/ionous/tell/decode"
-	"github.com/ionous/tell/runes"
 )
 
 // Decoder - follows the pattern of encoding/json
@@ -52,8 +51,8 @@ func (d *Decoder) SetSequencer(seq collect.SequenceFactory) {
 
 // control the creation of comment blocks for the upcoming Decode.
 // the default is to discard comments.
-func (d *Decoder) UseNotes(w runes.RuneWriter) {
-	d.inner.UseNotes(w)
+func (d *Decoder) UseNotes(b *decode.CommentBlock) {
+	d.inner.UseNotes(b)
 }
 
 // configure the upcoming Decode to produce only floating point numbers.

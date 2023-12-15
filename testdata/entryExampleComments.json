@@ -1,6 +1,6 @@
 {
     "content": [
-        "\r# comments describing this collection entry\n\t# start immediately after the dash ( or signature )\n\t# they allow nesting to continue the comment.",
+        "\r# comments describing this collection entry\n# start immediately after the dash ( or signature )",
         "entry example"
     ]
 }

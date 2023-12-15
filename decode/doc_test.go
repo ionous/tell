@@ -22,6 +22,7 @@ func TestDocScalar(t *testing.T) {
 		"bool", `true`, true,
 		"int", `23`, 23,
 		"string", `"hello"`, "hello",
+		// a document shouldn't allow multiple scalar values
 		"multi", "true\n5", errors.New("unexpected"),
 	)
 }
@@ -61,7 +62,7 @@ func test(t *testing.T, nameInputExpect ...any) {
 			} else {
 				res = val
 			}
-			if e := compare(res, expect); e != nil {
+			if e := compare(t, res, expect); e != nil {
 				t.Fatal("ng:", name, e)
 			} else {
 				t.Log("ok:", name)
@@ -70,7 +71,7 @@ func test(t *testing.T, nameInputExpect ...any) {
 	}
 }
 
-func compare(have any, want any) (err error) {
+func compare(t *testing.T, have any, want any) (err error) {
 	if haveErr, ok := have.(error); !ok {
 		if !reflect.DeepEqual(have, want) {
 			err = fmt.Errorf("mismatched want: %v(%T) have: %v(%T)", want, want, have, have)
@@ -80,6 +81,8 @@ func compare(have any, want any) (err error) {
 			err = fmt.Errorf("failed %v", haveErr)
 		} else if !strings.HasPrefix(haveErr.Error(), expectErr.Error()) {
 			err = fmt.Errorf("failed %v, expected %v", haveErr, expectErr)
+		} else {
+			t.Logf("okay, expected error and got %q", haveErr)
 		}
 	}
 	return

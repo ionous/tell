@@ -1,0 +1,3 @@
+- # prefix comments stay prefixes
+  # when there's a scalar value involved.
+  "scalar"

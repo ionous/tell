@@ -1,7 +1,6 @@
 {
-  "comment": "# header\f# footer",
   "content": {
-    "": "",
+    "": "# header\f# footer",
     "Mapping:value:": "here"
   }
 }

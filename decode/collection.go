@@ -11,7 +11,7 @@ type pendingValue interface {
 	setKey(string) error
 	setValue(any) error
 	finalize() any // return the collection
-	comments() *memoBlock
+	comments() *CommentBlock
 }
 
 func newMapping(key string, values collect.MapWriter) *pendingMap {
@@ -21,10 +21,10 @@ func newMapping(key string, values collect.MapWriter) *pendingMap {
 type pendingMap struct {
 	key  string
 	maps collect.MapWriter
-	memo memoBlock
+	memo CommentBlock
 }
 
-func (p *pendingMap) comments() *memoBlock {
+func (p *pendingMap) comments() *CommentBlock {
 	return &p.memo
 }
 
@@ -32,7 +32,7 @@ func (p *pendingMap) finalize() (ret any) {
 	if len(p.key) > 0 {
 		p.setValue(nil)
 	}
-	if str := p.memo.String(); len(str) > 0 {
+	if str, ok := p.memo.Resolve(); ok {
 		p.maps.MapValue("", str)
 	}
 	return p.maps.GetMap()
@@ -71,20 +71,22 @@ type pendingSeq struct {
 	dashed   bool
 	blockNil bool /// fix: subcase this for arrays?
 	values   collect.SequenceWriter
-	memo     memoBlock
+	memo     CommentBlock
 	index    int
 }
 
-func (p *pendingSeq) comments() *memoBlock {
+func (p *pendingSeq) comments() *CommentBlock {
 	return &p.memo
 }
 
 func (p *pendingSeq) finalize() (ret any) {
 	// fix: pops to indent; but if its handling it -- maybe it should just handle the key too
+	// it cant because of the document level difference
+	// i think it doest get the final end.
 	if p.dashed && !p.blockNil {
 		p.setValue(nil)
 	}
-	if str := p.memo.String(); len(str) > 0 {
+	if str, ok := p.memo.Resolve(); ok {
 		p.values = p.values.IndexValue(0, str)
 	}
 	return p.values.GetSequence()
@@ -113,21 +115,18 @@ func (p *pendingSeq) setValue(val any) (err error) {
 	return
 }
 
-func makeDocScalar(val any) pendingValue {
-	return pendingScalar{value: val}
-}
-
 // for document scalars
 type pendingScalar struct {
 	value any
+	block *CommentBlock
 }
 
 func (p pendingScalar) finalize() any {
 	return p.value
 }
 
-func (pendingScalar) comments() *memoBlock {
-	return nil
+func (p pendingScalar) comments() *CommentBlock {
+	return p.block
 }
 
 func (pendingScalar) setKey(key string) error {

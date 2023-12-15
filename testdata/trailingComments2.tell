@@ -2,5 +2,5 @@
     # comments nested under the first of second
   # header of second
   - "second of second"
-  # footer of second
+  # header of a missing third
 - "second of first"

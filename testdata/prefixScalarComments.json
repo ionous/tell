@@ -1,0 +1,6 @@
+{
+  "content": [
+    "\r# prefix comments stay prefixes\n# when there's a scalar value involved.",
+    "scalar"
+  ]
+}

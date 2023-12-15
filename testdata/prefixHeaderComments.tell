@@ -1,0 +1,3 @@
+- # prefix comments get assigned
+  # to the sub collection as a header.
+  sub:collection:with: "one element"

@@ -3,34 +3,30 @@ package decode
 type noteType int
 
 const (
-	_Invalid noteType = iota
-	NoteHeader
-	NoteFooter
+	NoteNone noteType = iota
 
+	// writes to buffer
+	NoteHeader
 	NotePrefix
 	NotePrefixInline
 
+	// can write straight out
 	NoteSuffix
 	NoteSuffixInline
-
-	NoteInterKey
+	NoteFooter
 )
 
-// requires Key/Value markers
-func (n noteType) Padding() (ret int) {
+func (n noteType) Prefix() (okay bool) {
 	switch n {
 	case NotePrefix, NotePrefixInline:
-		ret = 1
-	case NoteSuffix, NoteSuffixInline:
-		ret = 2
+		okay = true
 	}
 	return
 }
 
-// requires a newline separator
-func (n noteType) Newline() (okay bool) {
+func (n noteType) Suffix() (okay bool) {
 	switch n {
-	case NotePrefix, NoteSuffix:
+	case NoteSuffix, NoteSuffixInline:
 		okay = true
 	}
 	return

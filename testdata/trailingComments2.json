@@ -1,8 +1,8 @@
 {
   "content": [
-    "\f# footer of second",
+    "",
     [
-      "\r\r\n\t# comments nested under the first of second\f# header of second",
+      "\r\r\n\t# comments nested under the first of second\f# header of second\f# header of a missing third",
       "first element of second sequence",
       "second of second"
     ],

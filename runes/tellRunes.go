@@ -13,7 +13,7 @@ const (
 	InterpretQuote = '"'  // interpreted strings are bookended with double quotes
 	KeyValue       = '\r' // in comment blocks, replaces both the  key and the value.
 	Newline        = '\n'
-	NextRecord     = '\f' // form feed is used to separate comment entries
+	NextTerm       = '\f' // form feed is used to separate comment entries
 	RawQuote       = '`'
 	Redirect       = '<' // for closing tags
 	Space          = ' '

@@ -2,7 +2,7 @@
   "content": [
      "",
     {
-      "": "# all key comments are assigned\n# to the sub collection.",
+      "": "# prefix comments get assigned\n# to the sub collection as a header.",
       "sub:collection:with:": "one element"
     }
   ]
