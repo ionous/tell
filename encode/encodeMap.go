@@ -76,14 +76,12 @@ func (m *MapTransform) makeMapping(src r.Value) (ret MappingIter, err error) {
 		}
 		mk = mapKeys{str: str, val: keys, keyLess: keyLess}
 		sort.Sort(&mk)
-		cmt := blank
-		// the sort should have forced the blank comment key to the first slot
+		// the sort should have forced the comment key (if any) to the first slot
 		if keyZero := mk.str[0]; keyZero == "" {
-			// grab the comment's value, and then chop it out of the iteration.
-			cmt = src.MapIndex(mk.val[0])
-			mk.str, mk.val = mk.str[1:], mk.val[1:]
+			cmt := src.MapIndex(mk.val[0])          // the comment block
+			mk.str, mk.val = mk.str[1:], mk.val[1:] // remove the comment from map iteration
+			cit, err = newComments(cmt)             // iterator for the comment block
 		}
-		cit, err = newComments(cmt)
 	}
 	if err == nil {
 		ret = &mapIter{src: src, mapKeys: mk, comments: cit}
