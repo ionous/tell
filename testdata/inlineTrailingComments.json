@@ -1,6 +1,6 @@
 {
 	"content": [
-    "\r\r# a single inline comment\n\t# can use a trailing block comment\n\t# but it will be normalized to right aligned when reformatting.",
+    "\r\r# an inline suffix\n# doesn't require trailing comment alignment\n# but the encoder will right align them when writing.",
     "inline and trailing"
   ]
 }

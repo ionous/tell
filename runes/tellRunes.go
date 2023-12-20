@@ -9,7 +9,7 @@ const (
 	Eof            = -1
 	Escape         = '\\'
 	Hash           = '#'  // comment marker
-	HTab           = '\t' // in documents invalid outside of strings or comments, used for nesting in comment blocks.
+	HTab           = '\t' // invalid outside of strings or comments.
 	InterpretQuote = '"'  // interpreted strings are bookended with double quotes
 	KeyValue       = '\r' // in comment blocks, replaces both the  key and the value.
 	Newline        = '\n'

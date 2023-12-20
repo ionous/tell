@@ -1,6 +1,6 @@
 {
   "content": [
-    "\r\r\n\t# trailing comments continue at a consistent indentation\n\t# right at, or after, the entry's indentation.",
+    "\r\r\n# trailing comments ideally continue at a consistent indentation\n# right at, or after, the entry's indentation.",
     "trailing example"
   ]
 }

@@ -102,35 +102,37 @@ Here's another way of visualizing the different comment types:
 +------------------+
 ```
 
-
 Comment Block Generation
 ------------------------
 
 Each comment block is a single string of text generated in the following manner:
 
-* Individual comments are stored in the order encountered. Hash marks are kept as part of the string, as is all whitespace. The former makes it easier to split individual comments out of their comment blocks; the latter is necessary to support commenting out heredoc raw strings. 
+* Individual comments are stored in the order encountered. Hash marks are kept as part of the string, as is all whitespace. Keeping the hash makes it easier to split individual comments out of their comment blocks; preserving whitespace is necessary to support commenting out heredoc raw strings. 
 
 * A carriage return (`\r`) replaces each key (or dash) and value within a comment block.
 
-* Line breaks between comments use line feed (`\n`), all nested indentation gets normalized to a horizontal tab (`\t`).
+* Prefix and suffix comments starting on the same line as a key, dash, or value are called "inline comments"; those prefix and suffix comments on lines below a key, dash, or value are called "trailing comments." Inline comments are recorded in the comment block directly after the related carriage return; trailing comments are are separated from the carriage return with a line feed.
 
-* Inline trailing comments start directly after the value's carriage return. Any continuing comment lines are treated as nested comments. A trailing block comment follows the carriage return with a line feed and nests all comments.
+* Line breaks between comments use line feed (`\n`). 
 
 * The end of each term in a collection is indicated with a form feed (`\f`).
 
 * Fully blank lines are ignored.
   
-* The resulting block can be trimmed of control characters. 
+* The resulting block can be trimmed of control characters ( line feeds, form feeds, and carriage returns. )
 
 A program that wants to read ( or maintain ) comments can split or count by form feed to find the comments of particular entries. 
 
-The pattern for a single scalar value in a collection looks like this:
+The pattern for a scalar value in a collection looks like this:
 
 ```
-# header ( \n \t # nested header; exclusive with sub headers )
-\n # sub headers
-\r # key comments follow the key ( or dash ) ( \n \t # nested comment... )
-\r # inline trailing comments directly follow the value ( \n \t # nested trailing... )
-( \n \t # alternatively, trailing block comments start nesting directly after the carriage )
-\f 
+# header comments
+\n # additional header comments
+\r # prefix comments ( those preceding a value ) follow after a key or dash
+\n # additional prefix comments ( the first comment was "inline", this is "trailing" )
+\r # suffix comments follow the value
+\n # additional suffix comments ( the first comment was "inline", this is "trailing" )
+\f
+# footer comments
+\n # ( if there were an additional collection terms; the footer would be considered a header. )
 ```

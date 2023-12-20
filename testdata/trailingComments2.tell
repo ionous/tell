@@ -1,5 +1,5 @@
 - - "first element of second sequence"
-    # comments nested under the first of second
+    # a suffix nested under the first of second
   # header of second
   - "second of second"
   # header of a missing third

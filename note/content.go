@@ -86,7 +86,6 @@ func (b *content) Comment(n Type, str string) {
 		b.writePadding(2)
 		if n != SuffixInline {
 			b.out.WriteRune(runes.Newline)
-			b.out.WriteRune(runes.HTab)
 		}
 		b.out.WriteString(str)
 

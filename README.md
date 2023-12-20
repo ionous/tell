@@ -53,6 +53,7 @@ The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
+* comment blocks don't serialize yet ( re: "fix" in encodeComments.go )
 * arrays should support nested arrays; arrays should support comments.
 * no serialization of structs ( only maps, slices, and primitives. )
 * error reporting needs improvement.
@@ -109,6 +110,8 @@ Tell consists of collections of values, along with optional comments. These type
 * **Document**: a collection containing a single **value**.
 * **Sequences**: aka lists: an ordered series of one or more **values**.
 * **Mappings**: aka ordered dictionaries: relates **keys** to **values**. 
+
+The individual elements of a sequence, and pairs of key-values in a mapping are called the "terms" of the collection.
 
 ### Documents
 Documents are most often text files. UTF8, no byte order marks. 
@@ -172,6 +175,7 @@ There are two types, one for each string type:
 
 Whitespace in both string types is influenced by the position of the closing heredoc marker. Therefore, any text to the left of the closing marker is an error. Both string types can define an custom tag to end the heredoc ( even if, unfortunately, that breaks `yaml` syntax highlighting. )
 
+_(TBD: if documents should be trimmed of trailing whitespace: many editing programs are likely to do this by default. however, that would make intentional trailing whitespace in raw heredocs impossible.)_
 
 ```yaml
   - """
@@ -199,7 +203,6 @@ Whitespace in both string types is influenced by the position of the closing her
     ( so this line doesn't end with a newline. )
     END
 ```
-
 
 Note that the interpreted heredoc is different from some more common implementations. The newline here exists for formatting the tell document, not the string.
 ```yaml

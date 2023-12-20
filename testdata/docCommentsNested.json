@@ -1,6 +1,6 @@
 {
   "content": [
-    "# header\r\r\n\t# nested",
+    "# header\r\r\n# nested suffix",
     "sequence"
   ]
 }

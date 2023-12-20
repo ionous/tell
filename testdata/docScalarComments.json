@@ -1,4 +1,4 @@
 {
-  "comment": "\r\r# inline comment\n\t# ideally, indented to the same level.\n\t# oh well.",
+  "comment": "\r\r# inline comment\n# ideally, indented to the same level.\n# oh well.",
   "content": "trailing example"
 }
