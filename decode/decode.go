@@ -140,7 +140,7 @@ func (d *Decoder) docSuffix(at token.Pos, tokenType token.Type, val any) (err er
 	switch tokenType {
 	case token.Comment:
 		if str := val.(string); at.X > d.out.pos.X {
-			d.addComment(note.Suffix, at, str)
+			d.out.addComment(note.Suffix, at, str)
 		} else { // doesn't pop; there's no map or sequence.
 			d.out.Comment(note.Footer, str)
 			d.state = d.docFooter
@@ -160,20 +160,21 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 	case token.Key:
 		if key := val.(string); at.X > d.out.pos.X {
 			err = fmt.Errorf("unexpected %s", tokenType)
+		} else if e := d.out.newKey(at, key); e != nil {
+			err = e
 		} else {
-			// got the key for this or (by popping) a parent collection
-			// and start waiting for value
-			err = d.newKey(at, key)
+			d.state = d.waitForValue
 		}
-
 	case token.Comment:
 		if str := val.(string); at.X > d.out.pos.X {
-			d.addComment(note.Suffix, at, str)
+			d.out.addComment(note.Suffix, at, str)
+		} else if e := d.out.newHeader(at, str); e != nil {
+			err = e
 		} else {
-			// adds a header for this or (by popping) a parent collection
+			// added a header for this or (by popping) a parent collection
 			// doesn't generate an implicit nil ( because not waiting for a value )
 			// keeps waiting for a key.
-			err = d.newHeader(at, str)
+			d.state = d.waitForKey
 		}
 	}
 	return
@@ -206,57 +207,24 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 			p := d.collector.newCollection(key)
 			d.out.push(at, p)
 		} else {
-			// a new key for this or (by popping) a parent collection
-			// generates an implicit nil for the value we never encountered.
-			err = d.newKey(at, key)
+			// with the same, or a parent, collection:
+			err = d.out.newKey(at, key) // keep waiting for a value
 		}
 
 	case token.Comment:
 		// a prefix for the still yet to be found value
 		if str := val.(string); at.X > d.out.pos.X {
-			d.addComment(note.Prefix, at, str)
+			d.out.addComment(note.Prefix, at, str)
+		} else if e := d.out.newHeader(at, str); e != nil {
+			err = e
 		} else {
-			// a header for this or (by popping) a parent collection.
+			// added a header for the collection ( or popped and added to a parent )
 			// generates an implicit nil for the value we never encountered.
-			err = d.newHeader(at, str)
+			d.state = d.waitForKey
 		}
 
 	default:
 		panic("unknown token")
 	}
 	return
-}
-
-func (d *Decoder) newKey(at token.Pos, key string) (err error) {
-	// the key is for the same or an earlier collection
-	// write a nil value, and go find the right collection
-	if e := d.out.popToIndent(at.X); e != nil {
-		err = e
-	} else if e := d.out.setKey(at.Y, key); e != nil {
-		err = e
-	} else {
-		d.out.NextTerm()
-		d.state = d.waitForValue // same as current state
-	}
-	return
-}
-
-// add a header comment, and wait for a new key ( because that's all that can follow )
-func (d *Decoder) newHeader(at token.Pos, str string) (err error) {
-	if e := d.out.popToIndent(at.X); e != nil {
-		err = e
-	} else {
-		d.out.Comment(note.Header, str)
-		d.state = d.waitForKey
-	}
-	return
-}
-
-// add a prefix or suffix comment
-func (d *Decoder) addComment(baseType note.Type, at token.Pos, str string) {
-	noteType := baseType
-	if at.Y == d.out.pos.Y {
-		noteType++
-	}
-	d.out.Comment(noteType, str)
 }

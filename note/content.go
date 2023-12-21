@@ -38,25 +38,12 @@ func (b *content) BeginCollection(buf *strings.Builder) {
 	// steal it from the shared buffer, and use it as
 	// the header of the first element.
 	if buf.Len() > 0 {
-		b.totalKeys++
 		appendLine(&b.out, buf.String())
 		buf.Reset()
 	}
 }
 
 func (b *content) EndCollection() {
-	// differentiate the leading header of a collection
-	// from an "inter key" footer ( a final element that never existed )
-	//
-	// # leading header.
-	// # ( shouldnt have anything before it. )
-	// -
-	// # header for a missing next element becomes a footer.
-	// # ( requires a leading form feed. )
-	//
-	if b.totalKeys > 0 {
-		b.nextKeys++
-	}
 	b.flushTerm()
 }
 
@@ -64,9 +51,10 @@ func (b *content) EndCollection() {
 func (b *content) NextTerm() {
 	// note: if there's a sub-collection
 	// its begin() will have stolen our buffer away
+
+	b.flushTerm()
 	b.nextKeys++
 	b.totalKeys++
-	b.flushTerm()
 }
 
 func (b *content) Comment(n Type, str string) {

@@ -73,9 +73,8 @@ type pendingSeq struct {
 }
 
 func (p *pendingSeq) finalize() (ret any) {
-	// fix: pops to indent; but if its handling it -- maybe it should just handle the key too
-	// it cant because of the document level difference
-	// i think it doest get the final end.
+	// i dont like that this *and* the output can generate an implicit nil
+	// maybe "pendingAt" could handle it all in one place.
 	if p.dashed && !p.blockNil {
 		p.setValue(nil)
 	}

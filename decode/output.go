@@ -2,9 +2,8 @@ package decode
 
 import (
 	"errors"
-	"strings"
 
-	"github.com/ionous/tell/collect"
+	"github.com/ionous/tell/note"
 	"github.com/ionous/tell/token"
 )
 
@@ -12,6 +11,7 @@ type output struct {
 	pendingAt
 	stack           pendingStack
 	waitingForValue bool
+	skipTerm        bool // ie. if its already been processed
 }
 
 func (out *output) finalizeAll() (ret any, err error) {
@@ -25,11 +25,48 @@ func (out *output) finalizeAll() (ret any, err error) {
 	return
 }
 
+func (out *output) setPending(at token.Pos, p pendingValue) {
+	out.pendingAt = pendingAt{pos: at, pendingValue: p}
+}
+
 func (out *output) push(at token.Pos, p pendingValue) {
 	out.stack = append(out.stack, out.pendingAt)
 	out.setPending(at, p)
 }
 
+func (out *output) newTerm() {
+	if !out.skipTerm {
+		out.NextTerm()
+		out.skipTerm = true
+	}
+}
+
+// add a header comment, and wait for a new key ( because that's all that can follow )
+func (out *output) newHeader(at token.Pos, str string) (err error) {
+	if e := out.popToIndent(at.X); e != nil {
+		err = e
+	} else {
+		out.newTerm()
+		out.Comment(note.Header, str)
+	}
+	return
+}
+
+// the key is for the same or an earlier collection
+// writes a nil value, before finding the right collection
+func (out *output) newKey(at token.Pos, key string) (err error) {
+	if e := out.popToIndent(at.X); e != nil {
+		err = e
+	} else if e := out.setKey(at.Y, key); e != nil {
+		err = e
+	} else {
+		out.newTerm()
+		out.skipTerm = false
+	}
+	return
+}
+
+// exposed for use by normal collections and arrays.
 func (out *output) setKey(row int, key string) (err error) {
 	if e := out.pendingAt.setKey(key); e != nil {
 		err = e
@@ -40,16 +77,23 @@ func (out *output) setKey(row int, key string) (err error) {
 	return
 }
 
+// add a prefix or suffix comment
+func (out *output) addComment(baseType note.Type, at token.Pos, str string) {
+	noteType := baseType
+	if at.Y == out.pos.Y {
+		noteType++
+	}
+	out.Comment(noteType, str)
+}
+
 func (out *output) setValue(val any) (err error) {
 	out.waitingForValue = false
 	return out.pendingAt.setValue(val)
 }
 
-func (out *output) setPending(at token.Pos, p pendingValue) {
-	out.pendingAt = pendingAt{pos: at, pendingValue: p}
-}
-
-// returns number of pops
+// internal: find the collection indicated by the passed indentation:
+// could be this collection, or a parent.
+// generates an implicit nil if needed
 func (out *output) popToIndent(at int) (err error) {
 	if out.waitingForValue {
 		out.setValue(nil)
@@ -62,7 +106,7 @@ func (out *output) popToIndent(at int) (err error) {
 	return
 }
 
-// returns number of pops; doesnt check that the resulting indent is valid.
+// internal: returns number of pops; doesnt check that the resulting indent is valid.
 func (out *output) uncheckedPop(at int) (ret int, err error) {
 	for ; at < out.pos.X && len(out.stack) > 0; ret++ {
 		if e := out.popTop(); e != nil {
@@ -73,6 +117,7 @@ func (out *output) uncheckedPop(at int) (ret int, err error) {
 	return
 }
 
+// end the current collection or array.
 func (out *output) popTop() (err error) {
 	out.EndCollection()
 	prev := out.finalize()  // finalize the current pending value
@@ -83,34 +128,4 @@ func (out *output) popTop() (err error) {
 		out.pendingAt = next
 	}
 	return
-}
-
-type collector struct {
-	maps          collect.MapFactory
-	seqs          collect.SequenceFactory
-	keepComments  bool
-	commentBuffer strings.Builder
-}
-
-func (f *collector) newCollection(key string) pendingValue {
-	var p pendingValue
-	switch {
-	case len(key) == 0:
-		p = newSequence(f.seqs(f.keepComments), f.keepComments)
-	default:
-		p = newMapping(key, f.maps(f.keepComments))
-	}
-	if f.keepComments {
-		p.BeginCollection(&f.commentBuffer)
-	}
-	return p
-}
-
-func (f *collector) newArray() pendingValue {
-	seq := newSequence(f.seqs(f.keepComments), f.keepComments)
-	seq.blockNil = true
-	if f.keepComments {
-		seq.BeginCollection(&f.commentBuffer)
-	}
-	return seq
 }
