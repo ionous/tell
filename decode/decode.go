@@ -115,7 +115,7 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 	case token.Bool, token.Number, token.String:
 		scalar := pendingScalar{value: val, Taker: d.docBlock}
 		d.out.setPending(at, scalar) // sets doc scalar for "finalizeAll"
-		d.state = d.waitForFooter
+		d.state = d.docSuffix
 
 	default:
 		panic("unknown token")
@@ -127,24 +127,26 @@ func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err err
 func (d *Decoder) docFooter(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
-		if str := val.(string); len(str) > 0 {
-			d.docBlock.Comment(note.Footer, str)
-		}
+		str := val.(string)
+		d.docBlock.Comment(note.Footer, str)
 	default:
-		err = fmt.Errorf("unexpected %s", tokenType)
+		err = fmt.Errorf("unexpected %s while reading document footer", tokenType)
 	}
 	return
 }
 
-// a value had just been decoded, now we need a new key.
-func (d *Decoder) waitForFooter(at token.Pos, tokenType token.Type, val any) (err error) {
+// the document value has just been decoded, process the comments as a suffix:
+func (d *Decoder) docSuffix(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
-		if str := val.(string); len(str) > 0 {
-			err = d.newComment(note.Suffix, at, str)
+		if str := val.(string); at.X > d.out.pos.X {
+			d.addComment(note.Suffix, at, str)
+		} else { // doesn't pop; there's no map or sequence.
+			d.out.Comment(note.Footer, str)
+			d.state = d.docFooter
 		}
 	default:
-		err = fmt.Errorf("unexpected %s", tokenType)
+		err = fmt.Errorf("unexpected %s while reading document suffix", tokenType)
 	}
 	return
 }
@@ -159,12 +161,19 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 		if key := val.(string); at.X > d.out.pos.X {
 			err = fmt.Errorf("unexpected %s", tokenType)
 		} else {
+			// got the key for this or (by popping) a parent collection
+			// and start waiting for value
 			err = d.newKey(at, key)
 		}
 
 	case token.Comment:
-		if str := val.(string); len(str) > 0 {
-			err = d.newComment(note.Suffix, at, str)
+		if str := val.(string); at.X > d.out.pos.X {
+			d.addComment(note.Suffix, at, str)
+		} else {
+			// adds a header for this or (by popping) a parent collection
+			// doesn't generate an implicit nil ( because not waiting for a value )
+			// keeps waiting for a key.
+			err = d.newHeader(at, str)
 		}
 	}
 	return
@@ -192,18 +201,24 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 		}
 
 	case token.Key:
-		// a new collection, or a key for some earlier one:
-		// tbd: error if not +2 spaces?
+		// with a deeper indent, a sub-collection.
 		if key := val.(string); at.X > d.out.pos.X {
 			p := d.collector.newCollection(key)
 			d.out.push(at, p)
 		} else {
+			// a new key for this or (by popping) a parent collection
+			// generates an implicit nil for the value we never encountered.
 			err = d.newKey(at, key)
 		}
 
 	case token.Comment:
-		if str := val.(string); len(str) > 0 {
-			err = d.newComment(note.Prefix, at, str)
+		// a prefix for the still yet to be found value
+		if str := val.(string); at.X > d.out.pos.X {
+			d.addComment(note.Prefix, at, str)
+		} else {
+			// a header for this or (by popping) a parent collection.
+			// generates an implicit nil for the value we never encountered.
+			err = d.newHeader(at, str)
 		}
 
 	default:
@@ -221,35 +236,27 @@ func (d *Decoder) newKey(at token.Pos, key string) (err error) {
 		err = e
 	} else {
 		d.out.NextTerm()
-		d.state = d.waitForValue // same as current state.
+		d.state = d.waitForValue // same as current state
 	}
 	return
 }
 
-func (d *Decoder) newComment(defaultType note.Type, at token.Pos, str string) (err error) {
-	// eat blank lines: they don't change the interpretation here.
-	if d.collector.keepComments {
-		if at.X > d.out.pos.X {
-			noteType := defaultType
-			if at.Y == d.out.pos.Y {
-				noteType++
-			}
-			d.out.Comment(noteType, str)
-		} else {
-			if e := d.out.popToIndent(at.X); e != nil {
-				err = e
-			} else {
-				var noteType note.Type
-				if len(d.out.stack) == 0 {
-					d.state = d.docFooter
-					noteType = note.Footer
-				} else {
-					d.state = d.waitForKey
-					noteType = note.Header
-				}
-				d.out.Comment(noteType, str)
-			}
-		}
+// add a header comment, and wait for a new key ( because that's all that can follow )
+func (d *Decoder) newHeader(at token.Pos, str string) (err error) {
+	if e := d.out.popToIndent(at.X); e != nil {
+		err = e
+	} else {
+		d.out.Comment(note.Header, str)
+		d.state = d.waitForKey
 	}
 	return
+}
+
+// add a prefix or suffix comment
+func (d *Decoder) addComment(baseType note.Type, at token.Pos, str string) {
+	noteType := baseType
+	if at.Y == d.out.pos.Y {
+		noteType++
+	}
+	d.out.Comment(noteType, str)
 }
