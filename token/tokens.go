@@ -52,7 +52,6 @@ func (n *tokenizer) notifyRune(q rune, t Type, v any) (ret charm.State) {
 }
 
 // eat whitespace between tokens;
-// notify when there are fully blank lines.
 // previously, would error if it didnt detect whitespace between tokens
 // however that doesnt work well for arrays. ex: `5,`
 func (n *tokenizer) whitespace(afterIndent bool) charm.State {
@@ -63,10 +62,6 @@ func (n *tokenizer) whitespace(afterIndent bool) charm.State {
 			spaces++
 			ret = self
 		case runes.Newline:
-			if !afterIndent { // blank line
-				leftEdge := Pos{Y: n.curr.Y}
-				n.Notifier.Decoded(leftEdge, Comment, "")
-			}
 			spaces = 0
 			afterIndent = false
 			ret = self
