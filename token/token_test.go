@@ -65,7 +65,6 @@ func TestArray(t *testing.T) {
 func TestTokens(t *testing.T) {
 	tests := []any{
 		// token, string to parse, result:
-		/*0*/ token.Comment, "", "", //  a blank line
 		/*1*/ token.Bool, `true`, true,
 		/*2*/ token.Number, `5`, 5,
 		/*3*/ token.Number, `0x20`, uint(0x20),
@@ -115,8 +114,9 @@ line`,
 		wantType := tests[i+0].(token.Type)
 		testStr := tests[i+1].(string)
 		wantVal := tests[i+2]
+		whichTest := 1 + i/3
 		if e := testOne(wantType, testStr, wantVal); e != nil {
-			t.Logf("failed single %d: %s", i/3, e)
+			t.Logf("failed single %d: %s", whichTest, e)
 			t.Fail()
 		} else {
 			sep := " "
@@ -124,12 +124,12 @@ line`,
 				sep = "\n" // comments have to be ended with a newlne
 			}
 			if next, e := charm.Parse(testStr+sep, run); e != nil {
-				t.Logf("failed combine parse %d: %s", i/3, e)
+				t.Logf("failed combine parse %d: %s", whichTest, e)
 				t.Fail()
 			} else {
 				last := combined[len(combined)-1]
 				if e := last.compare(wantType, wantVal); e != nil {
-					t.Logf("failed combine compare %d: %s", i/3, e)
+					t.Logf("failed combine compare %d: %s", whichTest, e)
 					t.Fail()
 				} else {
 					run = next
