@@ -2,40 +2,30 @@ package tell_test
 
 import (
 	"bufio"
-	"embed"
 	"encoding/json"
 	"io"
-	"path"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ionous/tell"
 	"github.com/ionous/tell/note"
+	"github.com/ionous/tell/testdata"
 )
-
-//go:embed testdata/*.tell
-var tellData embed.FS
-
-//go:embed testdata/*.json
-var jsonData embed.FS
-
-const testFolder = "testdata"
 
 // helper for debugging specific tests
 var focus string
 
 func TestFiles(t *testing.T) {
 	// focus = "trailingComments2"
-	if files, e := tellData.ReadDir(testFolder); e != nil {
+	if files, e := testdata.Tell.ReadDir("."); e != nil {
 		t.Fatal(e)
 	} else {
 		for _, info := range files {
-			shortName := info.Name()
-			tellName := path.Join(testFolder, shortName)
+			tellName := info.Name()
 			jsonName := tellName[:len(tellName)-4] + "json"
 			if (len(focus) > 0 && !strings.Contains(tellName, focus)) ||
-				strings.HasPrefix(shortName, "x_") {
+				strings.HasPrefix(tellName, "x_") {
 				// t.Log("skipping", tellName)
 				continue
 			}
@@ -70,7 +60,7 @@ func stringify(got any) (ret string) {
 }
 
 func readTell(filePath string) (ret any, err error) {
-	if fp, e := tellData.Open(filePath); e != nil {
+	if fp, e := testdata.Tell.Open(filePath); e != nil {
 		err = e
 	} else {
 		var res any
@@ -97,7 +87,7 @@ func readTell(filePath string) (ret any, err error) {
 }
 
 func readJson(filePath string) (ret any, err error) {
-	if fp, e := jsonData.Open(filePath); e != nil {
+	if fp, e := testdata.Json.Open(filePath); e != nil {
 		err = e
 	} else if b, e := io.ReadAll(fp); e != nil {
 		err = e
