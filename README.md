@@ -29,13 +29,11 @@ Related Projects:
 
 Some differences from yaml:
 
+* Documents hold a single value.
 * String literals must be quoted ( as in json. )
 * Multiline strings use a custom heredoc syntax.
-* Except for string literals and comments, tabs are always invalid whitespace.
 * No flow style ( although there is an array syntax. )
-* The order of maps matters.
 * No anchors or references.
-* Documents hold a single value.
 * Comments can be captured during decoding, and returned as part of the data.
 
 It isn't intended to be a subset of yaml, but it tries to be close enough to leverage some syntax highlighting in markdown, editors, etc.
@@ -43,7 +41,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.4
+Version 0.5
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -53,9 +51,9 @@ The go implementation successfully reads and writes some well-formed documents.
 
 ### Missing features
 
+* serialization of structs not supported ( only maps, slices, and primitive values. )
 * comment blocks don't serialize yet ( re: "fix" in encodeComments.go )
 * arrays should support nested arrays; arrays should support comments.
-* no serialization of structs ( only maps, slices, and primitives. )
 * error reporting needs improvement.
 
 see also the [issues page](https://github.com/ionous/tell/issues).
@@ -261,4 +259,6 @@ Changes
   - encoding/decoding heredocs for multiline strings
   - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
   - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
-  
+ 
+ 0.4->0.5:
+ 	- simplify comment handling
