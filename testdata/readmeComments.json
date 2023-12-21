@@ -1,0 +1,34 @@
+{
+    "content":
+    {
+        "": "\f# Does this look suspiciously like the yaml overview?\n# I have no idea how that could have happened.",
+        "Tell:": "A yaml-like text format.",
+        "What It Is:": "A way of describing data containing string, number, and boolean values, and collections of those values. As in yaml, collections can be both key-value mappings, and sequences of values.",
+        "What It Is Not:": "A subset of yaml.",
+        "Can Contain:":
+        [
+            "\f\r\r\n# supports c,go,python,etc. style escape codes",
+            [
+                "",
+                "Some javascript-ish values"
+            ],
+            [
+                "",
+                5,
+                2.3,
+                0.001,
+                32,
+                "\n",
+                "🐈",
+                "🐈"
+            ]
+        ],
+        "Related Projects:":
+        [
+            "\r\r# https://yaml.org/\f\r\r# http://json.org/\f\r\r# https://nestedtext.org/",
+            "YAML",
+            "JSON",
+            "NestedText"
+        ]
+    }
+}

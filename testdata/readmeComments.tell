@@ -1,0 +1,21 @@
+Tell: "A yaml-like text format."
+
+# Does this look suspiciously like the yaml overview?
+# I have no idea how that could have happened.
+What It Is: """
+   A way of describing data containing string, number, and boolean values,
+   and collections of those values. As in yaml, collections can be
+   both key-value mappings, and sequences of values.
+   """
+
+What It Is Not: "A subset of yaml."
+
+Can Contain:
+    - ["Some javascript-ish values"]
+    - [ 5, 2.3, 1e-3, 0x20, "\n", "🐈", "\U0001f408" ]
+      # supports c,go,python,etc. style escape codes
+
+Related Projects:
+  - "YAML"       # https://yaml.org/
+  - "JSON"       # http://json.org/
+  - "NestedText" # https://nestedtext.org/

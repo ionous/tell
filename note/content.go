@@ -38,6 +38,7 @@ func (b *content) BeginCollection(buf *strings.Builder) {
 	// steal it from the shared buffer, and use it as
 	// the header of the first element.
 	if buf.Len() > 0 {
+		b.totalKeys++
 		appendLine(&b.out, buf.String())
 		buf.Reset()
 	}
