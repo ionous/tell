@@ -100,8 +100,8 @@ func testEncoding(t *testing.T, pairs ...any) (err error) {
 			break
 		} else {
 			if got := buf.String(); got != expect {
-				t.Logf("have %s", got)
-				t.Logf("want %s", expect)
+				t.Logf("have\n%s", got)
+				t.Logf("want\n%s", expect)
 				//
 				err = fmt.Errorf("failed test #%d", i/2)
 				break

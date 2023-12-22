@@ -23,9 +23,15 @@ func (tab *TabWriter) Tab() {
 	tab.spaces += 2
 }
 
-func (tab *TabWriter) Newline() {
+func (tab *TabWriter) Softline() {
 	tab.nextLine = true
 	tab.spaces = 0
+}
+
+func (tab *TabWriter) OptionalLine(b bool) {
+	if b {
+		tab.Softline()
+	}
 }
 
 // inc: increases the current indent
@@ -91,7 +97,7 @@ func (tab *TabWriter) WriteRune(q rune) (ret int, err error) {
 
 func (tab *TabWriter) writeLine(str string) {
 	tab.WriteString(str)
-	tab.Newline()
+	tab.Softline()
 }
 
 func (tab *TabWriter) writeLines(lines []string) {

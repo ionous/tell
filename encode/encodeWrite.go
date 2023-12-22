@@ -7,7 +7,7 @@ func fixedWrite(tab *TabWriter, suffix []string) {
 	prevDepth := tab.depth
 	first, rest := suffix[0], suffix[1:]
 	if inline := len(first) > 0; !inline {
-		tab.Newline()
+		tab.Softline()
 		tab.depth += 2
 	} else {
 		tab.WriteRune(runes.Space)
