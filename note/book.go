@@ -23,10 +23,11 @@ func (p *Book) NextTerm() {
 		p.book.NextTerm()
 	}
 }
-func (p *Book) Comment(kind Type, str string) {
+func (p *Book) Comment(kind Type, str string) (err error) {
 	if p.book.buf != nil {
-		p.book.Comment(kind, str)
+		err = p.book.Comment(kind, str)
 	}
+	return
 }
 func (p *Book) Resolve() (ret string, okay bool) {
 	if p.book.buf != nil {

@@ -46,8 +46,8 @@ func (out *output) newHeader(at token.Pos, str string) (err error) {
 	if e := out.popToIndent(at.X); e != nil {
 		err = e
 	} else {
-		out.newTerm()
-		out.Comment(note.Header, str)
+		out.newTerm() // can be called multiple times
+		err = out.Comment(note.Header, str)
 	}
 	return
 }
@@ -78,12 +78,12 @@ func (out *output) setKey(row int, key string) (err error) {
 }
 
 // add a prefix or suffix comment
-func (out *output) addComment(baseType note.Type, at token.Pos, str string) {
+func (out *output) addComment(baseType note.Type, at token.Pos, str string) error {
 	noteType := baseType
 	if at.Y == out.pos.Y {
-		noteType++
+		noteType--
 	}
-	out.Comment(noteType, str)
+	return out.Comment(noteType, str)
 }
 
 func (out *output) setValue(val any) (err error) {

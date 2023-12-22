@@ -93,9 +93,8 @@ func (d *Decoder) decodeDoc() charm.State {
 func (d *Decoder) docStart(at token.Pos, tokenType token.Type, val any) (err error) {
 	switch tokenType {
 	case token.Comment:
-		if str := val.(string); len(str) > 0 {
-			d.docBlock.Comment(note.Header, str)
-		}
+		str := val.(string)
+		err = d.docBlock.Comment(note.Header, str)
 
 	case token.Key:
 		key := val.(string)
@@ -128,7 +127,7 @@ func (d *Decoder) docFooter(at token.Pos, tokenType token.Type, val any) (err er
 	switch tokenType {
 	case token.Comment:
 		str := val.(string)
-		d.docBlock.Comment(note.Footer, str)
+		err = d.docBlock.Comment(note.Footer, str)
 	default:
 		err = fmt.Errorf("unexpected %s while reading document footer", tokenType)
 	}
@@ -140,9 +139,10 @@ func (d *Decoder) docSuffix(at token.Pos, tokenType token.Type, val any) (err er
 	switch tokenType {
 	case token.Comment:
 		if str := val.(string); at.X > d.out.pos.X {
-			d.out.addComment(note.Suffix, at, str)
+			err = d.out.addComment(note.Suffix, at, str)
+		} else if e := d.out.Comment(note.Footer, str); e != nil {
+			err = e
 		} else { // doesn't pop; there's no map or sequence.
-			d.out.Comment(note.Footer, str)
 			d.state = d.docFooter
 		}
 	default:
@@ -167,7 +167,7 @@ func (d *Decoder) waitForKey(at token.Pos, tokenType token.Type, val any) (err e
 		}
 	case token.Comment:
 		if str := val.(string); at.X > d.out.pos.X {
-			d.out.addComment(note.Suffix, at, str)
+			err = d.out.addComment(note.Suffix, at, str)
 		} else if e := d.out.newHeader(at, str); e != nil {
 			err = e
 		} else {
@@ -214,7 +214,7 @@ func (d *Decoder) waitForValue(at token.Pos, tokenType token.Type, val any) (err
 	case token.Comment:
 		// a prefix for the still yet to be found value
 		if str := val.(string); at.X > d.out.pos.X {
-			d.out.addComment(note.Prefix, at, str)
+			err = d.out.addComment(note.Prefix, at, str)
 		} else if e := d.out.newHeader(at, str); e != nil {
 			err = e
 		} else {

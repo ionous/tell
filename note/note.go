@@ -12,7 +12,8 @@ type Taker interface {
 	// passing nil will disable comment collection.
 	BeginCollection(*strings.Builder)
 	// record a comment
-	Comment(Type, string)
+	// returns error if the the type of comment was unexpected for the current context
+	Comment(Type, string) error
 	// separates comments for each term within a collection
 	// ( terms in a sequence are indicated by a dash
 	//   terms in a mapping are indicated by a signature style key )

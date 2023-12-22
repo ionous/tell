@@ -1,5 +1,6 @@
 # Catalog header
 catalog:
+  # First item header
   - name: "First item" # Inline suffix
                        # Aligned comment
     options:
@@ -8,7 +9,8 @@ catalog:
       - "Square"
         # Trailing suffix
     attributes: []
-  # Second item header
+  # Second item
+  # header
   - name: "Second item"
     # Options header
     options: 

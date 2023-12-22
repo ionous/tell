@@ -1,6 +1,7 @@
 package note
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ionous/tell/runes"
@@ -44,110 +45,71 @@ func (b *content) BeginCollection(buf *strings.Builder) {
 }
 
 func (b *content) EndCollection() {
-	b.flushTerm()
+	b.flushLast()
 }
 
 // new key in this block
 func (b *content) NextTerm() {
 	// note: if there's a sub-collection
 	// its begin() will have stolen our buffer away
-
-	b.flushTerm()
+	b.flushLast()
 	b.nextKeys++
 	b.totalKeys++
+	b.lastNote = None
 }
 
-func (b *content) Comment(n Type, str string) {
-	switch n {
-	case Header:
-		appendLine(b.buf, str)
-
-	case Prefix, PrefixInline:
-		if n != PrefixInline {
-			b.buf.WriteRune(runes.Newline)
+func (b *content) Comment(n Type, str string) (err error) {
+	if was := b.lastNote; n < was {
+		// NextTerm would normally handle this.
+		err = fmt.Errorf("unexpected transition from %q to %q", n, was)
+	} else {
+		// advanced the comment type?
+		if n.withoutInline() != was.withoutInline() {
+			if was != None {
+				b.flushLast()
+			}
+			b.lastNote = n
 		}
-		b.buf.WriteString(str)
-
-	case Suffix, SuffixInline:
-		b.writeKeys()
-		b.writeHeader()
-		b.writePrefix()
-		b.writePadding(2)
-		if n != SuffixInline {
-			b.out.WriteRune(runes.Newline)
-		}
-		b.out.WriteString(str)
-
-	case Footer:
-		b.writeKeys()
-		b.writeHeader()
-		b.writePrefix()
-		if b.lastNote != Footer {
-			b.out.WriteRune(runes.NextTerm)
+		if n != Footer {
+			appendLine(b.buf, str)
 		} else {
-			b.out.WriteRune(runes.Newline)
+			if was != Footer {
+				b.out.WriteRune(runes.NextTerm)
+			} else {
+				b.out.WriteRune(runes.Newline)
+			}
+			b.out.WriteString(str)
 		}
+	}
+	return
+}
+
+func (b *content) flushLast() {
+	if str := b.buf.String(); len(str) > 0 {
+		b.buf.Reset()
+		// form feeds
+		if b.nextKeys > 0 {
+			for i := 0; i < b.nextKeys; i++ {
+				b.out.WriteRune(runes.NextTerm)
+			}
+			b.nextKeys = 0
+			b.markerCount = 0
+		}
+		// markers
+		if mark := b.lastNote.mark(); mark > 0 {
+			if b.markerCount < mark {
+				for i := b.markerCount; i < mark; i++ {
+					b.out.WriteRune(runes.KeyValue)
+				}
+				b.markerCount = mark
+			}
+			// inline vs trailing
+			if !b.lastNote.inline() {
+				b.out.WriteRune(runes.Newline)
+			}
+		}
+		// the buffered content
 		b.out.WriteString(str)
-
-	default:
-		panic("unknown comment")
-	}
-	b.lastNote = n
-}
-
-func (b *content) flushTerm() {
-	// if there's a buffer, it might be for the prefix or header.
-	// either way, we need to write the form feeds first.
-	//
-	// FirstKey: # inline prefix
-	// # header for next key
-	// NextTerm:
-	//
-	if b.buf.Len() > 0 {
-		b.writeKeys()
-		b.writeHeader()
-		b.writePrefix()
-	}
-}
-
-func (b *content) writeKeys() {
-	if b.nextKeys > 0 {
-		for i := 0; i < b.nextKeys; i++ {
-			b.out.WriteRune(runes.NextTerm)
-		}
-		b.nextKeys = 0
-		b.markerCount = 0
-	}
-}
-
-func (b *content) writeHeader() {
-	if b.lastNote == Header {
-		if str := b.buf.String(); len(str) > 0 {
-			b.out.WriteString(str)
-			b.buf.Reset()
-		}
-		b.lastNote = None
-	}
-}
-
-func (b *content) writePrefix() {
-	if b.lastNote.Prefix() {
-		if str := b.buf.String(); len(str) > 0 {
-			b.writePadding(1)
-			b.out.WriteString(str)
-			b.buf.Reset()
-		}
-		b.lastNote = None
-	}
-}
-
-func (b *content) writePadding(markers int) {
-	b.writeKeys()
-	if b.markerCount < markers {
-		for i := b.markerCount; i < markers; i++ {
-			b.out.WriteRune(runes.KeyValue)
-		}
-		b.markerCount = markers
 	}
 }
 
