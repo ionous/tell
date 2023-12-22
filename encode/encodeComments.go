@@ -86,15 +86,17 @@ func (c *commentBlock) GetComment() (ret Comment) {
 	if curr := c.curr; len(curr) > 0 {
 		parts := strings.Split(curr, string(runes.KeyValue))
 		for i, p := range parts {
-			lines := strings.Split(p, string(runes.Newline))
-			switch i {
-			case 0:
-				ret.Header = lines
-			case 1:
-				ret.Prefix = lines
-			case 2:
-				ret.Suffix = lines
-				// error?
+			if len(p) > 0 {
+				lines := strings.Split(p, string(runes.Newline))
+				switch i {
+				case 0:
+					ret.Header = lines
+				case 1:
+					ret.Prefix = lines
+				case 2:
+					ret.Suffix = lines
+					// error?
+				}
 			}
 		}
 	}
