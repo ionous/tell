@@ -132,7 +132,7 @@ A scalar value always appears on a single line. There is no null keyword, null i
 And, for describing explicit unicode points, `tell` uses the same rules as Go, namely: `\x` escapes for any unprintable ascii chars (bytes less than 128), `\u` for unprintable code points of less than 3 bytes, and `\U` for (four?) the rest.
 
 ### Arrays
-Arrays use a syntax similar to javascript  (ex. `[1, 2, , 3]` ) except that a comma with no explicit value indicates a null value. Arrays cannot contain collections; heredocs in arrays are discouraged. _( fix: Currently, arrays cannot contain other arrays, nor can they contain comments. )_ 
+Arrays use a syntax similar to javascript  (ex. `[1, 2, ,3]` ) except that a comma with no explicit value indicates a null value. Arrays cannot contain collections; heredocs in arrays are discouraged. _( fix: Currently, arrays cannot contain other arrays, nor can they contain comments. )_ 
 
 #### Sequences
 Sequences define an ordered list of values. 
@@ -240,13 +240,13 @@ Hate me forever, comments are preserved, are significant, and introduce their ow
 
 **Rationale:** Comments are a good mechanism for communicating human intent. In [Tapestry](https://git.sr.ht/~ionous/tapestry), story files can be edited by hand, visually edited using blockly, or even extracted to present documentation; therefore, it's important to preserve an author's comments across different transformations. ( This was one of the motivations for creating tell. )
 
-As in yaml, tell comments begin with the `#` hash, **followed by a space**, and continue to the end of a line. Comments cannot appear within a scalar _( **TBD**: comma separated arrays split across lines might be an exception. )_  
+Similar to yaml, tell comments begin with the `#` hash, **followed by a space**, and continue to the end of a line. Comments cannot appear within a scalar _( **TBD**: comma separated arrays split across lines might be an exception. )_  
 
 This implementation stores the comments for a collection in a string called a "comment block". Each collection has its own comment block stored in the zeroth element of its sequence, the blank key of its mappings, or the comment field of its document.
 
 **When comments are preserved, collections are one-indexed.** On the bright side, this means that no special types are needed to store tell data: just native go maps and slices. 
 
-The readme in package notes gets into all the specifics.
+The readme in package note gets into all the specifics.
 
 
 Changes

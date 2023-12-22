@@ -1,0 +1,36 @@
+{
+  "content": {
+    "": "# Catalog header\f# Something here at the end.",
+    "catalog:": [
+      "",
+      {
+        "": "\r\r# Inline suffix",
+        "name:": "First item",
+        "options:": [
+          "\r# Inline prefix\f\r\r\n# Trailing suffix",
+          "Round",
+          "Square"
+        ],
+        "attributes:": [
+          ""
+        ]
+      },
+      {
+        "": "# Second item header",
+        "name:": "Second item",
+        "options:": [
+          "# Options header\r\n# A non-inline prefix",
+          "Big",
+          "Big description for a big entry."
+        ],
+        "attributes:": [
+          "",
+          1,
+          2,
+          null,
+          null
+        ]
+      }
+    ]
+  }
+}

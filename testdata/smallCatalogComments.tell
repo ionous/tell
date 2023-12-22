@@ -1,0 +1,22 @@
+# Catalog header
+catalog:
+  - name: "First item" # Inline suffix
+    options:
+      - # Inline prefix
+        "Round"
+      - "Square"
+        # Trailing suffix
+    attributes: []
+  # Second item header
+  - name: "Second item"
+    # Options header
+    options: 
+      -
+        # A non-inline prefix
+        "Big"
+      - """
+      Big description for a big
+      entry.
+      """
+    attributes: [1,2,,]
+# Something here at the end.

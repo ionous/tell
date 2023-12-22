@@ -3,7 +3,7 @@ package tell_test
 import (
 	"bufio"
 	"encoding/json"
-	"io"
+	"io/fs"
 	"reflect"
 	"strings"
 	"testing"
@@ -86,10 +86,10 @@ func readTell(filePath string) (ret any, err error) {
 	return
 }
 
+// given one of the json files in the tesdata directory;
+// read its contents and return the result
 func readJson(filePath string) (ret any, err error) {
-	if fp, e := testdata.Json.Open(filePath); e != nil {
-		err = e
-	} else if b, e := io.ReadAll(fp); e != nil {
+	if b, e := fs.ReadFile(testdata.Json, filePath); e != nil {
 		err = e
 	} else if e := json.Unmarshal(b, &ret); e != nil {
 		err = e
