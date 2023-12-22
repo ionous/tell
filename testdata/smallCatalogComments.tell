@@ -1,6 +1,7 @@
 # Catalog header
 catalog:
   - name: "First item" # Inline suffix
+                       # Aligned comment
     options:
       - # Inline prefix
         "Round"

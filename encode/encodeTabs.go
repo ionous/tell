@@ -8,10 +8,11 @@ import (
 )
 
 type TabWriter struct {
-	depth  int
-	spaces int
-	lines  int
-	io.Writer
+	depth    int // requested leading spaces on each new line
+	spaces   int
+	nextLine bool
+	Writer   io.Writer
+	xpos     int
 }
 
 // a soft space -- eaten if theres a newline
@@ -23,7 +24,7 @@ func (tab *TabWriter) Tab() {
 }
 
 func (tab *TabWriter) Newline() {
-	tab.lines++
+	tab.nextLine = true
 	tab.spaces = 0
 }
 
@@ -31,12 +32,12 @@ func (tab *TabWriter) Newline() {
 // line: increases the current line
 func (tab *TabWriter) Indent(inc bool, line bool) {
 	if inc {
-		tab.depth++
+		tab.depth += 2
 	} else {
-		tab.depth--
+		tab.depth -= 2
 	}
 	if line {
-		tab.lines++
+		tab.nextLine = true
 		tab.spaces = 0
 	}
 }
@@ -44,10 +45,11 @@ func (tab *TabWriter) Indent(inc bool, line bool) {
 // call before writing runes or strings
 // advances the line and pads the indent
 func (tab *TabWriter) pad() {
-	if tab.lines > 0 {
+	if tab.nextLine {
+		tab.nextLine = false
 		runes.WriteRune(tab.Writer, runes.Newline)
-		writeSpaces(tab.Writer, tab.depth*2)
-		tab.lines = 0
+		writeSpaces(tab.Writer, tab.depth)
+		tab.xpos = tab.depth
 	}
 	//
 	tab.writeSpaces()
@@ -56,6 +58,7 @@ func (tab *TabWriter) pad() {
 func (tab *TabWriter) writeSpaces() {
 	if tab.spaces > 0 {
 		writeSpaces(tab.Writer, tab.spaces)
+		tab.xpos += tab.spaces
 		tab.spaces = 0
 	}
 }
@@ -76,12 +79,25 @@ func (tab *TabWriter) Escape(s string) {
 
 func (tab *TabWriter) WriteString(s string) (int, error) {
 	tab.pad()
+	tab.xpos += len(s) // approximate
 	return io.WriteString(tab.Writer, s)
 }
 
 func (tab *TabWriter) WriteRune(q rune) (ret int, err error) {
 	tab.pad()
+	tab.xpos += 1 // approximate
 	return runes.WriteRune(tab.Writer, q)
+}
+
+func (tab *TabWriter) writeLine(str string) {
+	tab.WriteString(str)
+	tab.Newline()
+}
+
+func (tab *TabWriter) writeLines(lines []string) {
+	for _, line := range lines {
+		tab.writeLine(line)
+	}
 }
 
 func writeSpaces(w io.Writer, cnt int) {

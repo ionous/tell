@@ -4,7 +4,7 @@
     "catalog:": [
       "",
       {
-        "": "\r\r# Inline suffix",
+        "": "\r\r# Inline suffix\n# Aligned comment",
         "name:": "First item",
         "options:": [
           "\r# Inline prefix\f\r\r\n# Trailing suffix",
