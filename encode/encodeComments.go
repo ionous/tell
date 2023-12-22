@@ -8,9 +8,9 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// an implementation of CommentFactory that walks the passed comments
+// an implementation of CommentFactory that walks the passed slice.
 func Comments(els []Comment) CommentIter {
-	return &comments{next: els}
+	return &commentSlice{next: els}
 }
 
 // an implementation of CommentFactory which generates no comments.
@@ -19,23 +19,20 @@ func DiscardComments(r.Value) (CommentIter, error) {
 }
 
 // implement CommentFactory.
-// expects that the value  expecting an interface type with an underlying string
+// expects that the value is a kind of string
 // containing a standard tell comment block
 func CommentBlock(v r.Value) (ret CommentIter, err error) {
 	if str, e := ExtractString(v); e != nil {
 		err = fmt.Errorf("comment factory %s", e)
 	} else {
-		ret = &cit{rest: str}
+		ret = &commentBlock{rest: str}
 	}
 	return
 }
 
-// a helper which, given a reflected value with an underlying string value
-// returns that string. ( for example, from `var comment any = "string"` )
-func ExtractString(v r.Value) (ret string, err error) {
-	if k := v.Kind(); k != r.Interface {
-		err = fmt.Errorf("expected an interface value; got %s(%s)", k, v.Type())
-	} else if el := v.Elem(); el.Kind() != r.String {
+// a helper which, given a reflected string value returns that string.
+func ExtractString(el r.Value) (ret string, err error) {
+	if el.Kind() != r.String {
 		err = fmt.Errorf("expected an underlying string; got %s(%s)", el.Kind(), el.Type())
 	} else {
 		ret = el.String()
@@ -43,12 +40,19 @@ func ExtractString(v r.Value) (ret string, err error) {
 	return
 }
 
-type comments struct {
+// forever. nothing.
+type noComments struct{}
+
+func (s noComments) Next() (_ bool)          { return }
+func (s noComments) GetComment() (_ Comment) { return }
+
+// iterate over pre-built comments
+type commentSlice struct {
 	curr Comment
 	next []Comment
 }
 
-func (s *comments) Next() (okay bool) {
+func (s *commentSlice) Next() (okay bool) {
 	if okay = len(s.next) > 0; !okay {
 		s.curr = Comment{}
 	} else {
@@ -57,15 +61,16 @@ func (s *comments) Next() (okay bool) {
 	return
 }
 
-func (s *comments) GetComment() Comment {
+func (s *commentSlice) GetComment() Comment {
 	return s.curr
 }
 
-type cit struct {
+// walk a comment block string
+type commentBlock struct {
 	curr, rest string
 }
 
-func (c *cit) Next() (okay bool) {
+func (c *commentBlock) Next() (okay bool) {
 	if okay = len(c.rest) > 0; okay {
 		if i := strings.IndexRune(c.rest, runes.NextTerm); i < 0 {
 			c.curr = c.rest
@@ -77,9 +82,21 @@ func (c *cit) Next() (okay bool) {
 	return
 }
 
-func (c *cit) GetComment() Comment {
+func (c *commentBlock) GetComment() (ret Comment) {
 	if curr := c.curr; len(curr) > 0 {
-		// FIX: not implemented!
+		parts := strings.Split(curr, string(runes.KeyValue))
+		for i, p := range parts {
+			lines := strings.Split(p, string(runes.Newline))
+			switch i {
+			case 0:
+				ret.Header = lines
+			case 1:
+				ret.Prefix = lines
+			case 2:
+				ret.Suffix = lines
+				// error?
+			}
+		}
 	}
-	return Comment{}
+	return
 }

@@ -1,10 +1,17 @@
-package encode
+package encode_test
 
 import (
 	_ "embed"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
+
+	"github.com/ionous/tell/collect/orderedmap"
+	"github.com/ionous/tell/encode"
+	"github.com/ionous/tell/testdata"
 )
 
 //go:embed encodedTest.tell
@@ -48,17 +55,44 @@ becomes a heredoc.
 	}
 }
 
+func TestCommentEncoding(t *testing.T) {
+	filePath := "smallCatalogComments.json"
+	if e := func() (err error) {
+		if b, e := fs.ReadFile(testdata.Json, filePath); e != nil {
+			err = e
+		} else {
+			var m orderedmap.OrderedMap
+			if e := json.Unmarshal(b, &m); e != nil {
+				err = e
+			} else if src, ok := m.Get("content"); !ok {
+				err = errors.New("missing content")
+			} else {
+				var buf strings.Builder
+				enc := encode.MakeCommentEncoder(&buf)
+				if e := enc.Encode(&src); e != nil {
+					err = e
+				}
+				t.Log("\n" + buf.String())
+			}
+		}
+		return
+	}(); e != nil {
+		t.Fatal(e)
+	}
+}
+
 func line(s string) string {
 	return s + "\n"
 }
 
+// tests without comments
 func testEncoding(t *testing.T, pairs ...any) (err error) {
 	cnt := len(pairs)
 	if cnt&1 != 0 {
 		panic("mismatched tests")
 	}
 	var buf strings.Builder
-	enc := MakeEncoder(&buf)
+	enc := encode.MakeEncoder(&buf)
 	for i := 0; i < cnt; i += 2 {
 		src, expect := pairs[i], pairs[i+1].(string)
 		if e := enc.Encode(src); e != nil {
@@ -68,7 +102,7 @@ func testEncoding(t *testing.T, pairs ...any) (err error) {
 			if got := buf.String(); got != expect {
 				t.Logf("have %s", got)
 				t.Logf("want %s", expect)
-
+				//
 				err = fmt.Errorf("failed test #%d", i/2)
 				break
 			}

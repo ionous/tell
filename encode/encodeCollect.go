@@ -2,16 +2,16 @@ package encode
 
 import r "reflect"
 
-// if an interface value implements the Mapper,this will control serialization
+// controls serialization when implemented by an encoding value
 // see also MappingFactory
-type Mapper interface {
-	TellMapping(enc *Encoder) MappingIter
+type TellMapping interface {
+	TellMapping() MappingIter
 }
 
-// if an interface value implements the Sequence, this will control serialization
+// controls serialization when implemented by an encoding value
 // see also SequenceFactory
-type Sequencer interface {
-	TellSequence(enc *Encoder) SequenceIter
+type TellSequence interface {
+	TellSequence() SequenceIter
 }
 
 // factory function for serializing native maps
@@ -33,13 +33,11 @@ type MappingIter interface {
 	Next() bool // called before every element, false if there are no more elements
 	GetKey() string
 	GetValue() any // valid after next returns true
-	GetComment() Comment
 }
 
 type SequenceIter interface {
 	Next() bool    // called before every element, false if there are no more elements
 	GetValue() any // valid after next returns true
-	GetComment() Comment
 }
 
 // if implemented by the implementation of MappingIter or SequenceIter
