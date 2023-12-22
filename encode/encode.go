@@ -46,9 +46,9 @@ func (enc *Encoder) Encode(v any) (err error) {
 	} else {
 		// ends with an artificial newline
 		// fwiw: i guess go's json does too.
-		tabs := &enc.Tabs
-		tabs.Softline()
-		tabs.pad()
+		tab := &enc.Tabs
+		tab.Softline()
+		tab.pad()
 	}
 	return
 }
@@ -59,14 +59,14 @@ func (enc *Encoder) writeHere(str string) (okay bool) {
 		lines := strings.FieldsFunc(str, func(q rune) bool {
 			return q == runes.Newline
 		})
-		tabs := &enc.Tabs
-		tabs.WriteString(`"""`)
-		tabs.Softline()
+		tab := &enc.Tabs
+		tab.WriteString(`"""`)
+		tab.Softline()
 		for _, el := range lines {
-			tabs.Escape(el)
-			tabs.Softline()
+			tab.Escape(el)
+			tab.Softline()
 		}
-		tabs.WriteString(`"""`)
+		tab.WriteString(`"""`)
 	}
 	return
 }
@@ -77,17 +77,15 @@ func (enc *Encoder) writeHere(str string) (okay bool) {
 func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 	// skips nil values; hrm.
 	if v.IsValid() {
-		tabs := &enc.Tabs
+		tab := &enc.Tabs
 
 		if t := v.Type(); t.Implements(mappingType) {
 			m := v.Interface().(TellMapping)
-			tabs.OptionalLine(wasMaps)
-			err = enc.WriteMapping(m.TellMapping())
+			err = enc.WriteMapping(m.TellMapping(), wasMaps)
 
 		} else if t.Implements(sequenceType) {
 			m := v.Interface().(TellSequence)
-			tabs.OptionalLine(wasMaps)
-			err = enc.WriteSequence(m.TellSequence())
+			err = enc.WriteSequence(m.TellSequence(), wasMaps)
 		} else {
 			switch k := v.Kind(); k {
 			case r.Pointer, r.Interface:
@@ -95,30 +93,30 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 
 			case r.Bool:
 				str := formatBool(v)
-				tabs.WriteString(str)
+				tab.WriteString(str)
 
 			case r.Int, r.Int8, r.Int16, r.Int32, r.Int64:
 				str := formatInt(v)
-				tabs.WriteString(str)
+				tab.WriteString(str)
 
 			case r.Uint, r.Uint8, r.Uint16, r.Uint32, r.Uint64:
 				// tbd: tag for format? ( hex, #, etc. )
 				str := formatUint(v)
-				tabs.WriteString(str)
+				tab.WriteString(str)
 
 			case r.Float32, r.Float64:
 				str := formatFloat(v)
 				if f := v.Float(); math.IsInf(f, 0) || math.IsNaN(f) {
 					err = fmt.Errorf("unsupported value %s", str)
 				} else {
-					tabs.WriteString(str)
+					tab.WriteString(str)
 				}
 
 			case r.String:
 				// fix: determine wrapping based on settings?
 				// select raw strings based on the presence of escapes?
 				if str := v.String(); !enc.writeHere(str) {
-					tabs.Quote(str)
+					tab.Quote(str)
 				}
 
 			case r.Array, r.Slice:
@@ -126,19 +124,18 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 				if it, e := enc.Sequencer(v); e != nil {
 					err = e
 				} else if it == nil {
-					tabs.WriteRune(runes.ArrayOpen)
-					tabs.WriteRune(runes.ArrayClose)
+					tab.WriteRune(runes.ArrayOpen)
+					tab.WriteRune(runes.ArrayClose)
 				} else {
-					tabs.OptionalLine(wasMaps)
-					err = enc.WriteSequence(it)
+					err = enc.WriteSequence(it, wasMaps)
 				}
 
 			case r.Map:
 				if it, e := enc.Mapper(v); e != nil {
 					err = e
 				} else if it != nil {
-					tabs.OptionalLine(wasMaps)
-					err = enc.WriteMapping(it)
+
+					err = enc.WriteMapping(it, wasMaps)
 				}
 
 			default:
@@ -170,16 +167,16 @@ func getValue(v interface{ GetValue() any }) (ret r.Value) {
 	return
 }
 
-func (enc *Encoder) WriteMapping(it MappingIter) (err error) {
-	return enc.writeCollection(it, true)
+func (enc *Encoder) WriteMapping(it MappingIter, wasMaps bool) (err error) {
+	return enc.writeCollection(it, wasMaps, true)
 }
 
-func (enc *Encoder) WriteSequence(it SequenceIter) (err error) {
+func (enc *Encoder) WriteSequence(it SequenceIter, wasMaps bool) (err error) {
 	a := sequenceAdapter{it}
-	return enc.writeCollection(a, false)
+	return enc.writeCollection(a, wasMaps, false)
 }
 
-func (enc *Encoder) writeCollection(it MappingIter, maps bool) (err error) {
+func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err error) {
 	tab := &enc.Tabs
 	hasNext := it.Next() // dance around the possibly blank first element
 	if !hasNext {
@@ -211,6 +208,7 @@ func (enc *Encoder) writeCollection(it MappingIter, maps bool) (err error) {
 		}
 		return // early out.
 	}
+	tab.OptionalLine(wasMaps)
 	//
 	for hasNext {
 		key, val := it.GetKey(), getValue(it)
@@ -221,40 +219,28 @@ func (enc *Encoder) writeCollection(it MappingIter, maps bool) (err error) {
 		}
 		// header comment:
 		tab.writeLines(cmt.Header)
-		// key:
+		// key; friendliness; write a separating colon if needed.
 		tab.WriteString(key)
-		// friendliness; write a separating colon if needed.
 		if maps && key[len(key)-1] != runes.Colon {
 			tab.WriteRune(runes.Colon)
 		}
-		/// * INDENT?
-		tab.Indent(true, false) // nextIndent != IndentWithoutLine)
-
-		// prefix comment:
-		if prefix := cmt.Prefix; len(prefix) == 0 {
-			tab.Space()
-		} else {
-			fixedWrite(tab, prefix)
+		tab.Indent(true, false)
+		{
+			// prefix comment:
+			if prefix := cmt.Prefix; len(prefix) == 0 {
+				tab.Space()
+			} else {
+				fixedWrite(tab, prefix)
+			}
+			// value: recursive!
+			if e := enc.WriteValue(val, maps); e != nil {
+				err = e
+				break
+			}
+			if suffix := cmt.Suffix; len(suffix) > 0 {
+				fixedWrite(tab, suffix)
+			}
 		}
-		// var nextIndent Indent
-		// if maps {
-		// 	nextIndent = IndentInline
-		// } else {
-		// 	nextIndent = IndentWithoutLine
-		// }
-		// value: recursive!
-		if e := enc.WriteValue(val, maps); e != nil {
-			err = e
-			break
-		}
-
-		if suffix := cmt.Suffix; len(suffix) == 0 {
-			tab.Softline()
-		} else {
-			fixedWrite(tab, suffix)
-		}
-
-		/// UNINDENT +/- yhr etiyr
 		tab.Indent(false, true)
 	}
 
