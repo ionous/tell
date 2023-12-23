@@ -1,17 +1,16 @@
 package decode
 
 import (
-	"strings"
-
 	"github.com/ionous/tell/collect"
+	"github.com/ionous/tell/note"
 )
 
 // factory for collections, arrays, and comments
 type collector struct {
-	maps          collect.MapFactory
-	seqs          collect.SequenceFactory
-	keepComments  bool
-	commentBuffer strings.Builder
+	maps           collect.MapFactory
+	seqs           collect.SequenceFactory
+	keepComments   bool
+	commentContext note.Context
 }
 
 func (f *collector) newCollection(key string) pendingValue {
@@ -23,7 +22,7 @@ func (f *collector) newCollection(key string) pendingValue {
 		p = newMapping(key, f.maps(f.keepComments))
 	}
 	if f.keepComments {
-		p.BeginCollection(&f.commentBuffer)
+		p.BeginCollection(&f.commentContext)
 	}
 	return p
 }
@@ -32,7 +31,7 @@ func (f *collector) newArray() pendingValue {
 	seq := newSequence(f.seqs(f.keepComments), f.keepComments)
 	seq.blockNil = true
 	if f.keepComments {
-		seq.BeginCollection(&f.commentBuffer)
+		seq.BeginCollection(&f.commentContext)
 	}
 	return seq
 }

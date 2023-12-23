@@ -14,33 +14,33 @@ type content struct {
 
 // returns false if not commenting
 func (b *content) Resolve() (ret string, okay bool) {
-	if b.buf != nil {
+	if b.ctx != nil {
 		b.EndCollection() // hrm.
 		ret = b.out.String()
 		b.out.Reset()
 		b.bookState = bookState{}
-		b.buf = nil
+		b.ctx = nil
 		okay = true
 	}
 	return
 }
 
 type bookState struct {
+	ctx         *Context
 	markerCount int
 	nextKeys    int
 	totalKeys   int
-	buf         *strings.Builder
 	lastNote    Type
 }
 
-func (b *content) BeginCollection(buf *strings.Builder) {
-	b.buf = buf
+func (b *content) BeginCollection(ctx *Context) {
+	b.ctx = ctx
 	// if there is a comment pending
 	// steal it from the shared buffer, and use it as
 	// the header of the first element.
-	if buf.Len() > 0 {
-		appendLine(&b.out, buf.String())
-		buf.Reset()
+	if ctx.buf.Len() > 0 {
+		appendLine(&b.out, ctx.buf.String())
+		ctx.buf.Reset()
 	}
 }
 
@@ -72,14 +72,14 @@ func (b *content) Comment(n Type, str string) (err error) {
 		}
 		switch n {
 		default:
-			appendLine(b.buf, str)
+			appendLine(&b.ctx.buf, str)
 
 		case Header:
 			// write headers for following terms straight to the output
 			// so that they appear with the *current* collection
 			// and dont get stolen by the next begin collection.
 			if b.totalKeys == 0 {
-				appendLine(b.buf, str)
+				appendLine(&b.ctx.buf, str)
 			} else if b.writeKeys() {
 				b.out.WriteString(str)
 			} else {
@@ -99,8 +99,8 @@ func (b *content) Comment(n Type, str string) (err error) {
 }
 
 func (b *content) flushLast() {
-	if str := b.buf.String(); len(str) > 0 {
-		b.buf.Reset()
+	if str := b.ctx.buf.String(); len(str) > 0 {
+		b.ctx.buf.Reset()
 		// form feeds
 		b.writeKeys()
 		// markers

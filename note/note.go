@@ -2,15 +2,22 @@ package note
 
 import "strings"
 
+// provides communication between note takers:
+// each in progress document decoder should have its own unique context.
+// concrete instances shouldn't be copied.
+type Context struct {
+	buf strings.Builder
+}
+
 // a comment block generator
 // see Nothing ( which discards comments )
 // and Book ( which compiles comments into a comment block. )
 type Taker interface {
 	// start recording comments for a new sequence, mapping, or document.
-	// every collection in a document must share the same string builder;
+	// every collection in a document must share the same context;
 	// but each should probably have its own unique taker.
 	// passing nil will disable comment collection.
-	BeginCollection(*strings.Builder)
+	BeginCollection(*Context)
 	// record a comment
 	// returns error if the the type of comment was unexpected for the current context
 	Comment(Type, string) error

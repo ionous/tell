@@ -82,7 +82,7 @@ func (dispatch dispatcher) Decoded(at token.Pos, tokenType token.Type, val any) 
 
 func (d *Decoder) decodeDoc() charm.State {
 	d.state = d.docStart
-	d.docBlock.BeginCollection(&d.collector.commentBuffer)
+	d.docBlock.BeginCollection(&d.collector.commentContext)
 	t := token.Tokenizer{
 		Notifier:  dispatcher{d},
 		UseFloats: d.UseFloats,
