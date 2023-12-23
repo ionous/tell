@@ -2,7 +2,7 @@
   "content": {
     "": "# Catalog header\f# Something here at the end.",
     "catalog:": [
-      "# First item header",
+      "# First item header\f# Second item\n# header",
       {
         "": "\r\r# Inline suffix\n# Aligned comment",
         "name:": "First item",
@@ -16,10 +16,10 @@
         ]
       },
       {
-        "": "# Second item\n# header",
+        "": "\f# Options header",
         "name:": "Second item",
         "options:": [
-          "# Options header\r\n# A non-inline prefix",
+          "\r\n# A non-inline prefix",
           "Big",
           "Big description for a big entry."
         ],

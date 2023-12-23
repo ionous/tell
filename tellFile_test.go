@@ -17,7 +17,7 @@ import (
 var focus string
 
 func TestFiles(t *testing.T) {
-	// focus = "trailingComments2"
+	// focus = "smallCatalogComments"
 	if files, e := testdata.Tell.ReadDir("."); e != nil {
 		t.Fatal(e)
 	} else {

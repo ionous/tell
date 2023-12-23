@@ -35,7 +35,7 @@ type bookState struct {
 
 func (b *content) BeginCollection(buf *strings.Builder) {
 	b.buf = buf
-	// if there is a (footer or prefix) comment pending
+	// if there is a comment pending
 	// steal it from the shared buffer, and use it as
 	// the header of the first element.
 	if buf.Len() > 0 {
@@ -70,9 +70,23 @@ func (b *content) Comment(n Type, str string) (err error) {
 			}
 			b.lastNote = n
 		}
-		if n != Footer {
+		switch n {
+		default:
 			appendLine(b.buf, str)
-		} else {
+
+		case Header:
+			// write headers for following terms straight to the output
+			// so that they appear with the *current* collection
+			// and dont get stolen by the next begin collection.
+			if b.totalKeys == 0 {
+				appendLine(b.buf, str)
+			} else if b.writeKeys() {
+				b.out.WriteString(str)
+			} else {
+				appendLine(&b.out, str)
+			}
+
+		case Footer:
 			if was != Footer {
 				b.out.WriteRune(runes.NextTerm)
 			} else {
@@ -88,13 +102,7 @@ func (b *content) flushLast() {
 	if str := b.buf.String(); len(str) > 0 {
 		b.buf.Reset()
 		// form feeds
-		if b.nextKeys > 0 {
-			for i := 0; i < b.nextKeys; i++ {
-				b.out.WriteRune(runes.NextTerm)
-			}
-			b.nextKeys = 0
-			b.markerCount = 0
-		}
+		b.writeKeys()
 		// markers
 		if mark := b.lastNote.mark(); mark > 0 {
 			if b.markerCount < mark {
@@ -111,6 +119,17 @@ func (b *content) flushLast() {
 		// the buffered content
 		b.out.WriteString(str)
 	}
+}
+
+func (b *content) writeKeys() (okay bool) {
+	if okay = b.nextKeys > 0; okay {
+		for i := 0; i < b.nextKeys; i++ {
+			b.out.WriteRune(runes.NextTerm)
+		}
+		b.nextKeys = 0
+		b.markerCount = 0
+	}
+	return
 }
 
 func appendLine(out *strings.Builder, str string) {
