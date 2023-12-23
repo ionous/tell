@@ -41,7 +41,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.5
+Version 0.6
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -52,8 +52,8 @@ The go implementation successfully reads and writes some well-formed documents.
 ### Missing features
 
 * serialization of structs not supported ( only maps, slices, and primitive values. )
-* comment blocks don't serialize yet ( re: "fix" in encodeComments.go )
-* arrays should support nested arrays; arrays should support comments.
+* arrays should (probably) support nested arrays; 
+* arrays should (probably) support comments.
 * error reporting needs improvement.
 
 see also the [issues page](https://github.com/ionous/tell/issues).
@@ -262,3 +262,6 @@ Changes
  
  0.4->0.5:
  	- simplify comment handling
+ 	
+ 0.5->0.6:
+ 	- bug fixes, and re-encoding of comments
