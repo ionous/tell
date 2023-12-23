@@ -22,9 +22,9 @@ func ExampleUnmarshal() {
 // Write a tell document.
 func ExampleMarshal() {
 	m := map[string]any{
-		"Tell:":           "A yaml-like text format.",
-		"What It Is:":     "A way of describing data...",
-		"What It Is Not:": "A subset of yaml.",
+		"Tell":           "A yaml-like text format.",
+		"What It Is":     "A way of describing data...",
+		"What It Is Not": "A subset of yaml.",
 	}
 	if out, e := tell.Marshal(m); e != nil {
 		panic(e)
@@ -33,6 +33,6 @@ func ExampleMarshal() {
 	}
 	// Output:
 	// Tell: "A yaml-like text format."
-	// What It Is Not: "A subset of yaml."
 	// What It Is: "A way of describing data..."
+	// What It Is Not: "A subset of yaml."
 }
