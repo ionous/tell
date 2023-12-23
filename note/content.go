@@ -38,10 +38,7 @@ func (b *content) BeginCollection(ctx *Context) {
 	// if there is a comment pending
 	// steal it from the shared buffer, and use it as
 	// the header of the first element.
-	if ctx.buf.Len() > 0 {
-		appendLine(&b.out, ctx.buf.String())
-		ctx.buf.Reset()
-	}
+	ctx.writeInto(&b.out)
 }
 
 func (b *content) EndCollection() {
@@ -72,14 +69,14 @@ func (b *content) Comment(n Type, str string) (err error) {
 		}
 		switch n {
 		default:
-			appendLine(&b.ctx.buf, str)
+			b.ctx.append(str)
 
 		case Header:
 			// write headers for following terms straight to the output
 			// so that they appear with the *current* collection
 			// and dont get stolen by the next begin collection.
 			if b.totalKeys == 0 {
-				appendLine(&b.ctx.buf, str)
+				b.ctx.append(str)
 			} else if b.writeKeys() {
 				b.out.WriteString(str)
 			} else {
@@ -99,8 +96,9 @@ func (b *content) Comment(n Type, str string) (err error) {
 }
 
 func (b *content) flushLast() {
-	if str := b.ctx.buf.String(); len(str) > 0 {
-		b.ctx.buf.Reset()
+	// note: no need to write form feeds or markers
+	// unless there are some comments pending
+	if b.ctx.pending() {
 		// form feeds
 		b.writeKeys()
 		// markers
@@ -116,8 +114,7 @@ func (b *content) flushLast() {
 				b.out.WriteRune(runes.Newline)
 			}
 		}
-		// the buffered content
-		b.out.WriteString(str)
+		b.ctx.writeInto(&b.out)
 	}
 }
 

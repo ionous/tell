@@ -1,14 +1,5 @@
 package note
 
-import "strings"
-
-// provides communication between note takers:
-// each in progress document decoder should have its own unique context.
-// concrete instances shouldn't be copied.
-type Context struct {
-	buf strings.Builder
-}
-
 // a comment block generator
 // see Nothing ( which discards comments )
 // and Book ( which compiles comments into a comment block. )
