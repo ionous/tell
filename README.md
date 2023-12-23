@@ -17,7 +17,7 @@ What It Is: """
 What It Is Not: "A subset of yaml."
 
 Can Contain: 
-    - ["Some javascript-ish values"]
+    - "Some javascript-ish values"
     - [ 5, 2.3, 1e-3, 0x20, "\n", "🐈", "\U0001f408" ]
       # supports c,go,python,etc. style escape codes
 
@@ -62,24 +62,36 @@ Usage
 -----
 
 ```go
+
+// Read a tell document.
 func ExampleUnmarshal() {
-	var b bool
-	if e := tell.Unmarshal([]byte(`true`), &b); e != nil {
+	var out any
+	const msg = `- Hello: "\U0001F30F"`
+	if e := tell.Unmarshal([]byte(msg), &out); e != nil {
 		panic(e)
 	} else {
-		fmt.Println(b)
+		fmt.Printf("%#v", out)
 	}
-	// Output: true
+	// Output:
+	// []interface {}{map[string]interface {}{"Hello:":"🌏"}}
 }
 
+// Write a tell document.
 func ExampleMarshal() {
-	b := true
-	if out, e := tell.Marshal(b); e != nil {
+	m := map[string]any{
+		"Tell:":           "A yaml-like text format.",
+		"What It Is:":     "A way of describing data...",
+		"What It Is Not:": "A subset of yaml.",
+	}
+	if out, e := tell.Marshal(m); e != nil {
 		panic(e)
 	} else {
 		fmt.Println(string(out))
 	}
-	// Output: true
+	// Output:
+	// Tell: "A yaml-like text format."
+	// What It Is Not: "A subset of yaml."
+	// What It Is: "A way of describing data..."
 }
 
 // slightly lower level usage:

@@ -6,24 +6,33 @@ import (
 	"github.com/ionous/tell"
 )
 
+// Read a tell document.
 func ExampleUnmarshal() {
-	// Unmarshal is the simplest interface
-	// using package decode gives more control
-	var b bool
-	if e := tell.Unmarshal([]byte(`true`), &b); e != nil {
+	var out any
+	const msg = `- Hello: "\U0001F30F"`
+	if e := tell.Unmarshal([]byte(msg), &out); e != nil {
 		panic(e)
 	} else {
-		fmt.Println(b)
+		fmt.Printf("%#v", out)
 	}
-	// Output: true
+	// Output:
+	// []interface {}{map[string]interface {}{"Hello:":"🌏"}}
 }
 
+// Write a tell document.
 func ExampleMarshal() {
-	b := true
-	if out, e := tell.Marshal(b); e != nil {
+	m := map[string]any{
+		"Tell:":           "A yaml-like text format.",
+		"What It Is:":     "A way of describing data...",
+		"What It Is Not:": "A subset of yaml.",
+	}
+	if out, e := tell.Marshal(m); e != nil {
 		panic(e)
 	} else {
 		fmt.Println(string(out))
 	}
-	// Output: true
+	// Output:
+	// Tell: "A yaml-like text format."
+	// What It Is Not: "A subset of yaml."
+	// What It Is: "A way of describing data..."
 }
