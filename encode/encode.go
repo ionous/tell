@@ -1,6 +1,7 @@
 package encode
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -211,6 +212,10 @@ func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err err
 	//
 	for hasNext {
 		key, val := it.GetKey(), getValue(it)
+		if len(key) == 0 {
+			err = errors.New("can't encode empty keys; maybe you meant to encode with comments?")
+			break
+		}
 		hasNext = it.Next()
 		var cmt Comment
 		if cit.Next() {
