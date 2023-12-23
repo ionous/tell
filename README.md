@@ -41,7 +41,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.6
+Version 0.7
 
 The go implementation successfully reads and writes some well-formed documents.
 
@@ -272,8 +272,11 @@ Changes
   - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
   - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
  
- 0.4->0.5:
+ 0.4 -> 0.5:
  	- simplify comment handling
  	
- 0.5->0.6:
+ 0.5 -> 0.6:
  	- bug fixes, and re-encoding of comments
+
+0.6 -> 0.7
+	- replace comment raw string buffer usage with an opaque object ( to make any future changes more friendly )
