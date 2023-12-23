@@ -46,8 +46,7 @@ func TestEncoding(t *testing.T) {
 			},
 			"heredoc": `a string
 with several lines
-becomes a heredoc.
-`,
+becomes a heredoc.`,
 		},
 		string(encodedTest),
 	); e != nil {
@@ -56,9 +55,11 @@ becomes a heredoc.
 }
 
 func TestCommentEncoding(t *testing.T) {
-	filePath := "smallCatalogComments.json"
+	filePath := "smallCatalogComments"
 	if e := func() (err error) {
-		if b, e := fs.ReadFile(testdata.Json, filePath); e != nil {
+		if want, e := fs.ReadFile(testdata.Tell, filePath+".tell"); e != nil {
+			err = e
+		} else if b, e := fs.ReadFile(testdata.Json, filePath+".json"); e != nil {
 			err = e
 		} else {
 			var m orderedmap.OrderedMap
@@ -71,8 +72,11 @@ func TestCommentEncoding(t *testing.T) {
 				enc := encode.MakeCommentEncoder(&buf)
 				if e := enc.Encode(&src); e != nil {
 					err = e
+				} else if have, want := buf.String(), string(want); have != want {
+					err = errors.New("mismatched")
+					t.Log(want)
+					t.Log(have)
 				}
-				t.Log("\n" + buf.String())
 			}
 		}
 		return

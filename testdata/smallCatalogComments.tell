@@ -13,13 +13,18 @@ catalog:
   # header
   - name: "Second item"
     # Options header
-    options: 
+    options:
       -
         # A non-inline prefix
         "Big"
       - """
-      Big description for a big
-      entry.
-      """
-    attributes: [1,2,,]
+        Big description for a big
+
+        entry.
+        """
+    attributes:
+      - 1
+      - 2
+      -
+      -
 # Something here at the end.

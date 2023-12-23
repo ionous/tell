@@ -9,8 +9,8 @@ import (
 
 type TabWriter struct {
 	depth    int // requested leading spaces on each new line
-	spaces   int
-	nextLine bool
+	spaces   int // trailing spaces
+	newLines int
 	Writer   io.Writer
 	xpos     int
 }
@@ -24,7 +24,9 @@ func (tab *TabWriter) Tab() {
 }
 
 func (tab *TabWriter) Softline() {
-	tab.nextLine = true
+	if tab.newLines == 0 {
+		tab.newLines++
+	}
 	tab.spaces = 0
 }
 
@@ -36,24 +38,22 @@ func (tab *TabWriter) OptionalLine(b bool) {
 
 // inc: increases the current indent
 // line: increases the current line
-func (tab *TabWriter) Indent(inc bool, line bool) {
+func (tab *TabWriter) Indent(inc bool) {
 	if inc {
 		tab.depth += 2
 	} else {
 		tab.depth -= 2
-	}
-	if line {
-		tab.nextLine = true
-		tab.spaces = 0
 	}
 }
 
 // call before writing runes or strings
 // advances the line and pads the indent
 func (tab *TabWriter) pad() {
-	if tab.nextLine {
-		tab.nextLine = false
-		runes.WriteRune(tab.Writer, runes.Newline)
+	if n := tab.newLines; n > 0 {
+		tab.newLines = 0
+		for i := 0; i < n; i++ {
+			runes.WriteRune(tab.Writer, runes.Newline)
+		}
 		writeSpaces(tab.Writer, tab.depth)
 		tab.xpos = tab.depth
 	}

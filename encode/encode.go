@@ -65,7 +65,9 @@ func (enc *Encoder) writeHere(str string) (okay bool) {
 		for _, el := range lines {
 			tab.Escape(el)
 			tab.Softline()
+			tab.newLines++ // not needed if using backtick literals... hrm.
 		}
+		tab.newLines--
 		tab.WriteString(`"""`)
 	}
 	return
@@ -134,7 +136,6 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 				if it, e := enc.Mapper(v); e != nil {
 					err = e
 				} else if it != nil {
-
 					err = enc.WriteMapping(it, wasMaps)
 				}
 
@@ -183,8 +184,6 @@ func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err err
 		return
 	}
 
-	// determine indentation style
-
 	// setup a comment iterator:
 	var cit CommentIter = noComments{} // expect none by default
 	if c := enc.Commenter; c != nil {
@@ -224,7 +223,7 @@ func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err err
 		if maps && key[len(key)-1] != runes.Colon {
 			tab.WriteRune(runes.Colon)
 		}
-		tab.Indent(true, false)
+		tab.Indent(true)
 		{
 			// prefix comment:
 			if prefix := cmt.Prefix; len(prefix) == 0 {
@@ -241,7 +240,8 @@ func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err err
 				fixedWrite(tab, suffix)
 			}
 		}
-		tab.Indent(false, true)
+		tab.Indent(false)
+		tab.Softline()
 	}
 
 	// write the footer ( if any )

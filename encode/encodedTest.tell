@@ -3,7 +3,9 @@ empty: []
 hello: "there"
 heredoc: """
   a string
+
   with several lines
+
   becomes a heredoc.
   """
 map:
