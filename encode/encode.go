@@ -27,18 +27,19 @@ func MakeCommentEncoder(w io.Writer) Encoder {
 	var m MapTransform
 	var n SequenceTransform
 	return Encoder{
-		Tabs:      TabWriter{Writer: w},
-		Mapper:    m.Mapper(),
-		Sequencer: n.Sequencer(),
-		Commenter: CommentBlock,
+		Tabs:             TabWriter{Writer: w},
+		Mapper:           m.Mapper(),
+		Sequencer:        n.Sequencer(),
+		MapComments:      CommentBlock,
+		SequenceComments: CommentBlock,
 	}
 }
 
 type Encoder struct {
-	Tabs      TabWriter
-	Mapper    MappingFactory
-	Sequencer SequenceFactory
-	Commenter CommentFactory
+	Tabs              TabWriter
+	Mapper, Sequencer Collection
+	MapComments       Commenting
+	SequenceComments  Commenting
 }
 
 func (enc *Encoder) Encode(v any) (err error) {
@@ -124,7 +125,7 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 
 			case r.Array, r.Slice:
 				// tbd: look at tag for "want array"?
-				if it, e := enc.Sequencer(v); e != nil {
+				if it, e := enc.Sequencer.StartCollection(v); e != nil {
 					err = e
 				} else if it == nil {
 					tab.WriteRune(runes.ArrayOpen)
@@ -134,7 +135,7 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 				}
 
 			case r.Map:
-				if it, e := enc.Mapper(v); e != nil {
+				if it, e := enc.Mapper.StartCollection(v); e != nil {
 					err = e
 				} else if it != nil {
 					err = enc.WriteMapping(it, wasMaps)
@@ -148,12 +149,6 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 	}
 	return
 }
-
-type sequenceAdapter struct{ SequenceIter }
-
-func (sq sequenceAdapter) GetKey() string { return dashing }
-
-const dashing = "-"
 
 var mappingType = r.TypeOf((*TellMapping)(nil)).Elem()
 var sequenceType = r.TypeOf((*TellSequence)(nil)).Elem()
@@ -169,16 +164,15 @@ func getValue(v interface{ GetValue() any }) (ret r.Value) {
 	return
 }
 
-func (enc *Encoder) WriteMapping(it MappingIter, wasMaps bool) (err error) {
-	return enc.writeCollection(it, wasMaps, true)
+func (enc *Encoder) WriteMapping(it Iterator, wasMaps bool) (err error) {
+	return enc.writeCollection(it, enc.MapComments, wasMaps, true)
 }
 
-func (enc *Encoder) WriteSequence(it SequenceIter, wasMaps bool) (err error) {
-	a := sequenceAdapter{it}
-	return enc.writeCollection(a, wasMaps, false)
+func (enc *Encoder) WriteSequence(it Iterator, wasMaps bool) (err error) {
+	return enc.writeCollection(it, enc.SequenceComments, wasMaps, false)
 }
 
-func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err error) {
+func (enc *Encoder) writeCollection(it Iterator, cmts Commenting, wasMaps, maps bool) (err error) {
 	tab := &enc.Tabs
 	hasNext := it.Next() // dance around the possibly blank first element
 	if !hasNext {
@@ -186,12 +180,14 @@ func (enc *Encoder) writeCollection(it MappingIter, wasMaps, maps bool) (err err
 	}
 
 	// setup a comment iterator:
-	var cit CommentIter = noComments{} // expect none by default
-	if c := enc.Commenter; c != nil {
+	var cit Comments
+	if cmts == nil {
+		cit = noComments{} // expect none by default
+	} else {
 		key, val := it.GetKey(), getValue(it)
 		if !maps || len(key) == 0 {
-			cit, err = c(val)
-			hasNext = err == nil && it.Next()
+			cit, err = cmts(val)
+			hasNext = err == nil && it.Next() // skip this comment value.
 		}
 	}
 	if !hasNext && err == nil {

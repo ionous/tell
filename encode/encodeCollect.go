@@ -2,45 +2,36 @@ package encode
 
 import r "reflect"
 
-// controls serialization when implemented by an encoding value
-// see also MappingFactory
+type Collection interface {
+	// for sequences, value is guaranteed to be a reflect.Slice
+	// for mappings, value is guaranteed to be a reflect.Map
+	StartCollection(r.Value) (Iterator, error)
+}
+
+// controls serialization when implemented by a value that's being encoded
 type TellMapping interface {
-	TellMapping() MappingIter
+	TellMapping() Iterator
 }
 
-// controls serialization when implemented by an encoding value
-// see also SequenceFactory
+// controls serialization when implemented by a value that's being encoded
 type TellSequence interface {
-	TellSequence() SequenceIter
+	TellSequence() Iterator
 }
 
-// factory function for serializing native maps
-// r.Value is guaranteed to a kind of reflect.Map
-// the default encoder uses SortedMap or SortedMapFactory.
-// returning a nil iterator skips the value
-type MappingFactory func(r.Value) (MappingIter, error)
+// the key for sequences
+const Dashing = "-"
 
-// factory function for serializing slices and arrays.
-// the default encoder uses Sequence.
-// returning a nil iterator skips the value
-type SequenceFactory func(r.Value) (SequenceIter, error)
-
-// turns a value representing one or more comments
-// into an iterator. the encoder uses the iterator to generate comments for collections.
-type CommentFactory func(r.Value) (CommentIter, error)
-
-type MappingIter interface {
-	Next() bool // called before every element, false if there are no more elements
+// walk the elements of a collection
+type Iterator interface {
+	// return true if there are elements left
+	Next() bool
+	// return "-" for sequences
 	GetKey() string
-	GetValue() any // valid after next returns true
+	// can panic if there are no remaining elements
+	GetValue() any
 }
 
-type SequenceIter interface {
-	Next() bool    // called before every element, false if there are no more elements
-	GetValue() any // valid after next returns true
-}
-
-// if implemented by the implementation of MappingIter or SequenceIter
+// if implemented by one of the iterators
 // will be used instead of GetValue()
 type GetReflectedValue interface {
 	GetReflectedValue() r.Value
@@ -53,7 +44,14 @@ type Comment struct {
 }
 
 // comment access for collections
-type CommentIter interface {
+type Comments interface {
 	Next() bool          // called before every element, false if there are no more elements
 	GetComment() Comment // valid after next returns true
+}
+
+// implements StartCollection using a function
+type sequenceStarter func(r.Value) (Iterator, error)
+
+func (q sequenceStarter) StartCollection(v r.Value) (Iterator, error) {
+	return q(v)
 }

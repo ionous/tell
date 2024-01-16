@@ -8,20 +8,24 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// an implementation of CommentFactory that walks the passed slice.
-func Comments(els []Comment) CommentIter {
+// turns a value representing one or more comments into a comment iterator.
+// the encoder uses the iterator to generate comments for collections.
+type Commenting func(r.Value) (Comments, error)
+
+// an implementation of Commenting that walks the passed slice.
+func CommentSlice(els []Comment) Comments {
 	return &commentSlice{next: els}
 }
 
-// an implementation of CommentFactory which generates no comments.
-func DiscardComments(r.Value) (CommentIter, error) {
+// implies that there are comments;
+// the encoder should simply skip them.
+func DiscardComments(r.Value) (Comments, error) {
 	return nil, nil
 }
 
-// implement CommentFactory.
 // expects that the value is a kind of string
 // containing a standard tell comment block
-func CommentBlock(v r.Value) (ret CommentIter, err error) {
+func CommentBlock(v r.Value) (ret Comments, err error) {
 	if str, e := ExtractString(v); e != nil {
 		err = fmt.Errorf("comment factory %s", e)
 	} else {
@@ -32,10 +36,16 @@ func CommentBlock(v r.Value) (ret CommentIter, err error) {
 
 // a helper which, given a reflected string value returns that string.
 func ExtractString(el r.Value) (ret string, err error) {
-	if el.Kind() != r.String {
-		err = fmt.Errorf("expected an underlying string; got %s(%s)", el.Kind(), el.Type())
-	} else {
+	switch k := el.Kind(); k {
+	case r.String:
 		ret = el.String()
+	// when GetReflectedValue isnt implemented;
+	// strings can be wrapped by interfaces due to GetValue()
+	// which returns an `any`
+	case r.Interface:
+		ret, err = ExtractString(el.Elem())
+	default:
+		err = fmt.Errorf("expected an underlying string; got %s(%s)", k, el.Type())
 	}
 	return
 }

@@ -39,7 +39,7 @@ func (p *pendingMap) setKey(key string) (err error) {
 	if len(p.key) > 0 {
 		err = fmt.Errorf("unused key %s", p.key)
 	} else if len(key) == 0 {
-		err = errors.New("cant add indexed elements to map ping")
+		err = errors.New("cant add indexed elements to mapping")
 	} else {
 		p.key = key
 	}

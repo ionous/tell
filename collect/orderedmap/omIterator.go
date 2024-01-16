@@ -4,7 +4,7 @@ import "github.com/ionous/tell/encode"
 
 // implements the encoder mapping
 // modification of the map during iteration may yield surprising results.
-func (o OrderedMap) TellMapping() encode.MappingIter {
+func (o OrderedMap) TellMapping() encode.Iterator {
 	return &mapIter{o: &o}
 }
 
