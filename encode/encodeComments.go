@@ -17,6 +17,9 @@ func CommentSlice(els []Comment) Comments {
 	return &commentSlice{next: els}
 }
 
+// a nil commenting implementation for readability
+var NoComments Commenting = nil
+
 // implies that there are comments;
 // the encoder should simply skip them.
 func DiscardComments(r.Value) (Comments, error) {

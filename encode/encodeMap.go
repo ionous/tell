@@ -14,8 +14,8 @@ type MapTransform struct {
 }
 
 // return a factory function for the encoder
-func (m *MapTransform) Mapper() Collection {
-	return sequenceStarter(m.makeMapping)
+func (m *MapTransform) Mapper() StartCollection {
+	return m.makeMapping
 }
 
 // sort keys; by default keys are written sorted as per standard go string rules.

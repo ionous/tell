@@ -2,11 +2,9 @@ package encode
 
 import r "reflect"
 
-type Collection interface {
-	// for sequences, value is guaranteed to be a reflect.Slice
-	// for mappings, value is guaranteed to be a reflect.Map
-	StartCollection(r.Value) (Iterator, error)
-}
+// for sequences, value is guaranteed to be a reflect.Slice
+// for mappings, value is guaranteed to be a reflect.Map
+type StartCollection func(r.Value) (Iterator, error)
 
 // controls serialization when implemented by a value that's being encoded
 type TellMapping interface {
@@ -47,11 +45,4 @@ type Comment struct {
 type Comments interface {
 	Next() bool          // called before every element, false if there are no more elements
 	GetComment() Comment // valid after next returns true
-}
-
-// implements StartCollection using a function
-type sequenceStarter func(r.Value) (Iterator, error)
-
-func (q sequenceStarter) StartCollection(v r.Value) (Iterator, error) {
-	return q(v)
 }

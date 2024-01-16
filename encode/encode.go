@@ -14,22 +14,20 @@ import (
 // an encoder that expects no comments
 func MakeEncoder(w io.Writer) Encoder {
 	var m MapTransform
-	var n SequenceTransform
 	return Encoder{
 		Tabs:      TabWriter{Writer: w},
 		Mapper:    m.Mapper(),
-		Sequencer: n.Sequencer(),
+		Sequencer: MakeSequence,
 	}
 }
 
 // use the "CommentBlock" encoder
 func MakeCommentEncoder(w io.Writer) Encoder {
 	var m MapTransform
-	var n SequenceTransform
 	return Encoder{
 		Tabs:             TabWriter{Writer: w},
 		Mapper:           m.Mapper(),
-		Sequencer:        n.Sequencer(),
+		Sequencer:        MakeSequence,
 		MapComments:      CommentBlock,
 		SequenceComments: CommentBlock,
 	}
@@ -37,7 +35,7 @@ func MakeCommentEncoder(w io.Writer) Encoder {
 
 type Encoder struct {
 	Tabs              TabWriter
-	Mapper, Sequencer Collection
+	Mapper, Sequencer StartCollection
 	MapComments       Commenting
 	SequenceComments  Commenting
 }
@@ -125,7 +123,7 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 
 			case r.Array, r.Slice:
 				// tbd: look at tag for "want array"?
-				if it, e := enc.Sequencer.StartCollection(v); e != nil {
+				if it, e := enc.Sequencer(v); e != nil {
 					err = e
 				} else if it == nil {
 					tab.WriteRune(runes.ArrayOpen)
@@ -135,7 +133,7 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 				}
 
 			case r.Map:
-				if it, e := enc.Mapper.StartCollection(v); e != nil {
+				if it, e := enc.Mapper(v); e != nil {
 					err = e
 				} else if it != nil {
 					err = enc.WriteMapping(it, wasMaps)
@@ -180,10 +178,8 @@ func (enc *Encoder) writeCollection(it Iterator, cmts Commenting, wasMaps, maps 
 	}
 
 	// setup a comment iterator:
-	var cit Comments
-	if cmts == nil {
-		cit = noComments{} // expect none by default
-	} else {
+	var cit Comments = noComments{} // expect none by default
+	if cmts != nil {
 		key, val := it.GetKey(), getValue(it)
 		if !maps || len(key) == 0 {
 			cit, err = cmts(val)

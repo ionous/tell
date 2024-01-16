@@ -26,7 +26,7 @@ func (enc *Encoder) Encode(v any) (err error) {
 
 // configure how mappings are encoded
 // returns self for chaining
-func (enc *Encoder) SetMapper(n encode.Collection, c encode.Commenting) *Encoder {
+func (enc *Encoder) SetMapper(n encode.StartCollection, c encode.Commenting) *Encoder {
 	inner := (*encode.Encoder)(enc)
 	inner.Mapper = n
 	inner.MapComments = c
@@ -35,7 +35,7 @@ func (enc *Encoder) SetMapper(n encode.Collection, c encode.Commenting) *Encoder
 
 // configure how sequences are encoded
 // returns self for chaining
-func (enc *Encoder) SetSequencer(n encode.Collection, c encode.Commenting) *Encoder {
+func (enc *Encoder) SetSequencer(n encode.StartCollection, c encode.Commenting) *Encoder {
 	inner := (*encode.Encoder)(enc)
 	inner.Sequencer = n
 	inner.SequenceComments = c
