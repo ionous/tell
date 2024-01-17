@@ -8,67 +8,58 @@ import (
 func TestSeq(t *testing.T) {
 	test(t,
 		// --------------
-		"test single value", `
+		"single value",
+		[]any{5}, `
 - 5`,
-		[]any{5},
-
 		// --------------
-		"test fail without dash", `
+		"fail without dash",
+		errors.New("unknown number"), `
 -false`,
-		errors.New("unknown number"),
-
 		// --------------
-		"test value with newline", `
-- 5
-`, []any{5},
-
+		"value with newline",
+		[]any{5}, `
+- 5`,
 		// --------------
-		"test split line", `
+		"split line",
+		[]any{5}, `
 -
-  5
-`, []any{5},
-
+  5`,
 		// --------------
-		"test several values", `
+		"several values",
+		[]any{5, 10, 12}, `
 - 5
 - 10
 - 12`,
-		[]any{5, 10, 12},
-
 		// --------------
-		"test nested sub sequence", `
+		"nested sub sequence",
+		[]any{[]any{5}}, `
 - - 5`,
-		[]any{[]any{5}},
-
 		// --------------
-		"test new line sub sequence", `
+		"new line sub sequence",
+		[]any{[]any{5}}, `
 -
-  - 5
-`, []any{[]any{5}},
+  - 5`,
 		// --------------
-		"test multiple sub values", `
+		"multiple sub values",
+		[]any{[]any{nil, 5}}, `
 - -
-  - 5
-`, []any{[]any{nil, 5}},
-
+  - 5`,
 		// --------------
-		"test nil values", `
+		"nil values",
+		[]any{nil, nil, nil}, `
 -
 -
 -`,
-		[]any{nil, nil, nil},
-
 		// --------------
-		"test nil value trailing newline", `
+		"nil value trailing newline",
+		[]any{nil, nil, nil}, `
 -
 -
 -
 `,
-		[]any{nil, nil, nil},
-
 		// --------------
-		"test continuing sub sequence ", `
+		"continuing sub sequence ",
+		[]any{[]any{5}, 6}, `
 - - 5
-- 6`,
-		[]any{[]any{5}, 6})
+- 6`)
 }

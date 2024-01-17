@@ -15,7 +15,7 @@ func InvalidIndent(want, got token.Pos) invalidIndent {
 }
 
 func (e invalidIndent) Error() string {
-	return fmt.Sprintf("Invalid indent: %d", e.got.X)
+	return fmt.Sprintf("invalid indent: %d", e.got.X)
 }
 
 type ErrorPos struct {
@@ -32,7 +32,7 @@ func (e ErrorPos) Unwrap() error {
 }
 
 func (e ErrorPos) Error() string {
-	return fmt.Sprintf("%s at (%d, %d)", e.err, e.y, e.x)
+	return fmt.Sprintf("error at %d,%d: %s", e.y, e.x, e.err)
 }
 
 func ErrorAt(y, x int, err error) ErrorPos {

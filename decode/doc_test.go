@@ -18,19 +18,19 @@ import (
 // the token parser has more exhaustive tests
 func TestDocScalar(t *testing.T) {
 	test(t,
-		// testName, docValue, result:
-		"bool", `false`, false,
-		"bool", `true`, true,
-		"int", `23`, 23,
-		"string", `"hello"`, "hello",
+		// testName, result, docValue:
+		"bool", false, `false`,
+		"bool", true, `true`,
+		"int", 23, `23`,
+		"string", "hello", `"hello"`,
 		// a document shouldn't allow multiple scalar values
-		"multi", "true\n5", errors.New("unexpected"),
-		"empty array", `[]`, []any{},
-		"array of one", `[1]`, []any{1},
+		"multi", errors.New("unexpected"), "true\n5",
+		"empty array", []any{}, `[]`,
+		"array of one", []any{1}, `[1]`,
 	)
 }
 
-// replace statename with reflection lookup
+// replace state name with reflection lookup
 // could be put in a charm helper package
 func init() {
 	charm.StateName = func(n charm.State) (ret string) {
@@ -45,25 +45,20 @@ func init() {
 	}
 }
 
-// name of test, input string, expected result
+// name of test, expected result, input string
 // leading whitespace is trimmed
 func test(t *testing.T, nameInputExpect ...any) {
 	for i, cnt := 0, len(nameInputExpect); i < cnt; i += 3 {
-		name, input, expect := nameInputExpect[0+i].(string), nameInputExpect[1+i].(string), nameInputExpect[2+i]
+		name, input, expect := nameInputExpect[0+i].(string), nameInputExpect[2+i].(string), nameInputExpect[1+i]
 		if strings.HasPrefix(name, `x `) {
 			// commenting out tests causes go fmt to replace spaces with tabs. *sigh*
 			t.Log("skipping", name)
 		} else {
 			var res any
-			str := strings.TrimLeftFunc(input, unicode.IsSpace)
-
-			var dec decode.Decoder
-			dec.SetMapper(imap.Make)
-			dec.SetSequencer(stdseq.Make)
-			if val, e := dec.Decode(strings.NewReader(str)); e != nil {
+			if v, e := decodeString(input); e != nil {
 				res = e
 			} else {
-				res = val
+				res = v
 			}
 			if e := compare(t, res, expect); e != nil {
 				t.Fatal("ng:", name, e)
@@ -74,6 +69,14 @@ func test(t *testing.T, nameInputExpect ...any) {
 	}
 }
 
+func decodeString(input string) (ret any, err error) {
+	str := strings.TrimLeftFunc(input, unicode.IsSpace)
+	var dec decode.Decoder
+	dec.SetMapper(imap.Make)
+	dec.SetSequencer(stdseq.Make)
+	return dec.Decode(strings.NewReader(str))
+}
+
 func compare(t *testing.T, have any, want any) (err error) {
 	if haveErr, ok := have.(error); !ok {
 		if !reflect.DeepEqual(have, want) {
@@ -82,7 +85,7 @@ func compare(t *testing.T, have any, want any) (err error) {
 	} else {
 		if expectErr, ok := want.(error); !ok {
 			err = fmt.Errorf("failed %v", haveErr)
-		} else if !strings.HasPrefix(haveErr.Error(), expectErr.Error()) {
+		} else if !strings.Contains(haveErr.Error(), expectErr.Error()) {
 			err = fmt.Errorf("failed %v, expected %v", haveErr, expectErr)
 		} else {
 			t.Logf("okay, expected error and got %q", haveErr)

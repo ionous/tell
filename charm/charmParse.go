@@ -97,6 +97,6 @@ func (e EndpointError) End() int {
 }
 
 func (e EndpointError) Error() (ret string) {
-	return fmt.Sprintf("%s %q ended at index %d ...%q",
-		e.reason, StateName(e.last), e.end, e.str)
+	return fmt.Sprintf("%s %q (%q ended at index %d)",
+		e.reason, e.str, StateName(e.last), e.end)
 }
