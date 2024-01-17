@@ -41,9 +41,7 @@ It isn't intended to be a subset of yaml, but it tries to be close enough to lev
 Status 
 ----
 
-Version 0.7
-
-The go implementation successfully reads and writes some well-formed documents.
+The go implementation successfully reads and writes well-formed documents.
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/ionous/tell)](https://pkg.go.dev/github.com/ionous/tell)
 ![Go](https://github.com/ionous/tell/workflows/Go/badge.svg)
@@ -54,7 +52,7 @@ The go implementation successfully reads and writes some well-formed documents.
 * serialization of structs not supported ( only maps, slices, and primitive values. )
 * arrays should (probably) support nested arrays; 
 * arrays should (probably) support comments.
-* error reporting needs improvement.
+* error reporting could use improvement.
 
 see also the [issues page](https://github.com/ionous/tell/issues).
 
@@ -265,7 +263,7 @@ Changes
 -----
 
 0.3 -> 0.4: 
-	- adopt the golang (package stringconv) rules for escaping strings.
+  - adopt the golang (package stringconv) rules for escaping strings.
   - simplify the attribution of comments in the space between a key (or dash) and its value.
   - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
   - encoding/decoding heredocs for multiline strings
@@ -273,10 +271,25 @@ Changes
   - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
  
  0.4 -> 0.5:
- 	- simplify comment handling
+  - simplify comment handling
  	
  0.5 -> 0.6:
- 	- bug fixes, and re-encoding of comments
+  - bug fixes, and re-encoding of comments
 
-0.6 -> 0.7
-	- replace comment raw string buffer usage with an opaque object ( to make any future changes more friendly )
+0.6 -> 0.7:
+  - replace comment raw string buffer usage with an opaque object ( to make any future changes more friendly )
+	
+0.7 -> 0.8:
+  - Changes the encoder's interface to support customizing the comment style of mappings and sequences independently.
+  - bug fix: when specifying map values: allow sequences to start at the same indentation as the key and allow a new map term to start after the sequence ends. ( previously, it generated an error, and an additional indentation was required. ) For example:
+```yaml
+  - First:  # the value of First is a sequence containing "yes"
+    - "yes" 
+    Second: # Second is an additional entry in the same map as First
+    - "okay" 
+``` 
+ -  bug fix: for all other values, an indentation greater than the key is required. For example: 
+```yaml
+  First:
+  "this is an error."
+``` 
