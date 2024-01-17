@@ -25,6 +25,16 @@ func TestSeq(t *testing.T) {
 -
   5`,
 		// --------------
+		"fail flush value",
+		errors.New("invalid indent"), `
+-
+5`,
+		// --------------
+		"fail flush value",
+		errors.New("invalid indent"), `
+Beep:
+5`,
+		// --------------
 		"several values",
 		[]any{5, 10, 12}, `
 - 5
