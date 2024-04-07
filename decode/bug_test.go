@@ -1,6 +1,7 @@
 package decode_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ionous/tell/collect/imap"
@@ -32,4 +33,13 @@ func TestBug(t *testing.T) {
   Second:
   - "other"`,
 	)
+}
+
+// verify that an erroneous tab is caught
+func TestTabCatching(t *testing.T) {
+	var badTab = "- - \"First\"\n\t- \"Second\""
+	test(t,
+		"bad tab",
+		errors.New("tabs are invalid"),
+		badTab)
 }

@@ -76,6 +76,8 @@ func (n *tokenizer) tokenize() charm.State {
 	return charm.Statement("tokenize", func(q rune) (ret charm.State) {
 		n.start = n.curr
 		switch q {
+		case runes.HTab:
+			ret = charm.Error(errors.New("tabs are invalid whitespace"))
 		case runes.Hash:
 			next := n.commentDecoder()
 			ret = send(next, q)
