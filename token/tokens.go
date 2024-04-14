@@ -42,6 +42,9 @@ func (n *tokenizer) decode(afterIndent bool) charm.State {
 	return charm.Step(n.whitespace(afterIndent), n.tokenize())
 }
 
+// tell Notifier of the new token/value pair
+// and then process the next rune (q)
+// ( combining the two simplifies error handling in some cases )
 func (n *tokenizer) notifyRune(q rune, t Type, v any) (ret charm.State) {
 	if e := n.Notifier.Decoded(n.start, t, v); e != nil {
 		ret = charm.Error(e)
@@ -66,7 +69,7 @@ func (n *tokenizer) whitespace(afterIndent bool) charm.State {
 			afterIndent = false
 			ret = self
 		case runes.Eof:
-			ret = charm.Error(nil)
+			ret = charm.Finished()
 		}
 		return
 	})
@@ -139,7 +142,7 @@ func (n *tokenizer) wordDecoder() charm.State {
 				} else if boolean = boolean.NewRune(q); boolean == nil {
 					// boolean shouldnt match: ex. "falsey"
 					if !runes.IsWhitespace(q) {
-						boolean = charm.Error(nil)
+						boolean = charm.Error(errors.New("not a boolean"))
 					} else {
 						// note: this means a key "true true:" will be interpreted as
 						// a bool (true) followed by a key (true:)
@@ -247,11 +250,13 @@ const (
 
 var wordyError = errors.New("couldn't read words. strings should be quoted, booleans should be 'true' or 'false', and map keys should start with a letter and end with a colon.")
 
+// is the next state an error?
 func terminal(next charm.State) (okay bool) {
 	_, okay = next.(charm.Terminal)
 	return
 }
 
+// send one or more runes to the next state
 func send(next charm.State, qs ...rune) charm.State {
 	for _, q := range qs {
 		if next = next.NewRune(q); next == nil {

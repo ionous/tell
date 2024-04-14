@@ -43,12 +43,16 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 	)
 	if e := charm.Read(src, run); e != nil {
 		err = ErrorAt(y, x, e)
-	} else if next := charm.RunState(runes.Eof, run); next != nil {
-		if es, ok := next.(charm.Terminal); ok && es != charm.Error(nil) {
-			err = ErrorAt(y, x, es)
-		}
-		if err == nil {
-			ret, err = d.out.finalizeAll()
+	} else {
+		// send eof
+		if next := charm.RunState(runes.Eof, run); next != nil {
+			// if there was a next state, and it was an error
+			// other than "finished okay", generate an error.
+			if es, ok := next.(charm.Terminal); ok && !es.Finished() {
+				err = ErrorAt(y, x, es.Unwrap())
+			} else {
+				ret, err = d.out.finalizeAll()
+			}
 		}
 	}
 	return

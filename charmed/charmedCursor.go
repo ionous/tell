@@ -10,7 +10,7 @@ func DecodePos(y, x *int) charm.State {
 	return charm.Self("cursor", func(self charm.State, q rune) (ret charm.State) {
 		switch q {
 		case runes.Eof:
-			ret = charm.Error(nil) // absorb
+			ret = charm.Finished() // absorb
 		case runes.Newline:
 			(*y)++
 			(*x) = 0

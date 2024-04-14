@@ -17,6 +17,8 @@ func TestError(t *testing.T) {
 	expect := errors.New("couldn't read words.")
 	if e := testOne(token.Invalid, "beep", expect); e != nil {
 		t.Fatal(e)
+	} else if e := testOne(token.Invalid, "falsey", expect); e != nil {
+		t.Fatal(e)
 	}
 }
 
