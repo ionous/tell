@@ -258,28 +258,14 @@ This implementation stores the comments for a collection in a string called a "c
 
 The readme in package note gets into all the specifics.
 
-
 Changes
 -----
 
-0.3 -> 0.4: 
-  - adopt the golang (package stringconv) rules for escaping strings.
-  - simplify the attribution of comments in the space between a key (or dash) and its value.
-  - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
-  - encoding/decoding heredocs for multiline strings
-  - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
-  - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
- 
- 0.4 -> 0.5:
-  - simplify comment handling
- 	
- 0.5 -> 0.6:
-  - bug fixes, and re-encoding of comments
+0.8.0 -> 0.8.1:
+  - catch tabs in whitespace
+  - bug fix: report better errors when unable to decode a mistyped boolean literal (ex. `truex` )
 
-0.6 -> 0.7:
-  - replace comment raw string buffer usage with an opaque object ( to make any future changes more friendly )
-	
-0.7 -> 0.8:
+0.7.0 -> 0.8.0:
   - Changes the encoder's interface to support customizing the comment style of mappings and sequences independently.
   - bug fix: when specifying map values: allow sequences to start at the same indentation as the key and allow a new map term to start after the sequence ends. ( previously, it generated an error, and an additional indentation was required. ) For example:
 ```yaml
@@ -288,8 +274,25 @@ Changes
     Second: # Second is an additional entry in the same map as First
     - "okay" 
 ``` 
- -  bug fix: for all other values, an indentation greater than the key is required. For example: 
+  -  bug fix: for all other values, an indentation greater than the key is required. For example: 
 ```yaml
   First:
   "this is an error."
 ``` 
+
+0.6 -> 0.7.0:
+  - replace comment raw string buffer usage with an opaque object ( to make any future changes more friendly )
+
+0.5 -> 0.6:
+  - bug fixes, and re-encoding of comments
+
+0.4 -> 0.5:
+  - simplify comment handling
+
+0.3 -> 0.4: 
+  - adopt the golang (package stringconv) rules for escaping strings.
+  - simplify the attribution of comments in the space between a key (or dash) and its value.
+  - change the decoder api to support custom sequences, mirroring custom maps; package 'maps' is now more generically package 'collect'.
+  - encoding/decoding heredocs for multiline strings
+  - encoding/decoding of arrays; ( encoding will write empty collections as arrays; future: a heuristic to determine what should be encoded as an array, vs. sequence. )
+  - the original idea for arrays was to use a bare comma full-stop format. switched to square brackets because they are easier to decode, they can support nesting, and are going to be more familiar to most users. ( plus, full stop (.) is tiny and easy to miss when looking at documents. )
