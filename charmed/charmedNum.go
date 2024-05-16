@@ -29,7 +29,6 @@ func (*NumParser) String() string {
 	return "Numbers"
 }
 
-
 // fix: this is currently less of a number parser, and more a number validator.
 func (p *NumParser) accept(q rune, s charm.State) charm.State {
 	p.runes.WriteRune(q)
@@ -46,7 +45,7 @@ func (p *NumParser) GetNumber() (ret any, err error) {
 	case modeFloat:
 		ret = fromFloat(s)
 	default:
-		err = fmt.Errorf("unknown number: '%v' is %v.", s, p.mode)
+		err = fmt.Errorf("unknown number: '%v' is %v", s, p.mode)
 	}
 	return
 }
@@ -61,7 +60,7 @@ func (p *NumParser) GetFloat() (ret float64, err error) {
 	case modeFloat:
 		ret = fromFloat(s)
 	default:
-		err = fmt.Errorf("unknown number: '%v' is %v.", s, p.mode)
+		err = fmt.Errorf("unknown number: '%v' is %v", s, p.mode)
 	}
 	return
 }

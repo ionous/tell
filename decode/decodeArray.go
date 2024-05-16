@@ -24,7 +24,7 @@ func (d *Decoder) waitForSep(at token.Pos, tokenType token.Type, val any) (err e
 				d.state = d.waitForEl
 			}
 		default:
-			err = errors.New("expected an array separator, or array close.")
+			err = errors.New("expected an array separator or array close")
 		}
 	}
 	return

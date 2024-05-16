@@ -42,7 +42,7 @@ func keyTransform(v r.Value) (ret string) {
 	return
 }
 
-func (m *MapTransform) makeMapping(src r.Value) (retIt Iterator, err error) {
+func (m *MapTransform) makeMapping(src r.Value) (Iterator, error) {
 	keyLess := m.keyLess
 	if keyLess == nil {
 		keyLess = func(a, b string) bool { return a < b }
@@ -62,15 +62,9 @@ func (m *MapTransform) makeMapping(src r.Value) (retIt Iterator, err error) {
 		mk = mapKeys{str: str, val: keys, keyLess: keyLess}
 		sort.Sort(&mk)
 	}
-	if err == nil {
-		retIt = &mapIter{src: src, mapKeys: mk}
-	}
-	return
+	//
+	return &mapIter{src: src, mapKeys: mk}, nil
 }
-
-// not quite sure how to turn string into an interface without something like this. ugh.
-var anyBlank = [1]any{""}
-var blank = r.ValueOf(anyBlank).Index(0)
 
 type mapIter struct {
 	src     r.Value // the native map

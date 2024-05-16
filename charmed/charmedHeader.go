@@ -58,7 +58,7 @@ func (h *headCount) update(q rune, report headerNotifier) (err error) {
 	} else if prev, width := h.token, h.width; t == prev {
 		h.width++
 	} else if prev == headerRedirect && width != 3 {
-		err = customTagError
+		err = errCustomTag
 	} else {
 		h.token, h.width = t, 1
 		if prev != headerSpaces {
@@ -70,7 +70,7 @@ func (h *headCount) update(q rune, report headerNotifier) (err error) {
 	return
 }
 
-var customTagError = errors.New("custom closing tags require exactly three redirect markers ('<<<')")
+var errCustomTag = errors.New("custom closing tags require exactly three redirect markers ('<<<')")
 
 // determine which header type, if any, the passed rune belongs to
 // ( false if its some classifiable rune )

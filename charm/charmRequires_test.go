@@ -12,11 +12,12 @@ func TestRequires(t *testing.T) {
 
 	// index of the fail point, or -1 if success is expected
 	count := func(failPoint int, str string, style State) (err error) {
+		var ep EndpointError
 		if e := ParseEof(str, style); e == nil && failPoint != -1 {
 			err = errors.New("unexpected success")
-		} else if n, ok := e.(EndpointError); !ok {
+		} else if !errors.As(e, &ep) {
 			err = e
-		} else if at := n.End(); at != failPoint {
+		} else if at := ep.End(); at != failPoint {
 			// 0 means okay, -1 incomplete, >0 the one-index of the failure point.
 			err = fmt.Errorf("%s len: %d", str, at)
 		}

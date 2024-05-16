@@ -151,7 +151,7 @@ func (n *tokenizer) wordDecoder() charm.State {
 				} else if terminal(sign) {
 					// sign is mostly superset of bool; (except for the eof/eol cases)
 					// if it dies and boolean didnt just succeed; they're both dead.
-					ret = charm.Error(wordyError)
+					ret = charm.Error(errWordy)
 				}
 				return
 			})
@@ -169,7 +169,7 @@ func (n *tokenizer) decodeSignature() charm.State {
 		if sign = sign.NewRune(q); sign == nil {
 			ret = n.notifyRune(q, Key, sig.String())
 		} else if terminal(sign) {
-			ret = charm.Error(wordyError)
+			ret = charm.Error(errWordy)
 		}
 		return
 	})
@@ -248,7 +248,7 @@ const (
 	boolTrue              // true
 )
 
-var wordyError = errors.New("couldn't read words. strings should be quoted, booleans should be 'true' or 'false', and map keys should start with a letter and end with a colon.")
+var errWordy = errors.New("couldn't read words. strings should be quoted, booleans should be 'true' or 'false', and map keys should start with a letter and end with a colon")
 
 // is the next state an error?
 func terminal(next charm.State) (okay bool) {

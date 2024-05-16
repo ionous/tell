@@ -1,6 +1,7 @@
 package charmed
 
 import (
+	"errors"
 	"math"
 	"testing"
 
@@ -85,10 +86,11 @@ func TestNum(t *testing.T) {
 				t.Fatal("expected success", e)
 				break
 			} else if test.endpoint > 0 {
-				if c, ok := e.(charm.EndpointError); !ok {
+				var ep charm.EndpointError
+				if !errors.As(e, &ep) {
 					t.Fatal("unexpected error", e)
 					break
-				} else if c.End() != test.endpoint-1 {
+				} else if ep.End() != test.endpoint-1 {
 					t.Fatal("mismatched endpoint at", e)
 					break
 				}

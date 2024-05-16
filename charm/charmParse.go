@@ -26,16 +26,17 @@ func innerParse(first State, in io.RuneReader) (ret State, err error) {
 	for i := 0; ; i++ {
 		if r, _, e := in.ReadRune(); e != nil {
 			if e != io.EOF {
-				err = errors.Join(e, EndpointError{errContext(r, in), i, try, e.Error()})
+				err = errors.Join(e, EndpointError{r, in, i, try})
 			}
 			break
 		} else {
 			if next := try.NewRune(r); next == nil {
 				// no states left to parse remaining input
-				err = EndpointError{errContext(r, in), i, try, "unhandled rune"}
+				e := errors.New("unhandled rune")
+				err = errors.Join(e, EndpointError{r, in, i, try})
 				break
 			} else if es, ok := next.(Terminal); ok {
-				err = EndpointError{errContext(r, in), i, try, es.err.Error()}
+				err = errors.Join(es.err, EndpointError{r, in, i, try})
 				break
 			} else {
 				try = next
@@ -72,11 +73,8 @@ func ParseEof(str string, first State) (err error) {
 		err = e
 	} else if last != nil {
 		if fini := last.NewRune(Eof); fini != nil {
-			if es, ok := fini.(Terminal); ok && es.err != nil {
-				err = fmt.Errorf("%s handling eof for %q", es.err, str)
-			} else {
-				// and if we are passing eof, shouldnt the states check for it and return nil?
-				// err = EndpointError{str, len(str), fini}
+			if es, ok := fini.(Terminal); !ok || !es.Finished() {
+				err = fmt.Errorf("%s at eof for %q", es.err, str)
 			}
 		}
 	}
@@ -85,10 +83,10 @@ func ParseEof(str string, first State) (err error) {
 
 // ended before the whole input was parsed.
 type EndpointError struct {
-	str    string
-	end    int
-	last   State
-	reason string
+	r    rune
+	in   io.RuneReader
+	end  int
+	last State
 }
 
 // index of the failure point in the input
@@ -97,6 +95,6 @@ func (e EndpointError) End() int {
 }
 
 func (e EndpointError) Error() (ret string) {
-	return fmt.Sprintf("%s %q (%q ended at index %d)",
-		e.reason, e.str, StateName(e.last), e.end)
+	sink := errContext(e.r, e.in)
+	return fmt.Sprintf("%q (%q ended at index %d)", sink, StateName(e.last), e.end)
 }
