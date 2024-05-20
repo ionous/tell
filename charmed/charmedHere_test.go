@@ -1,7 +1,9 @@
 package charmed
 
 import (
-	_ "embed"
+	"embed"
+	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -10,53 +12,38 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-//go:embed hereExpected.test
-var hereExpected string
+//go:embed _testdata/here*
+var hereTest embed.FS
 
-//go:embed hereDoc.test
-var hereDoc string
-
-//go:embed hereDocRaw.test
-var hereDocRaw string
-
-//go:embed yamlBlock.test
-var yamlBlock string
-
-//go:embed yamlBlockRaw.test
-var yamlBlockRaw string
+//go:embed _testdata/expectedResults
+var expectedResults string
 
 // test reading a full heredoc
 func TestHereNow(t *testing.T) {
-	if got, e := testHere(hereDocRaw); e != nil {
-		t.Fatal("failed hereDocRaw", e)
-	} else if got != hereExpected {
-		t.Errorf("hereDocRaw: \nhave: %q\nwant: %q", got, hereExpected)
-	}
-	if got, e := testHere(hereDoc); e != nil {
-		t.Fatal("failed hereDoc", e)
-	} else if got != hereExpected {
-		t.Errorf("hereDoc: \nhave: %q\nwant: %q", got, hereExpected)
-	}
-}
-
-// test reading a yaml compatibility block
-func TestYamlBlocks(t *testing.T) {
-	if got, e := testYamlBlock(yamlBlockRaw); e != nil {
-		t.Fatal("failed yamlBlockRaw", e)
-	} else if got != hereExpected {
-		t.Errorf("yamlBlockRaw: \nhave: %q\nwant: %q", got, hereExpected)
-	}
-	if got, e := testYamlBlock(yamlBlock); e != nil {
-		t.Fatal("failed yamlBlock", e)
-	} else if got != hereExpected {
-		t.Errorf("yamlBlock: \nhave: %q\nwant: %q", got, hereExpected)
+	if e := fs.WalkDir(hereTest, ".", func(path string, d fs.DirEntry, e error) (err error) {
+		if e != nil {
+			err = e
+		} else if !d.IsDir() {
+			if b, e := fs.ReadFile(hereTest, path); e != nil {
+				err = e
+			} else {
+				str, name := string(b), d.Name()
+				if got, e := testHere(str); e != nil {
+					t.Errorf("failed %s %s", name, e)
+				} else if got != expectedResults {
+					t.Errorf("here %s: \nhave: %q\nwant: %q", name, got, expectedResults)
+				}
+			}
+		}
+		return
+	}); e != nil {
+		t.Fatal(e)
 	}
 }
 
 // test for tokenization of heredoc headers
 // ( not every series of tokens form a legal header; this doesn't test for that.
-//
-//	ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
+// - ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
 func TestHeader(t *testing.T) {
 	if got, e := testHeader("lang<<<END"); e != nil {
 		t.Fatal(e)
@@ -86,37 +73,47 @@ func TestRedirectCount(t *testing.T) {
 	}
 }
 
-func TestLiteralLines(t *testing.T) {
-	var ls indentedLines
-	// left side spaces, trailing spaces, and the text.
-	ls.addLine(3, 0, "a")
-	ls.addLine(4, 2, "b")
-	ls.addLine(2, 0, "c")
+// use the lower level "indentLines" writer
+// and verify escaping and final line chomping
+func TestHereLines(t *testing.T) {
+	var ls indentedBlock
+	// left side spaces, and the text.
+	ls.addLine(3, "a\n")
+	ls.addLine(4, "b  \\\n")
+	ls.addLine(2, "c\n")
 	var buf strings.Builder
-	ls.writeLines(&buf, 2, true)
+	// raw, keep trailing newline
+	ls.writeHere(&buf, runes.QuoteRaw, 2)
 	if got, expect := resolve(&buf),
-		" a   b c"; got != expect {
+		" a\n  b  \\\nc\n"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
-	ls.writeLines(&buf, 2, false)
+	// raw, discard trailing newline
+	ls.writeHere(&buf, runes.QuoteSingle, 2)
 	if got, expect := resolve(&buf),
-		" a\n  b  \nc"; got != expect {
+		" a\n  b  \\\nc"; got != expect {
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
+	}
+	// interpreted, keep trailing newline
+	ls.writeHere(&buf, runes.QuoteDouble, 2)
+	if got, expect := resolve(&buf),
+		" a\n  b  c\n"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 }
 
-func TestBody(t *testing.T) {
-	if got, e := testBody("!!"); e != nil {
+func TestCustomTag(t *testing.T) {
+	if got, e := testCustomTag("!!"); e != nil {
 		t.Fatal(e)
 	} else if expect := ""; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
-	if got, e := testBody("boop\nbop\nbeep\n!!"); e != nil {
+	if got, e := testCustomTag("boop\nbop\nbeep\n!!"); e != nil {
 		t.Fatal(e)
 	} else if expect := "boop\nbop\nbeep"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
-	if got, e := testBody("!partial!\n!!"); e != nil {
+	if got, e := testCustomTag("!partial!\n!!"); e != nil {
 		t.Fatal(e)
 	} else if expect := "!partial!"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
@@ -124,21 +121,11 @@ func TestBody(t *testing.T) {
 }
 
 func testHere(str string) (ret string, err error) {
-	var buf strings.Builder
-	quote, str := rune(str[0]), str[3:] // decodeHereAfter starts after the opening
-	escape := quote == runes.InterpretQuote
-	if e := charm.ParseEof(str, decodeHereAfter(&buf, quote, escape)); e != nil {
-		err = e
-	} else {
-		ret = buf.String()
-	}
-	return
-}
-
-func testYamlBlock(str string) (ret string, err error) {
 	var d QuoteDecoder
 	q, size := utf8.DecodeRuneInString(str)
-	if e := charm.ParseEof(str[size:], d.Pipe(q)); e != nil {
+	if next, ok := d.DecodeQuote(q); !ok {
+		err = fmt.Errorf("unhandled rune %q", q)
+	} else if e := charm.ParseEof(str[size:], next); e != nil {
 		err = e
 	} else {
 		ret = d.String()
@@ -146,11 +133,10 @@ func testYamlBlock(str string) (ret string, err error) {
 	return
 }
 
-func testBody(str string) (ret string, err error) {
-	var escape bool
-	var buf strings.Builder
-	var endTag = []rune{'!', '!'}
-	if e := charm.ParseEof(str, decodeBody(&buf, escape, endTag)); e != nil {
+func testCustomTag(str string) (ret string, err error) {
+	var buf strings.Builder // for no particular reason trims the final newline
+	next := decodeUntilCustom(&buf, runes.QuoteSingle, []rune{'!', '!'})
+	if e := charm.ParseEof(str, next); e != nil {
 		err = e
 	} else {
 		ret = buf.String()

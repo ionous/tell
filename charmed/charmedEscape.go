@@ -55,7 +55,9 @@ func decodeEscape(w runes.RuneWriter) charm.State {
 				e := fmt.Errorf("%w is not recognized after a backslash", charm.InvalidRune(q))
 				ret = charm.Error(e)
 			} else {
-				w.WriteRune(v)
+				if v != 0 {
+					w.WriteRune(v)
+				}
 				ret = charm.UnhandledNext()
 			}
 		}
@@ -94,4 +96,7 @@ var escapes = map[rune]rune{
 	'v':  '\v',
 	'\\': '\\',
 	'"':  '"',
+	// a backslash followed by an actual newline
+	// eats the newline, joining the next line seamlessly.
+	'\n': 0,
 }

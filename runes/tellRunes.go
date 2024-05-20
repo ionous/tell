@@ -10,15 +10,16 @@ const (
 	Escape         = '\\'
 	Hash           = '#'  // comment marker
 	HTab           = '\t' // invalid outside of strings or comments.
-	InterpretQuote = '"'  // double quotes: interpreted strings are bookended with double quotes
 	KeyValue       = '\r' // in comment blocks, replaces both the  key and the value.
 	Newline        = '\n'
 	NextTerm       = '\f' // form feed is used to separate comment entries
-	RawQuote       = '`'  // back tick
+	QuoteDouble    = '"'  // double quotes
+	QuotePipe      = '|'  // a nod towards yaml compatibility
+	QuoteRaw       = '`'  // back tick
+	QuoteSingle    = '\'' // single quotes
 	Redirect       = '<'  // for closing tags
 	Space          = ' '
 	Underscore     = '_' // valid in words between colons
-	YamlBlock      = '|' // a nod towards yaml compatibility
 )
 
 // https://golang.org/ref/spec#decimal_digit

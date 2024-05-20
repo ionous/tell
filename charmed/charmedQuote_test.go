@@ -29,12 +29,21 @@ func TestQuotes(t *testing.T) {
 	}
 }
 
+// scans until the matching quote marker is found
+func testRemainingString(match rune, onDone func(string)) (ret charm.State) {
+	var d QuoteDecoder
+	return charm.Step(d.scanRemainingString(match, AllowEscapes),
+		charm.OnExit("recite", func() {
+			onDone(d.String())
+		}))
+}
+
 func testQ(t *testing.T, str, want string) (ret interface{}, err error) {
 	t.Log("test:", str)
 	var got string
 	p := charm.Statement("quote", func(r rune) (ret charm.State) {
 		if r == '\'' || r == '"' {
-			ret = ScanQuote(r, true, func(res string) {
+			ret = testRemainingString(r, func(res string) {
 				got = res
 			})
 		}

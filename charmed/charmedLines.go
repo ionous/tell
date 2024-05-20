@@ -7,39 +7,37 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// the decoder produces indented tokens
-// it writes lines other than the closing tag into the provided buffer.
-// depth can be -1 for fully blank lines
-type lineReporter func(lineType rune, indent int) error
-
 // helper context to limit parameter passing
 type hereLines struct {
-	out    *indentedLines
-	report lineReporter
-	endTag []rune // custom end tag that has to match exactly
-	endSet []rune // individual runes that can match to close
+	out      *strings.Builder // final target for the heredoc
+	lines    indentedBlock    // accumulation of the heredocs
+	lineType rune             // describes how to process the incoming text
+	endTag   []rune           // custom end tag that has to match exactly
+	endSet   []rune           // individual runes that can match to close
 }
 
+// decode until a custom tag has been reached
 // endTag should be free of escapes and whitespace.
-func decodeCustomTag(out *indentedLines, endTag []rune, report lineReporter) charm.State {
+func decodeUntilCustom(out *strings.Builder, lineType rune, endTag []rune) charm.State {
 	d := hereLines{
-		out:    out,
-		endTag: endTag, // the default endTag is three quotes
-		report: report,
+		out:      out,
+		lineType: lineType,
+		endTag:   endTag, // the default endTag is three quotes
 	}
 	return d.decodeLines()
 }
 
-func decodeTripleTag(out *indentedLines, endSet []rune, report lineReporter) charm.State {
+// decode until a triplet of any of the passed tags has been reached
+func decodeUntilTriple(out *strings.Builder, endSet ...rune) charm.State {
 	d := hereLines{
 		out:    out,
 		endSet: endSet,
-		report: report,
 	}
 	return d.decodeLines()
 }
 
-// reports lines until the closing tag, then returns nil.
+// record lines until the closing tag, then returns nil.
+// switches to decodeLeft when something other than whitespace is detected.
 func (d *hereLines) decodeLines() charm.State {
 	var indent int
 	return charm.Self("decodeLines", func(self charm.State, q rune) (ret charm.State) {
@@ -48,7 +46,7 @@ func (d *hereLines) decodeLines() charm.State {
 			indent++
 			ret = self
 		case runes.Newline:
-			d.out.nextLine(0, 0)
+			d.lines.flushLine(0, 0)
 			indent = 0
 			ret = self
 		case runes.Eof: // expects a closing tag
@@ -61,6 +59,10 @@ func (d *hereLines) decodeLines() charm.State {
 	})
 }
 
+func (d *hereLines) report(lineType rune, indent int) error {
+	return d.lines.writeHere(d.out, lineType, indent)
+}
+
 // match at the start of a line, past any initial whitespace.
 // depth is the size of that whitespace.
 func (d *hereLines) decodeLeft(depth int) charm.State {
@@ -71,19 +73,20 @@ func (d *hereLines) decodeLeft(depth int) charm.State {
 		cm, tm := custom.match(q), triple.match(q)
 		switch {
 		case cm == tagSucceeded:
-			if e := d.report(0, depth); e != nil {
+			// its a closing custom tag
+			if e := d.report(d.lineType, depth); e != nil {
 				ret = charm.Error(e)
 			}
 
 		case tm == tagSucceeded:
+			// its a closing triple tag
 			if e := d.report(triple.curr, depth); e != nil {
 				ret = charm.Error(e)
 			}
 
 		case (cm == tagFailed && tm == tagFailed) || runes.IsWhitespace((q)):
-			// whitespace that wasn't a success or if both tags have failed
-			// then we are done.
-			d.out.WriteString(accum.String())
+			// its a line of content
+			d.lines.WriteString(accum.String())
 			ret = charm.RunState(q, d.decodeRight(depth))
 
 		default: // still some tagProgress going on.
@@ -103,17 +106,17 @@ func (d *hereLines) decodeRight(depth int) charm.State {
 			trailingSpaces++
 			ret = self
 		case runes.Newline:
-			d.out.nextLine(depth, trailingSpaces)
+			d.lines.flushLine(depth, trailingSpaces)
 			ret = d.decodeLines() // done with this line; read more lines!
 		case runes.Eof:
 			e := charm.InvalidRune(q) // closing tag required before eof
 			ret = charm.Error(e)
 		default:
 			if trailingSpaces > 0 {
-				dupe(d.out, runes.Space, trailingSpaces)
+				dupe(&d.lines, runes.Space, trailingSpaces)
 				trailingSpaces = 0
 			}
-			d.out.WriteRune(q)
+			d.lines.WriteRune(q)
 			ret = self // keep reading the rest of the line...
 		}
 		return

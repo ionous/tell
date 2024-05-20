@@ -85,7 +85,7 @@ func (n *tokenizer) tokenize() charm.State {
 			next := n.commentDecoder()
 			ret = send(next, q)
 
-		case runes.YamlBlock, runes.InterpretQuote, runes.RawQuote:
+		case runes.YamlBlock, runes.QuoteDouble, runes.QuoteRaw:
 			var d charmed.QuoteDecoder
 			ret = charm.Step(d.Decode(q), charm.Statement("string", func(q rune) charm.State {
 				return n.notifyRune(q, String, d.String())
