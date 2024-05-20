@@ -21,16 +21,64 @@ type QuoteDecoder struct {
 	strings.Builder
 }
 
+func (d *QuoteDecoder) Decode(q rune) (ret charm.State) {
+	if n := d.Pipe(q); n != nil {
+		ret = n
+	} else if n = d.Interpret(q); n != nil {
+		ret = n
+	} else if n = d.Record(q); n != nil {
+		ret = n
+	}
+	return
+}
+
+// assumes q is a pipe rune
+// read until a heredoc ending marker is found
+func (d *QuoteDecoder) Pipe(q rune) (ret charm.State) {
+	if q == runes.YamlBlock {
+		ret = charm.Self("pipe whitespace", func(self charm.State, q rune) (ret charm.State) {
+			switch q {
+			case runes.Space: // ignore spaces
+				ret = self
+			case runes.Newline: // we expect to see a newline after the pipe
+				var lines indentedLines
+				endSet := []rune{runes.RawQuote, runes.InterpretQuote}
+				ret = decodeTripleTag(&lines, endSet,
+					func(lineType rune, indent int) error {
+						var escape bool
+						if lineType == runes.InterpretQuote {
+							escape = true
+						} else if lineType != runes.RawQuote {
+							panic("unexpected lineType")
+						}
+						return lines.writeLines(&d.Builder, indent, escape)
+					})
+			default:
+				ret = charm.Error(charm.InvalidRune(q))
+			}
+			return
+		})
+	}
+
+	return
+}
+
 // read until an InterpretedString (") end marker is found
 // for heredocs: pass the indentation of the starting quote
-func (d *QuoteDecoder) Interpret() charm.State {
-	return d.ScanQuote(runes.InterpretQuote, true, true)
+func (d *QuoteDecoder) Interpret(q rune) (ret charm.State) {
+	if q == runes.InterpretQuote {
+		ret = d.ScanQuote(q, true, true)
+	}
+	return
 }
 
 // read until an RawString (`) end marker is found
 // for heredocs: pass the indentation of the starting quote
-func (d *QuoteDecoder) Record() charm.State {
-	return d.ScanQuote(runes.RawQuote, false, true)
+func (d *QuoteDecoder) Record(q rune) (ret charm.State) {
+	if q == runes.RawQuote {
+		ret = d.ScanQuote(runes.RawQuote, false, true)
+	}
+	return
 }
 
 // return a state which reads until the end of string, returns error if finished incorrectly

@@ -1,5 +1,5 @@
 here are a couple of lines
-that should appear exactly as written.
+that might have newlines or might not.
 
-backslashes "\" aren't special,
-and neither are quotes.
+backslashes "\" can be special,
+and also quotes.

@@ -27,18 +27,8 @@ func decodeHereAfter(out *strings.Builder, quote rune, escape bool) charm.State 
 
 func decodeBody(out *strings.Builder, escape bool, endTag []rune) charm.State {
 	var lines indentedLines
-	var lineBuf strings.Builder
-	return decodeLines(&lineBuf, escape, endTag, func(lineType lineType, lhs, rhs int) (err error) {
-		switch lineType {
-		case lineText:
-			lines.addLine(lhs, rhs, lineBuf.String())
-			lineBuf.Reset()
-		case lineClose:
-			err = lines.writeLines(out, lhs, !escape)
-		default:
-			panic("unknown lineType")
-		}
-		return
+	return decodeCustomTag(&lines, endTag, func(_ rune, depth int) error {
+		return lines.writeLines(out, depth, escape)
 	})
 }
 
@@ -49,18 +39,52 @@ type indentedLine struct {
 	str      string
 }
 
-type indentedLines []indentedLine
+func (el *indentedLine) getLine(escape bool) (ret string, err error) {
+	if !escape || len(el.str) == 0 {
+		ret = el.str
+	} else {
+		var buf strings.Builder
+		if e := escapeString(&buf, el.str); e != nil {
+			err = e
+		} else {
+			ret = buf.String()
+		}
+	}
+	return
+}
+
+type indentedLines struct {
+	lines []indentedLine
+	buf   strings.Builder
+}
+
+func (ls *indentedLines) WriteRune(r rune) (int, error) {
+	return ls.buf.WriteRune(r)
+}
+
+func (ls *indentedLines) WriteString(str string) (int, error) {
+	return ls.buf.WriteString(str)
+}
 
 func (ls *indentedLines) addLine(lhs, rhs int, str string) {
-	*ls = append(*ls, indentedLine{lhs, rhs, str})
+	ls.lines = append(ls.lines, indentedLine{lhs, rhs, str})
+}
+
+func (ls *indentedLines) nextLine(lhs, rhs int) {
+	ls.addLine(lhs, rhs, ls.buf.String())
+	ls.buf.Reset()
 }
 
 // a literalLine means every newline ( except the last ) is a newline.
 // otherwise, it takes a fully blank line to write a newline
-func (ls indentedLines) writeLines(out *strings.Builder, leftEdge int, literalLines bool) (err error) {
-	var afterNewLine bool // when writing interpreted lines, we want only a space OR a newline.
-	for i, el := range ls {
-		if str := el.str; len(str) == 0 {
+func (ls indentedLines) writeLines(out *strings.Builder, leftEdge int, escape bool) (err error) {
+	literalLines := !escape // these could be tied to different states
+	var afterNewLine bool   // when writing interpreted lines, we want only a space OR a newline.
+	for i, el := range ls.lines {
+		if str, e := el.getLine(escape); e != nil {
+			err = e
+			break
+		} else if len(str) == 0 {
 			out.WriteRune(runes.Newline)
 			afterNewLine = true
 		} else if newLhs := el.lhs - leftEdge; newLhs < 0 {

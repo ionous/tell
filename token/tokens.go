@@ -85,11 +85,11 @@ func (n *tokenizer) tokenize() charm.State {
 			next := n.commentDecoder()
 			ret = send(next, q)
 
-		case runes.InterpretQuote:
-			ret = n.interpretDecoding()
-
-		case runes.RawQuote:
-			ret = n.rawDecoding()
+		case runes.YamlBlock, runes.InterpretQuote, runes.RawQuote:
+			var d charmed.QuoteDecoder
+			ret = charm.Step(d.Decode(q), charm.Statement("string", func(q rune) charm.State {
+				return n.notifyRune(q, String, d.String())
+			}))
 
 		case runes.Dash: // negative numbers or sequences
 			ret = n.dashDecoding()
@@ -200,20 +200,6 @@ func (n *tokenizer) commentDecoder() charm.State {
 		}
 		return
 	})
-}
-
-func (n *tokenizer) interpretDecoding() charm.State {
-	var d charmed.QuoteDecoder
-	return charm.Step(d.Interpret(), charm.Statement("interpreted", func(q rune) charm.State {
-		return n.notifyRune(q, String, d.String())
-	}))
-}
-
-func (n *tokenizer) rawDecoding() charm.State {
-	var d charmed.QuoteDecoder
-	return charm.Step(d.Record(), charm.Statement("recorded", func(q rune) charm.State {
-		return n.notifyRune(q, String, d.String())
-	}))
 }
 
 // fix? returns float64 because json does

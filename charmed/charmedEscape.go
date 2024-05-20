@@ -8,6 +8,20 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
+func escapeString(w runes.RuneWriter, str string) (err error) {
+	// not going to win any awards for efficiency that's for sure.
+	return charm.ParseEof(str,
+		charm.Self("descape", func(self charm.State, q rune) (ret charm.State) {
+			if q == runes.Escape {
+				ret = charm.Step(decodeEscape(w), self)
+			} else if q != runes.Eof {
+				w.WriteRune(q)
+				ret = self
+			}
+			return
+		}))
+}
+
 // starting after a backslash, read an escape encoded rune.
 // the subsequent rune will return unhandled.
 // \xFF, \uFFFF, \UffffFFFF

@@ -4,10 +4,14 @@ import (
 	_ "embed"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/runes"
 )
+
+//go:embed hereExpected.test
+var hereExpected string
 
 //go:embed hereDoc.test
 var hereDoc string
@@ -15,20 +19,37 @@ var hereDoc string
 //go:embed hereDocRaw.test
 var hereDocRaw string
 
-//go:embed hereExpected.test
-var hereExpected string
+//go:embed yamlBlock.test
+var yamlBlock string
+
+//go:embed yamlBlockRaw.test
+var yamlBlockRaw string
 
 // test reading a full heredoc
 func TestHereNow(t *testing.T) {
 	if got, e := testHere(hereDocRaw); e != nil {
 		t.Fatal("failed hereDocRaw", e)
 	} else if got != hereExpected {
-		t.Fatalf("hereDocRaw: \nhave: %q\nwant: %q", got, hereExpected)
+		t.Errorf("hereDocRaw: \nhave: %q\nwant: %q", got, hereExpected)
 	}
 	if got, e := testHere(hereDoc); e != nil {
 		t.Fatal("failed hereDoc", e)
 	} else if got != hereExpected {
-		t.Fatalf("hereDoc: \nhave: %q\nwant: %q", got, hereExpected)
+		t.Errorf("hereDoc: \nhave: %q\nwant: %q", got, hereExpected)
+	}
+}
+
+// test reading a yaml compatibility block
+func TestYamlBlocks(t *testing.T) {
+	if got, e := testYamlBlock(yamlBlockRaw); e != nil {
+		t.Fatal("failed yamlBlockRaw", e)
+	} else if got != hereExpected {
+		t.Errorf("yamlBlockRaw: \nhave: %q\nwant: %q", got, hereExpected)
+	}
+	if got, e := testYamlBlock(yamlBlock); e != nil {
+		t.Fatal("failed yamlBlock", e)
+	} else if got != hereExpected {
+		t.Errorf("yamlBlock: \nhave: %q\nwant: %q", got, hereExpected)
 	}
 }
 
@@ -37,13 +58,13 @@ func TestHereNow(t *testing.T) {
 //
 //	ex. legal headers allow at most one redirect triplet, and it should always be followed by exactly one word.)
 func TestHeader(t *testing.T) {
-	if got, e := testHeader("yaml<<<END"); e != nil {
+	if got, e := testHeader("lang<<<END"); e != nil {
 		t.Fatal(e)
-	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
+	} else if expect := "lang[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
-	} else if got, e := testHeader("yaml  <<<  END"); e != nil {
+	} else if got, e := testHeader("lang  <<<  END"); e != nil {
 		t.Fatal(e)
-	} else if expect := "yaml[headerWord][headerRedirect]END[headerWord]"; got != expect {
+	} else if expect := "lang[headerWord][headerRedirect]END[headerWord]"; got != expect {
 		t.Fatal("got:", got)
 	} else if got, e := testHeader("<<<"); e != nil {
 		t.Fatal(e)
@@ -72,33 +93,33 @@ func TestLiteralLines(t *testing.T) {
 	ls.addLine(4, 2, "b")
 	ls.addLine(2, 0, "c")
 	var buf strings.Builder
-	ls.writeLines(&buf, 2, false /*literalLine*/)
+	ls.writeLines(&buf, 2, true)
 	if got, expect := resolve(&buf),
 		" a   b c"; got != expect {
-		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
-	ls.writeLines(&buf, 2, true /*literalLine*/)
+	ls.writeLines(&buf, 2, false)
 	if got, expect := resolve(&buf),
 		" a\n  b  \nc"; got != expect {
-		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 }
 
 func TestBody(t *testing.T) {
 	if got, e := testBody("!!"); e != nil {
 		t.Fatal(e)
-	} else if expect := "[lineClose]"; got != expect {
-		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	} else if expect := ""; got != expect {
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 	if got, e := testBody("boop\nbop\nbeep\n!!"); e != nil {
 		t.Fatal(e)
-	} else if expect := "boop[lineText]bop[lineText]beep[lineText][lineClose]"; got != expect {
-		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	} else if expect := "boop\nbop\nbeep"; got != expect {
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 	if got, e := testBody("!partial!\n!!"); e != nil {
 		t.Fatal(e)
-	} else if expect := "!partial![lineText][lineClose]"; got != expect {
-		t.Fatalf("\nhave: %q\nwant: %q", got, expect)
+	} else if expect := "!partial!"; got != expect {
+		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 }
 
@@ -114,16 +135,22 @@ func testHere(str string) (ret string, err error) {
 	return
 }
 
+func testYamlBlock(str string) (ret string, err error) {
+	var d QuoteDecoder
+	q, size := utf8.DecodeRuneInString(str)
+	if e := charm.ParseEof(str[size:], d.Pipe(q)); e != nil {
+		err = e
+	} else {
+		ret = d.String()
+	}
+	return
+}
+
 func testBody(str string) (ret string, err error) {
 	var escape bool
 	var buf strings.Builder
 	var endTag = []rune{'!', '!'}
-	if e := parse(str, decodeLines(&buf, escape, endTag, func(cat lineType, lhs, rhs int) (_ error) {
-		buf.WriteRune('[')
-		buf.WriteString(cat.String())
-		buf.WriteRune(']')
-		return
-	})); e != nil {
+	if e := charm.ParseEof(str, decodeBody(&buf, escape, endTag)); e != nil {
 		err = e
 	} else {
 		ret = buf.String()

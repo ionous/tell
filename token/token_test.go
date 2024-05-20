@@ -96,6 +96,12 @@ hello
 doc
 """`,
 		`hello doc`,
+		// ----------
+		token.String,
+		`|
+yaml compatibility block
+"""`,
+		`yaml compatibility block`,
 		// -------------
 		token.String,
 		strings.Join([]string{
