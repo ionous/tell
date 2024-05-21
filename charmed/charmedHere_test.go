@@ -12,7 +12,7 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-//go:embed _testdata/here*
+//go:embed _testdata/quote*
 var hereTest embed.FS
 
 //go:embed _testdata/expectedResults
@@ -28,7 +28,7 @@ func TestHereNow(t *testing.T) {
 				err = e
 			} else {
 				str, name := string(b), d.Name()
-				if got, e := testHere(str); e != nil {
+				if got, e := testQuotes(str); e != nil {
 					t.Errorf("failed %s %s", name, e)
 				} else if got != expectedResults {
 					t.Errorf("here %s: \nhave: %q\nwant: %q", name, got, expectedResults)
@@ -120,15 +120,15 @@ func TestCustomTag(t *testing.T) {
 	}
 }
 
-func testHere(str string) (ret string, err error) {
-	var d QuoteDecoder
+func testQuotes(str string) (ret string, err error) {
+	var buf strings.Builder
 	q, size := utf8.DecodeRuneInString(str)
-	if next, ok := d.DecodeQuote(q); !ok {
+	if next, ok := DecodeQuote(q, &buf); !ok {
 		err = fmt.Errorf("unhandled rune %q", q)
 	} else if e := charm.ParseEof(str[size:], next); e != nil {
 		err = e
 	} else {
-		ret = d.String()
+		ret = buf.String()
 	}
 	return
 }

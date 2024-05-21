@@ -2,11 +2,9 @@ Tell: "A yaml-like text format."
 
 # Does this look suspiciously like the yaml overview?
 # I have no idea how that could have happened.
-What It Is: """
-   A way of describing data containing string, number, and boolean values,
+What It Is: "A way of describing data containing string, number, and boolean values,
    and collections of those values. As in yaml, collections can be
-   both key-value mappings, and sequences of values.
-   """
+   both key-value mappings, and sequences of values."
 
 What It Is Not: "A subset of yaml."
 

@@ -85,11 +85,14 @@ func (n *tokenizer) tokenize() charm.State {
 			next := n.commentDecoder()
 			ret = send(next, q)
 
-		case runes.YamlBlock, runes.QuoteDouble, runes.QuoteRaw:
-			var d charmed.QuoteDecoder
-			ret = charm.Step(d.Decode(q), charm.Statement("string", func(q rune) charm.State {
-				return n.notifyRune(q, String, d.String())
-			}))
+		case runes.QuoteDouble:
+			ret = n.decodeQuote(q, charmed.DecodeDouble)
+		case runes.QuoteSingle:
+			ret = n.decodeQuote(q, charmed.DecodeSingle)
+		case runes.QuoteRaw:
+			ret = n.decodeQuote(q, charmed.DecodeRaw)
+		case runes.QuotePipe:
+			ret = n.decodeQuote(q, charmed.DecodePipe)
 
 		case runes.Dash: // negative numbers or sequences
 			ret = n.dashDecoding()
@@ -114,6 +117,15 @@ func (n *tokenizer) tokenize() charm.State {
 		}
 		return
 	})
+}
+
+type quoteParser func(*strings.Builder) charm.State
+
+func (n *tokenizer) decodeQuote(q rune, which quoteParser) charm.State {
+	var b strings.Builder
+	return charm.Step(which(&b), charm.Statement("string", func(q rune) charm.State {
+		return n.notifyRune(q, String, b.String())
+	}))
 }
 
 // if the passed rune might be start a bool value

@@ -95,12 +95,12 @@ func TestTokens(t *testing.T) {
 hello
 doc
 """`,
-		`hello doc`,
+		"hello\ndoc\n",
 		// ----------
 		token.String,
 		`|
 yaml compatibility block
-"""`,
+'''`,
 		`yaml compatibility block`,
 		// -------------
 		token.String,
@@ -110,7 +110,8 @@ yaml compatibility block
 			"line",
 			"```"}, "\n"),
 		`hello
-line`,
+line
+`,
 	}
 
 	// test all of the above in both the same and separate buffers

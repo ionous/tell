@@ -7,66 +7,51 @@ import (
 	"github.com/ionous/tell/runes"
 )
 
-// wraps a string builder to read a quoted string or heredoc.
-type QuoteDecoder struct {
-	strings.Builder
-}
-
-func (d *QuoteDecoder) DecodeQuote(q rune) (ret charm.State, okay bool) {
-	if n, ok := d.DecodePipe(q); ok {
-		ret, okay = n, true
-	} else if n, ok := d.DecodeDouble(q); ok {
-		ret, okay = n, true
-	} else if n, ok := d.DecodeSingle(q); ok {
-		ret, okay = n, true
-	} else if n, ok := d.DecodeRaw(q); ok {
-		ret, okay = n, true
+// assuming q is a rune that starts a string scalar or heredoc
+// return an appropriate decoder for decoding the rest of the string.
+// otherwise, returns false.
+func DecodeQuote(q rune, out *strings.Builder) (ret charm.State, okay bool) {
+	switch q {
+	case runes.QuoteDouble:
+		ret, okay = DecodeDouble(out), true
+	case runes.QuoteSingle:
+		ret, okay = DecodeSingle(out), true
+	case runes.QuoteRaw:
+		ret, okay = DecodeRaw(out), true
+	case runes.QuotePipe:
+		ret, okay = DecodePipe(out), true
 	}
 	return
 }
 
-// assumes q is a pipe rune
-// read until a heredoc ending marker is found
-func (d *QuoteDecoder) DecodePipe(q rune) (ret charm.State, okay bool) {
-	if okay = q == runes.QuotePipe; okay {
-		ret = charm.Self("pipe whitespace", func(self charm.State, q rune) (ret charm.State) {
-			switch q {
-			case runes.Space: // ignore spaces
-				ret = self
-			case runes.Newline: // we expect to see a newline after the pipe
-				ret = decodeUntilTriple(&d.Builder, runes.QuoteRaw, runes.QuoteDouble, runes.QuoteSingle)
-			default:
-				ret = charm.Error(charm.InvalidRune(q))
-			}
-			return
-		})
-	}
-
-	return
+// read until a heredoc ending marker is found.
+func DecodePipe(out *strings.Builder) charm.State {
+	return charm.Self("pipe whitespace", func(self charm.State, q rune) (ret charm.State) {
+		switch q {
+		case runes.Space: // ignore spaces
+			ret = self
+		case runes.Newline: // we expect to see a newline after the pipe
+			ret = decodeUntilTriple(out, runes.QuoteRaw, runes.QuoteDouble, runes.QuoteSingle)
+		default:
+			ret = charm.Error(charm.InvalidRune(q))
+		}
+		return
+	})
 }
 
-// read until an double-quote (") end marker is found
-func (d *QuoteDecoder) DecodeDouble(q rune) (ret charm.State, okay bool) {
-	if okay = q == runes.QuoteDouble; okay {
-		ret = d.scanRemainingString(q, AllowHere|AllowEscapes)
-	}
-	return
+// read until a (new) double-quote (") marker is found.
+func DecodeDouble(out *strings.Builder) charm.State {
+	return scanRemainingString(out, runes.QuoteDouble, AllowHere|AllowEscapes|FoldLines)
 }
 
-// read until a single-quote (') end marker is found
-func (d *QuoteDecoder) DecodeSingle(q rune) (ret charm.State, okay bool) {
-	if okay = q == runes.QuoteSingle; okay {
-		ret = d.scanRemainingString(q, AllowHere)
-	}
-	return
+// read until a (new) single-quote (') marker is found.
+func DecodeSingle(out *strings.Builder) charm.State {
+	return scanRemainingString(out, runes.QuoteSingle, AllowHere|FoldLines)
 }
 
-// read until an back-tick (`) end marker is found
-func (d *QuoteDecoder) DecodeRaw(q rune) (ret charm.State, okay bool) {
-	if okay = q == runes.QuoteRaw; okay {
-		ret = d.scanRemainingString(runes.QuoteRaw, AllowHere|KeepIndent|KeepLines)
-	}
-	return
+// read until a (new) back-tick (`) marker is found.
+func DecodeRaw(out *strings.Builder) charm.State {
+	return scanRemainingString(out, runes.QuoteRaw, AllowHere)
 }
 
 // these control how inline strings are processed
@@ -74,8 +59,7 @@ type QuoteOptions int
 
 const (
 	AllowHere    QuoteOptions = 1 << iota
-	KeepIndent                // otherwise, eat leading spaces.
-	KeepLines                 // otherwise, use semantic line folding.
+	FoldLines                 // otherwise, keep all line feeds and leading spaces.
 	AllowEscapes              // otherwise, backslashes are backslashes.
 )
 
@@ -83,49 +67,62 @@ func (opt QuoteOptions) Is(flag QuoteOptions) bool {
 	return opt&flag != 0
 }
 
-// a leading quote has already been processed.
+type pendingSpace bool
+
+func (p *pendingSpace) writeSpace(out *strings.Builder) {
+	if *p {
+		out.WriteRune(runes.Space)
+		*p = false
+	}
+}
+
+// a leading quote has already been processed
 // returns unhandled after the closing quote, or error if finished incorrectly.
-func (d *QuoteDecoder) scanRemainingString(match rune, opt QuoteOptions) charm.State {
-	startOfLine := false // the start of the string isnt the start of a line
+func scanRemainingString(out *strings.Builder, match rune, opt QuoteOptions) charm.State {
+	var padding pendingSpace
+	var lineStarted bool // the start of the string isnt the start of a line
 	return charm.Self("scanQuote", func(self charm.State, q rune) (ret charm.State) {
 		allowHere := opt.Is(AllowHere)
 		opt &= ^AllowHere // cant ever be a heredoc after the start
 		ret = self        // provisionally, loop.
 		switch {
 		case q == runes.Eof:
-			// return invalid because the string wasn't closed.
-			ret = charm.Error(charm.InvalidRune(q))
+			// invalid because the string wasn't closed
+			ret = charm.Error(charm.InvalidRune(runes.Eof))
 
 		case q == runes.Newline:
-			if opt.Is(KeepLines) || startOfLine {
-				d.WriteRune(q)
+			if opt.Is(FoldLines) && !lineStarted {
+				padding = true
+				lineStarted = true
 			} else {
-				d.WriteRune(runes.Space)
-				startOfLine = true
+				out.WriteRune(runes.Newline)
+				padding = false
 			}
 
-		case startOfLine && q == runes.Space:
-			// if not keeping whitespace, eat all leading indentation as per yaml.
-			if opt.Is(KeepIndent) {
-				d.WriteRune(q)
+		case lineStarted && q == runes.Space:
+			// quiet leading spaces when folding, otherwise record them.
+			if !opt.Is(FoldLines) {
+				out.WriteRune(runes.Space)
 			}
 
 		case q != match:
-			startOfLine = false
+			padding.writeSpace(out)
+			lineStarted = false
 			if q == runes.Escape && opt.Is(AllowEscapes) {
-				ret = charm.Step(decodeEscape(d), self)
+				ret = charm.Step(decodeEscape(out), self)
 			} else {
-				d.WriteRune(q)
+				out.WriteRune(q)
 			}
 
 		default:
-			// a matching quote was detected. either we're at the end of the string,
+			padding.writeSpace(out)
+			// a matching quote was detected either we're at the end of the string,
 			// or we're still at the start... so it might be a heredoc.
 			// if at the end: we eat the matching quote, and return unhandled for the next rune.
 			// for a heredoc: we eat the matching quote, *and* the next rune, then parse the doc.
 			ret = charm.Statement("quoted", func(secondRune rune) (ret charm.State) {
 				if allowHere && secondRune == match {
-					ret = decodeHereAfter(&d.Builder, match)
+					ret = decodeHereAfter(out, match)
 				}
 				return
 			})

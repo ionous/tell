@@ -21,7 +21,7 @@
         "options:": [
           "\r\n# A non-inline prefix",
           "Big",
-          "Big description for a big\nentry."
+          "Big description for a big\nentry.\n"
         ],
         "attributes:": [
           "",

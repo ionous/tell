@@ -8,8 +8,8 @@ catalog:
     options: 
       - "Big"
       - """
-      Big description for a big
-      entry.
+      Big description for a big \
+      entry.\
       """
     attributes: [1,2,,]
       

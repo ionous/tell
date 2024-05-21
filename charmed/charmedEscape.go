@@ -54,12 +54,23 @@ func decodeEscape(w runes.RuneWriter) charm.State {
 			if v, ok := escapes[q]; !ok {
 				e := fmt.Errorf("%w is not recognized after a backslash", charm.InvalidRune(q))
 				ret = charm.Error(e)
+			} else if v == 0 {
+				ret = eatLeadingSpaces()
 			} else {
-				if v != 0 {
-					w.WriteRune(v)
-				}
+				w.WriteRune(v)
 				ret = charm.UnhandledNext()
 			}
+		}
+		return
+	})
+}
+
+// if there was an escaped newline, eat all the spaces on the next line
+// till we see something new and unrecognizable.
+func eatLeadingSpaces() charm.State {
+	return charm.Self("postEscape", func(self charm.State, q rune) (ret charm.State) {
+		if q == runes.Space {
+			ret = self
 		}
 		return
 	})

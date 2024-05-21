@@ -19,7 +19,6 @@ catalog:
         "Big"
       - """
         Big description for a big
-
         entry.
         """
     attributes:

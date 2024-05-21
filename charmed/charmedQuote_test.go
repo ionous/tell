@@ -2,10 +2,24 @@ package charmed
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
 )
+
+func TestCollapsingSpace(t *testing.T) {
+	if str, e := testQuotes(`"backslashes \"\\\" are \
+  special,
+"`); e != nil {
+		t.Error(e)
+	} else {
+		const expect = `backslashes "\" are special, `
+		if str != expect {
+			t.Errorf("\nhave: %q\nwant: %q", str, expect)
+		}
+	}
+}
 
 func TestQuotes(t *testing.T) {
 	if x, e := testQ(t, "'singles'", "singles"); e != nil {
@@ -31,10 +45,10 @@ func TestQuotes(t *testing.T) {
 
 // scans until the matching quote marker is found
 func testRemainingString(match rune, onDone func(string)) (ret charm.State) {
-	var d QuoteDecoder
-	return charm.Step(d.scanRemainingString(match, AllowEscapes),
+	var buf strings.Builder
+	return charm.Step(scanRemainingString(&buf, match, AllowEscapes),
 		charm.OnExit("recite", func() {
-			onDone(d.String())
+			onDone(buf.String())
 		}))
 }
 

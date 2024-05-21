@@ -1,0 +1,13 @@
+"here are a couple of lines
+  
+  specified on separate lines.
+
+  
+  backslashes \"\\\" might be \
+  special,
+
+  depending on the
+  quoting style.\nand same
+  for the final newline.
+
+"
