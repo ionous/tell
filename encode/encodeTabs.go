@@ -10,7 +10,7 @@ import (
 type TabWriter struct {
 	depth    int // requested leading spaces on each new line
 	spaces   int // trailing spaces
-	newLines int
+	newLines int // requested newlines, not written until pad()
 	Writer   io.Writer
 	xpos     int
 }
@@ -30,10 +30,9 @@ func (tab *TabWriter) Softline() {
 	tab.spaces = 0
 }
 
-func (tab *TabWriter) OptionalLine(b bool) {
-	if b {
-		tab.Softline()
-	}
+func (tab *TabWriter) Nextline() {
+	tab.newLines++
+	tab.spaces = 0
 }
 
 // inc: increases the current indent
@@ -77,10 +76,12 @@ func (tab *TabWriter) Quote(s string) {
 	tab.WriteString(str)
 }
 
-// write a non-quoted escaped string
-func (tab *TabWriter) Escape(s string) {
+// escape the contents of a string
+// returns true if there were any escapes
+func (tab *TabWriter) Escape(s string) bool {
 	str := strconv.Quote(s) // fix? strconv doesnt have a writer api
-	tab.WriteString(str[1 : len(str)-1])
+	cnt, _ := tab.WriteString(str[1 : len(str)-1])
+	return cnt > len(s)
 }
 
 func (tab *TabWriter) WriteString(s string) (int, error) {

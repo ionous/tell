@@ -1,13 +1,11 @@
 bool: true
 empty: []
 hello: "there"
-heredoc: """
-  a string
-
-  with several lines
-
-  becomes a heredoc.
-  """
+heredoc: |
+    a string
+    with several lines
+    becomes a heredoc.
+    '''
 map:
   bool: true
   hello: "world"

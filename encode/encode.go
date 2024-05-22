@@ -53,24 +53,57 @@ func (enc *Encoder) Encode(v any) (err error) {
 	return
 }
 
-// true if written as a heredoc
-func (enc *Encoder) writeHere(str string) (okay bool) {
-	if okay = len(str) > 23 && strings.ContainsRune(str, runes.Newline); okay {
-		lines := strings.FieldsFunc(str, func(q rune) bool {
-			return q == runes.Newline
-		})
-		tab := &enc.Tabs
-		tab.WriteString(`"""`)
-		tab.Softline()
-		for _, el := range lines {
-			tab.Escape(el)
-			tab.Softline()
-			tab.newLines++ // not needed if using backtick literals... hrm.
+// fix? determine quote style based on some sort of heuristic....
+func (enc *Encoder) encodeQuotes(str string) {
+	if !strings.ContainsRune(str, runes.Newline) {
+		enc.Tabs.Quote(str)
+	} else {
+		// note: using strings.FieldsFunc isnt enough
+		// by creating left and right parts; it eats trailing newlines
+		var lines []string
+		var prev int
+		for i, q := range str {
+			if q == runes.Newline {
+				lines = append(lines, str[prev:i])
+				prev = i + 1
+			}
 		}
-		tab.newLines--
-		tab.WriteString(`"""`)
+		lines = append(lines, str[prev:])
+		writeHere(&enc.Tabs, lines)
 	}
-	return
+}
+
+func writeHere(tab *TabWriter, lines []string) {
+	if len(lines) == 0 {
+		panic("heredocs should have lines")
+	}
+	tab.WriteString(`|`)
+	tab.Indent(true)
+	var escaped, emptyLine bool
+	for _, el := range lines {
+		tab.Nextline()
+		if tab.Escape(el) {
+			escaped = true
+		}
+		emptyLine = len(el) == 0
+	}
+	if !emptyLine {
+		// there was content in the final line,
+		// so the heredoc should trim the final line.
+		// if we're escaping, we have to do that with backslash.
+		if escaped {
+			tab.WriteRune('\\')
+		}
+		tab.Nextline()
+	}
+	// if we're escaping we have to write the double quotes
+	// if we're not escaping we can choose to write it if the final line was empty
+	if escaped || emptyLine {
+		tab.WriteString(`"""`)
+	} else {
+		tab.WriteString(`'''`)
+	}
+	tab.Indent(false)
 }
 
 // writes a single value to the stream wrapped by tab writer
@@ -115,11 +148,7 @@ func (enc *Encoder) WriteValue(v r.Value, wasMaps bool) (err error) {
 				}
 
 			case r.String:
-				// fix: determine wrapping based on settings?
-				// select raw strings based on the presence of escapes?
-				if str := v.String(); !enc.writeHere(str) {
-					tab.Quote(str)
-				}
+				enc.encodeQuotes(v.String())
 
 			case r.Array, r.Slice:
 				// tbd: look at tag for "want array"?
@@ -200,7 +229,9 @@ func (enc *Encoder) writeCollection(it Iterator, cmts Commenting, wasMaps, maps 
 		}
 		return // early out.
 	}
-	tab.OptionalLine(wasMaps)
+	if wasMaps {
+		tab.Softline()
+	}
 	//
 	for hasNext {
 		key, val := it.GetKey(), getValue(it)
