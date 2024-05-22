@@ -118,5 +118,4 @@ func testEncoding(t *testing.T, pairs ...any) {
 			buf.Reset()
 		}
 	}
-	return
 }
