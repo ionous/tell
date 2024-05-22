@@ -83,19 +83,19 @@ func TestHereLines(t *testing.T) {
 	ls.addLine(2, "c\n")
 	var buf strings.Builder
 	// raw, keep trailing newline
-	ls.writeHere(&buf, runes.QuoteRaw, 2)
+	ls.writeBlock(&buf, runes.QuoteRaw, 2)
 	if got, expect := resolve(&buf),
 		" a\n  b  \\\nc\n"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 	// raw, discard trailing newline
-	ls.writeHere(&buf, runes.QuoteSingle, 2)
+	ls.writeBlock(&buf, runes.QuoteSingle, 2)
 	if got, expect := resolve(&buf),
 		" a\n  b  \\\nc"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)
 	}
 	// interpreted, keep trailing newline
-	ls.writeHere(&buf, runes.QuoteDouble, 2)
+	ls.writeBlock(&buf, runes.QuoteDouble, 2)
 	if got, expect := resolve(&buf),
 		" a\n  b  c\n"; got != expect {
 		t.Errorf("\nhave: %q\nwant: %q", got, expect)

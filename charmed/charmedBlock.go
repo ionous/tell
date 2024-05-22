@@ -83,7 +83,7 @@ func (ls *indentedBlock) flushLine(lhs, rhs int) {
 
 // the leftEdge counts the number of leading spaces to eat
 // if a line has less than that, its an underflow.
-func (ls indentedBlock) writeHere(out *strings.Builder, lineType rune, leftEdge int) (err error) {
+func (ls indentedBlock) writeBlock(out *strings.Builder, lineType rune, leftEdge int) (err error) {
 	escape, keepEnding := EscapeHere(lineType), KeepEnding(lineType)
 	for i, end := 0, len(ls.lines)-1; i <= end; i++ {
 		el, atEnd := ls.lines[i], i == end

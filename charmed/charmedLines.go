@@ -60,7 +60,7 @@ func (d *hereLines) decodeLines() charm.State {
 }
 
 func (d *hereLines) report(lineType rune, indent int) error {
-	return d.lines.writeHere(d.out, lineType, indent)
+	return d.lines.writeBlock(d.out, lineType, indent)
 }
 
 // match at the start of a line, past any initial whitespace.
