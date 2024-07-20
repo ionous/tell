@@ -24,7 +24,7 @@ type ErrorPos struct {
 }
 
 func (e ErrorPos) Pos() (y int, x int) {
-	return y, x
+	return e.y, e.x
 }
 
 func (e ErrorPos) Unwrap() error {
