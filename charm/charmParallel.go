@@ -1,7 +1,9 @@
 package charm
 
-// Parallel region; run all of the passed states until they all return nil.
-// if any return error, this returns error.
+// Run all of the passed states.
+// If any return nil, they are dropped;
+// If any return Terminal ( ex. via Error() or Finished() )
+// the parallel state exits.
 func Parallel(name string, rs ...State) State {
 	return Self(name, func(self State, r rune) (ret State) {
 		var cnt int
@@ -9,7 +11,7 @@ func Parallel(name string, rs ...State) State {
 		for _, s := range rs {
 			switch next := s.NewRune(r); next.(type) {
 			case nil:
-				// skip
+				// this drops the state from the update list
 			case Terminal:
 				ret = next
 				break Loop
