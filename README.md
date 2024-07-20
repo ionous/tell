@@ -256,6 +256,8 @@ The [readme](https://github.com/ionous/tell/blob/main/note/README.md)  in `packa
 Version History
 -----
 
+0.9.1 -> 0.9.2: improved error reporting for package decoder.
+
 0.9.0 -> 0.9.1: improved error reporting for package charm.
 
 0.8.1 -> 0.9.0: changes string folding; adds new string types.
