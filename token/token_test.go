@@ -3,6 +3,7 @@ package token_test
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"reflect"
 	"strings"
@@ -55,7 +56,7 @@ func TestArray(t *testing.T) {
 	for i, test := range tests {
 		var pairs results
 		run := token.NewTokenizer(&pairs)
-		if _, e := charm.Parse(test.str, run); e != nil {
+		if e := parseString(test.str, run); e != io.EOF {
 			t.Fatal("failed test", i, e)
 		} else if e := pairs.compare(test.expect); e != nil {
 			t.Fatal("failed test", i, e)
@@ -118,12 +119,13 @@ line
 	// at the very least it helps to validate tokens must be separated by whitespace.
 	var combined results
 	run := token.NewTokenizer(&combined)
+	var combinedReader strings.Reader
+	combinedParser := charm.MakeParser(&combinedReader)
 
-	for i := 0; i < len(tests); i += 3 {
+	for i, whichTest := 0, 1; i < len(tests); i, whichTest = i+3, whichTest+1 {
 		wantType := tests[i+0].(token.Type)
 		testStr := tests[i+1].(string)
 		wantVal := tests[i+2]
-		whichTest := 1 + i/3
 		if e := testOne(wantType, testStr, wantVal); e != nil {
 			t.Logf("failed single %d: %s", whichTest, e)
 			t.Fail()
@@ -132,7 +134,8 @@ line
 			if wantType == token.Comment {
 				sep = "\n" // comments have to be ended with a newlne
 			}
-			if next, e := charm.Parse(testStr+sep, run); e != nil {
+			combinedReader.Reset(testStr + sep) // lets keep the party going
+			if next, e := combinedParser.Parse(run); e != io.EOF {
 				t.Logf("failed combine parse %d: %s", whichTest, e)
 				t.Fail()
 			} else {
@@ -151,7 +154,7 @@ line
 func testOne(tokenType token.Type, testStr string, tokenValue any) (err error) {
 	var pairs results
 	run := token.NewTokenizer(&pairs)
-	if _, e := charm.Parse(testStr+"\n", run); e != nil {
+	if e := parseString(testStr+"\n", run); e != io.EOF {
 		err = compare(e, tokenValue)
 	} else if cnt := len(pairs); cnt == 0 {
 		err = errors.New("didn't collect any tokens")
@@ -198,7 +201,7 @@ func (res results) compare(expects results) (err error) {
 
 func (p result) compare(wantType token.Type, wantValue any) (err error) {
 	if tt := p.tokenType; tt != wantType {
-		err = fmt.Errorf("mismatched types want: %s, have: %s", wantType, tt)
+		err = fmt.Errorf("mismatched types\nwant: %s\nhave: %s", wantType, tt)
 	} else {
 		err = compare(p.tokenValue, wantValue)
 	}
@@ -208,7 +211,7 @@ func (p result) compare(wantType token.Type, wantValue any) (err error) {
 func compare(have any, want any) (err error) {
 	if haveErr, ok := have.(error); !ok {
 		if !reflect.DeepEqual(have, want) {
-			err = fmt.Errorf("mismatched want: %v(%T) have: %v(%T)", want, want, have, have)
+			err = fmt.Errorf("mismatched values\nwant: %v(%T)\nhave: %v(%T)", want, want, have, have)
 		}
 	} else {
 		if expectErr, ok := want.(error); !ok {

@@ -1,7 +1,6 @@
 package charm
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -9,54 +8,41 @@ import (
 
 const Eof = rune(-1)
 
-// Parse sends each rune of string to the passed state chart,
-// Returns the error underlying error states,
-// or the last returned state if there was no error.
-func Parse(str string, first State) (ret State, err error) {
-	return innerParse(first, strings.NewReader(str))
+// utility function which creates a string reader,
+// a parser, and calls Parser.ParseEof()
+func ParseEof(str string, first State) error {
+	p := MakeParser(strings.NewReader(str))
+	return p.ParseEof(first)
 }
 
-func Read(in io.RuneReader, first State) (err error) {
-	_, err = innerParse(first, in)
-	return
+type Parser struct {
+	in  io.RuneReader
+	err error
+	ofs int
 }
 
-func innerParse(first State, in io.RuneReader) (ret State, err error) {
-	try := first
-	for i := 0; ; i++ {
-		if r, _, e := in.ReadRune(); e != nil {
-			if e != io.EOF {
-				err = errors.Join(e, EndpointError{r, in, i, try})
-			}
-			break
-		} else {
-			if next := try.NewRune(r); next == nil {
-				// no states left to parse remaining input
-				e := errors.New("unhandled rune")
-				err = errors.Join(e, EndpointError{r, in, i, try})
-				break
-			} else if es, ok := next.(Terminal); ok {
-				err = errors.Join(es.err, EndpointError{r, in, i, try})
-				break
-			} else {
-				try = next
-			}
-		}
-	}
-	if err == nil {
-		ret = try
-	}
-	return
+func MakeParser(in io.RuneReader) Parser {
+	return Parser{in: in}
 }
 
-// on error, provide a bit of the input remaining
-// so that the user has an idea of where the error occurred
-func errContext(r rune, in io.RuneReader) (ret string) {
+func (p *Parser) Error() error {
+	return p.err
+}
+
+// number of runes read from the input
+func (p *Parser) Offset() int {
+	return p.ofs
+}
+
+// consumes ~25 of the remaining runes for error reporting
+func (p *Parser) Remaining() string {
 	const size = 25
 	var b strings.Builder
-	b.WriteRune(r)
+	if r, ok := p.err.(UnhandledRune); ok {
+		b.WriteRune(rune(r))
+	}
 	for i := 0; i < size; i++ {
-		if r, _, e := in.ReadRune(); e != nil {
+		if r, _, e := p.in.ReadRune(); e != nil {
 			break
 		} else {
 			b.WriteRune(r)
@@ -65,36 +51,52 @@ func errContext(r rune, in io.RuneReader) (ret string) {
 	return b.String()
 }
 
-// ParseEof sends each rune of string to the passed state chart;
-// after its done with the string, it sends an eof(-1) to flush any remaining data.
-// see also Parse() which does not send the eof.
-func ParseEof(str string, first State) (err error) {
-	if last, e := innerParse(first, strings.NewReader(str)); e != nil {
-		err = e
-	} else if last != nil {
-		if fini := last.NewRune(Eof); fini != nil {
-			if es, ok := fini.(Terminal); !ok || !es.Finished() {
-				err = fmt.Errorf("%s at eof for %q", es.err, str)
-			}
+// run Parse() and send the final state an explicit Eof rune.
+// unlike parse, only returns an error if there was an error.
+// this also unwraps Finished and all terminal errors,
+// returning the underlying error ( if any. )
+func (p *Parser) ParseEof(first State) (err error) {
+	if last, e := p.Parse(first); e != io.EOF {
+		// return unrecognized errors as is.
+		if es, ok := e.(Terminal); !ok {
+			err = e
+		} else if !es.Finished() {
+			// honor a state if it finished ( by not returning error )
+			// while unwrapping all other reported errors.
+			err = es.Unwrap()
+		}
+	} else if fini := last.NewRune(Eof); fini != nil {
+		// if there's *still* a state and its not a terminal state... report that
+		if es, ok := fini.(Terminal); !ok {
+			err = fmt.Errorf("unfinished states remain after end of file %s", fini)
+		} else if !es.Finished() {
+			// otherwise return the wrapped error
+			err = es.Unwrap()
 		}
 	}
 	return
 }
 
-// ended before the whole input was parsed.
-type EndpointError struct {
-	r    rune
-	in   io.RuneReader
-	end  int
-	last State
-}
-
-// index of the failure point in the input
-func (e EndpointError) End() int {
-	return e.end
-}
-
-func (e EndpointError) Error() (ret string) {
-	sink := errContext(e.r, e.in)
-	return fmt.Sprintf("%q (%q ended at index %d)", sink, StateName(e.last), e.end)
+// always returns an error, and the final state.
+// ex. if the last rune was unhandled, then this returns an
+// UnhandledRune error and the state that failed to handle it.
+func (p *Parser) Parse(first State) (ret State, err error) {
+	try := first
+	for {
+		if r, _, e := p.in.ReadRune(); e != nil {
+			err = e // ex. io.Eof
+			break
+		} else if next := try.NewRune(r); next == nil {
+			err = UnhandledRune(r)
+			break
+		} else if es, ok := next.(Terminal); ok {
+			err = es // a wrapped error: ex. ErrFinished or otherwise.
+			break
+		} else {
+			try = next // keep going.
+			p.ofs++
+		}
+	}
+	ret = try
+	return
 }

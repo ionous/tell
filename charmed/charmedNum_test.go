@@ -1,8 +1,8 @@
 package charmed
 
 import (
-	"errors"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
@@ -12,24 +12,29 @@ func TestNum(t *testing.T) {
 	var NaN = math.NaN()
 	// returns point of failure
 	run := func(str string) (val float64, err error) {
-		var p NumParser
-		if e := charm.ParseEof(str, p.Decode()); e != nil {
+		var num NumParser
+		// use the make parser version to gain access to the offset
+		p := charm.MakeParser(strings.NewReader(str))
+		if e := p.ParseEof(num.Decode()); e != nil {
 			val = NaN
-			err = e
-		} else if v, e := p.GetFloat(); e != nil {
-			err = e
+			err = endpointError{e, p.Offset()}
+		} else if v, e := num.GetFloat(); e != nil {
+			err = e // all of the input was okay, but we couldn't make a float of it.
 		} else {
 			val = v
 		}
 		return
 	}
 	tests := []struct {
-		input    string
-		endpoint int // 0 means okay, -1 incomplete, >0 the one-index of the failure point.
+		input string
+		// 0 means success is expected, and the value contains the parsed result
+		// -1 means we expect the input to run out before parsing is finished.
+		// >0 the one-index of an expected failure point
+		endpoint int
 		value    float64
 	}{
 		// bad decimals
-		{"0.", -1, NaN},
+		{"0.", -1, NaN}, // it parses just fine, but GetFloat() will error with unknown number
 		{".0", 1, NaN},
 		// floats
 		{"0.0", 0, 0},
@@ -83,19 +88,23 @@ func TestNum(t *testing.T) {
 		} else {
 			// error returned, check the expected error
 			if test.endpoint == 0 {
-				t.Fatal("expected success", e)
+				t.Fatal("expected success but received an error", e)
 				break
 			} else if test.endpoint > 0 {
-				var ep charm.EndpointError
-				if !errors.As(e, &ep) {
-					t.Fatal("unexpected error", e)
-					break
-				} else if ep.End() != test.endpoint-1 {
-					t.Fatal("mismatched endpoint at", e)
+				// ensure our expected fail point is correct
+				if ep := e.(endpointError); ep.pos != test.endpoint-1 {
+					t.Fatal("mismatched endpoint at", ep.error)
 					break
 				}
 			}
 			t.Log("ok", e)
 		}
 	}
+}
+
+// backwards compatibility for tests
+// reports the offset of failure ( if any ) when parsing a number
+type endpointError struct {
+	error
+	pos int
 }

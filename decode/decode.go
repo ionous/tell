@@ -41,19 +41,11 @@ func (d *Decoder) Decode(src io.RuneReader) (ret any, err error) {
 		d.decodeDoc(), // tbd: wrap with charmed.UnhandledError()? why/why not.
 		charmed.DecodePos(&y, &x),
 	)
-	if e := charm.Read(src, run); e != nil {
+	p := charm.MakeParser(src)
+	if e := p.ParseEof(run); e != nil {
 		err = ErrorAt(y, x, e)
 	} else {
-		// send eof
-		if next := charm.RunState(runes.Eof, run); next != nil {
-			// if there was a next state, and it was an error
-			// other than "finished okay", generate an error.
-			if es, ok := next.(charm.Terminal); ok && !es.Finished() {
-				err = ErrorAt(y, x, es.Unwrap())
-			} else {
-				ret, err = d.out.finalizeAll()
-			}
-		}
+		ret, err = d.out.finalizeAll()
 	}
 	return
 }

@@ -3,17 +3,25 @@ package token_test
 import (
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/ionous/tell/charm"
 	"github.com/ionous/tell/token"
 )
 
+// always returns an error; io.EOF means all the input was consumed.
+func parseString(str string, state charm.State) (err error) {
+	p := charm.MakeParser(strings.NewReader(str))
+	_, err = p.Parse(state)
+	return
+}
+
 func TestSig(t *testing.T) {
-	// returns point of failure
 	test := func(str string) (ret string, err error) {
 		var sig token.Signature
-		if _, e := charm.Parse(str, sig.Decoder()); e != nil {
+		if e := parseString(str, sig.Decoder()); e != io.EOF {
 			err = e
 		} else if sig.Pending() {
 			err = errors.New("signature pending")
